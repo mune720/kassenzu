@@ -1,0 +1,15 @@
+{
+  "name": "合戦ズ ― 歴史空想RPG",
+  "short_name": "合戦ズ",
+  "description": "長久手市文化の家『合戦ズ』原作の歴史空想RPG",
+  "icons": [
+    { "src": "favicon.svg", "type": "image/svg+xml", "sizes": "any" },
+    { "src": "icon-192.png", "type": "image/png", "sizes": "192x192" },
+    { "src": "icon-512.png", "type": "image/png", "sizes": "512x512" }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0e1116",
+  "theme_color": "#1a1b2e"
+}

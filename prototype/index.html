@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>合戦ズ ― 歴史空想RPG</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1a1b2e">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <h1 id="apptitle">合戦ズ <small>歴史空想RPG</small></h1>
+  <div id="stage">
+    <canvas id="game" width="512" height="448"></canvas>
+  </div>
+  <div id="controls">
+    <div id="dpad">
+      <button id="btnUP" class="pad" aria-label="上">▲</button>
+      <div class="midrow">
+        <button id="btnLEFT" class="pad" aria-label="左">◀</button>
+        <button id="btnDOWN" class="pad" aria-label="下">▼</button>
+        <button id="btnRIGHT" class="pad" aria-label="右">▶</button>
+      </div>
+    </div>
+    <div id="actions">
+      <button id="btnB" class="act" aria-label="キャンセル">B</button>
+      <button id="btnA" class="act" aria-label="決定">A</button>
+    </div>
+  </div>
+</div>
+<script src="game.js"></script>
+</body>
+</html>
