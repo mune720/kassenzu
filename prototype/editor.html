@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>合戦ズ セリフエディター</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Hiragino Sans","Yu Gothic",sans-serif;background:#1a1b2e;color:#e0e0e0;line-height:1.5}
+header{background:#0e1116;padding:12px 20px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100;border-bottom:1px solid #333}
+header h1{font-size:18px;color:#ffd43b;white-space:nowrap}
+header .actions{margin-left:auto;display:flex;gap:8px}
+header button{padding:6px 16px;border:none;border-radius:6px;cursor:pointer;font-size:14px;font-weight:bold}
+#btnSave{background:#ffd43b;color:#1a1b2e}
+#btnSave:hover{background:#ffe066}
+#btnDownload{background:#4dabf7;color:#fff}
+#btnDownload:hover{background:#74c0fc}
+nav{background:#0e1116;border-bottom:1px solid #333;padding:8px 20px;position:sticky;top:49px;z-index:99;overflow-x:auto;white-space:nowrap}
+nav a{display:inline-block;padding:4px 12px;margin:2px 4px;border-radius:4px;color:#adb5bd;text-decoration:none;font-size:13px;background:#222}
+nav a:hover,nav a.active{background:#364fc7;color:#fff}
+main{max-width:900px;margin:0 auto;padding:20px}
+.section{margin-bottom:32px}
+.section-title{font-size:20px;color:#ffd43b;margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid #444}
+.scene{background:#232438;border-radius:8px;margin-bottom:16px;overflow:hidden}
+.scene-header{background:#2a2b45;padding:8px 14px;display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none}
+.scene-header .label{font-weight:bold;color:#74c0fc;font-size:15px;flex:1}
+.scene-header .count{font-size:12px;color:#868e96}
+.scene-header .toggle{color:#868e96;font-size:14px;transition:transform .2s}
+.scene-header.collapsed .toggle{transform:rotate(-90deg)}
+.scene-body{padding:8px}
+.scene-body.hidden{display:none}
+.line{display:flex;gap:6px;align-items:flex-start;padding:6px 8px;border-radius:6px;margin-bottom:4px;background:#1e1f34}
+.line:hover{background:#282940}
+.line .num{color:#555;font-size:12px;min-width:20px;text-align:right;padding-top:6px}
+.line .name-input{width:80px;min-width:60px;padding:4px 6px;border:1px solid #444;border-radius:4px;background:#181928;color:#ffd43b;font-size:13px;font-family:inherit}
+.line .text-input{flex:1;padding:4px 8px;border:1px solid #444;border-radius:4px;background:#181928;color:#e0e0e0;font-size:13px;font-family:inherit;min-height:32px;resize:vertical}
+.line .text-input:focus,.line .name-input:focus{outline:none;border-color:#4dabf7}
+.line-actions{display:flex;flex-direction:column;gap:2px}
+.line-actions button{width:22px;height:22px;border:none;border-radius:3px;cursor:pointer;font-size:11px;background:#333;color:#adb5bd;display:flex;align-items:center;justify-content:center}
+.line-actions button:hover{background:#555;color:#fff}
+.line-actions .del:hover{background:#c92a2a;color:#fff}
+.add-line{padding:6px 12px;border:1px dashed #555;border-radius:6px;background:transparent;color:#868e96;cursor:pointer;font-size:13px;width:100%;text-align:center;margin-top:4px}
+.add-line:hover{border-color:#4dabf7;color:#4dabf7}
+.flat-field{background:#232438;border-radius:8px;padding:12px;margin-bottom:16px}
+.flat-field label{display:block;font-size:13px;color:#868e96;margin-bottom:4px}
+.flat-field input,.flat-field textarea{width:100%;padding:6px 8px;border:1px solid #444;border-radius:4px;background:#181928;color:#e0e0e0;font-size:13px;font-family:inherit}
+.flat-field textarea{min-height:60px;resize:vertical}
+.quiz-block{background:#1e1f34;border-radius:6px;padding:10px;margin-top:8px}
+.quiz-block label{font-size:12px;color:#868e96}
+.quiz-block input{margin-top:2px;margin-bottom:6px;width:100%;padding:4px 6px;border:1px solid #444;border-radius:4px;background:#181928;color:#e0e0e0;font-size:13px;font-family:inherit}
+.quiz-block textarea{margin-top:2px;margin-bottom:6px;width:100%;padding:4px 6px;border:1px solid #444;border-radius:4px;background:#181928;color:#e0e0e0;font-size:13px;font-family:inherit;min-height:40px;resize:vertical}
+.enemy-block{background:#1e1f34;border-radius:6px;padding:10px;margin-top:8px}
+.enemy-block label{font-size:12px;color:#868e96}
+.enemy-block input{margin-top:2px;margin-bottom:6px;width:100%;padding:4px 6px;border:1px solid #444;border-radius:4px;background:#181928;color:#e0e0e0;font-size:13px;font-family:inherit}
+.enemy-block textarea{margin-top:2px;margin-bottom:6px;width:100%;padding:4px 6px;border:1px solid #444;border-radius:4px;background:#181928;color:#e0e0e0;font-size:13px;font-family:inherit;min-height:40px;resize:vertical}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#2f9e44;color:#fff;padding:10px 24px;border-radius:8px;font-size:14px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:200}
+.toast.show{opacity:1}
+.search-box{padding:4px 8px;border:1px solid #444;border-radius:4px;background:#181928;color:#e0e0e0;font-size:13px;width:200px}
+.search-box:focus{outline:none;border-color:#4dabf7}
+</style>
+</head>
+<body>
+<header>
+  <h1>合戦ズ セリフエディター</h1>
+  <input type="text" class="search-box" id="search" placeholder="検索...">
+  <div class="actions">
+    <button id="btnSave" title="localStorage に保存">保存</button>
+    <button id="btnDownload">dialogue.js DL</button>
+  </div>
+</header>
+<nav id="nav"></nav>
+<main id="main"></main>
+<div class="toast" id="toast"></div>
+
+<script src="dialogue.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var data = JSON.parse(JSON.stringify(DIALOGUE));
+  var saved = localStorage.getItem('kassenzu_dialogue');
+  if (saved) { try { data = JSON.parse(saved); } catch (e) {} }
+
+  var SECTIONS = [
+    { title: '序章（記念館）', keys: ['museum_intro', 'byobu', 'katchu', 'katana', 'save_ok', 'save_fail', 'door_trigger', 'door_ike_comedy'] },
+    { title: '一章（戦国フィールド）', keys: ['field_intro', 'ike_idle', 'mound', 'ch1_michi'] },
+    { title: '二章〜五章', keys: ['ch2_battle', 'ch3_deaths', 'ch4_confrontation', 'ch5_tenka', 'ch6_farewell'] },
+    { title: 'エピローグ', keys: ['epilogue'] },
+    { title: 'エンディング', keys: ['ending'] },
+    { title: '戦闘メッセージ', keys: ['battle'] },
+    { title: '史跡めぐり', keys: ['tour_complete', 'sites'] },
+  ];
+
+  var SCENE_LABELS = {
+    museum_intro: '序章：オープニング',
+    byobu: '屏風を調べる', katchu: '甲冑を調べる', katana: '刀を調べる',
+    save_ok: 'セーブ成功', save_fail: 'セーブ失敗',
+    door_trigger: '戸締まり', door_ike_comedy: 'いけ登場〜腕試し',
+    field_intro: 'フィールド到着', ike_idle: 'いけに話す', mound: '勝入塚',
+    ch1_michi: 'みち登場', ch2_battle: '二章：戦の話', ch3_deaths: '三章：討死',
+    ch4_confrontation: '対峙', ch5_tenka: '天下論', ch6_farewell: '別れ',
+    epilogue: 'エピローグ', ending: 'エンディング画面',
+    tour_complete: '史跡めぐり全達成',
+    battle: '戦闘メッセージ', sites: '史跡データ',
+  };
+
+  function mkEl(tag, cls) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    return e;
+  }
+
+  function toast(msg) {
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(function () { t.classList.remove('show'); }, 2000);
+  }
+
+  function autoHeight(ta) {
+    ta.style.height = 'auto';
+    ta.style.height = Math.max(32, ta.scrollHeight) + 'px';
+  }
+
+  function buildNav() {
+    var nav = document.getElementById('nav');
+    nav.textContent = '';
+    SECTIONS.forEach(function (sec) {
+      var a = document.createElement('a');
+      a.href = '#sec-' + sec.keys[0];
+      a.textContent = sec.title;
+      nav.appendChild(a);
+    });
+  }
+
+  function makeLineRow(arr, i, key, container) {
+    var line = arr[i];
+    var row = mkEl('div', 'line');
+
+    var num = mkEl('span', 'num');
+    num.textContent = i + 1;
+    row.appendChild(num);
+
+    var nameIn = document.createElement('input');
+    nameIn.className = 'name-input';
+    nameIn.value = line.name;
+    nameIn.placeholder = '話者';
+    nameIn.oninput = function () { line.name = nameIn.value; };
+    row.appendChild(nameIn);
+
+    var textIn = document.createElement('textarea');
+    textIn.className = 'text-input';
+    textIn.rows = 1;
+    textIn.value = line.text;
+    autoHeight(textIn);
+    textIn.oninput = function () { line.text = textIn.value; autoHeight(textIn); };
+    row.appendChild(textIn);
+
+    var actions = mkEl('div', 'line-actions');
+    var btnUp = document.createElement('button');
+    btnUp.textContent = '↑';
+    btnUp.title = '上へ';
+    btnUp.onclick = function () { if (i > 0) { arr.splice(i - 1, 0, arr.splice(i, 1)[0]); buildLineEditor(container, arr, key); } };
+    var btnDown = document.createElement('button');
+    btnDown.textContent = '↓';
+    btnDown.title = '下へ';
+    btnDown.onclick = function () { if (i < arr.length - 1) { arr.splice(i + 1, 0, arr.splice(i, 1)[0]); buildLineEditor(container, arr, key); } };
+    var btnDel = document.createElement('button');
+    btnDel.className = 'del';
+    btnDel.textContent = '×';
+    btnDel.title = '削除';
+    btnDel.onclick = function () { if (confirm((i + 1) + '行目を削除しますか？')) { arr.splice(i, 1); buildLineEditor(container, arr, key); } };
+    actions.appendChild(btnUp);
+    actions.appendChild(btnDown);
+    actions.appendChild(btnDel);
+    row.appendChild(actions);
+
+    return row;
+  }
+
+  function buildLineEditor(container, arr, key) {
+    container.textContent = '';
+    for (var i = 0; i < arr.length; i++) {
+      container.appendChild(makeLineRow(arr, i, key, container));
+    }
+    var addBtn = document.createElement('button');
+    addBtn.className = 'add-line';
+    addBtn.textContent = '＋ セリフを追加';
+    addBtn.onclick = function () { arr.push({ name: '', text: '' }); buildLineEditor(container, arr, key); };
+    container.appendChild(addBtn);
+  }
+
+  function makeCollapsibleScene(labelText, countText, startCollapsed) {
+    var scene = mkEl('div', 'scene');
+    var hdr = mkEl('div', 'scene-header');
+    var lbl = mkEl('span', 'label'); lbl.textContent = labelText;
+    var cnt = mkEl('span', 'count'); cnt.textContent = countText || '';
+    var tog = mkEl('span', 'toggle'); tog.textContent = '▼';
+    hdr.appendChild(lbl); hdr.appendChild(cnt); hdr.appendChild(tog);
+    var body = mkEl('div', 'scene-body');
+    var collapsed = !!startCollapsed;
+    if (collapsed) { body.classList.add('hidden'); hdr.classList.add('collapsed'); }
+    hdr.onclick = function () {
+      collapsed = !collapsed;
+      body.classList.toggle('hidden', collapsed);
+      hdr.classList.toggle('collapsed', collapsed);
+    };
+    scene.appendChild(hdr);
+    scene.appendChild(body);
+    return { scene: scene, body: body };
+  }
+
+  function buildDialogueScene(parent, key) {
+    var arr = data[key];
+    if (!Array.isArray(arr)) return;
+    var s = makeCollapsibleScene(SCENE_LABELS[key] || key, arr.length + '行', false);
+    buildLineEditor(s.body, arr, key);
+    parent.appendChild(s.scene);
+  }
+
+  function buildEndingEditor(parent) {
+    var arr = data.ending;
+    var s = makeCollapsibleScene('エンディング画面テキスト', arr.length + '行', false);
+    function rebuild() {
+      s.body.textContent = '';
+      arr.forEach(function (txt, i) {
+        var row = mkEl('div', 'line');
+        var num = mkEl('span', 'num'); num.textContent = i + 1;
+        row.appendChild(num);
+        var ta = document.createElement('textarea');
+        ta.className = 'text-input'; ta.rows = 1; ta.value = txt;
+        ta.style.flex = '1';
+        autoHeight(ta);
+        ta.oninput = function () { arr[i] = ta.value; autoHeight(ta); };
+        row.appendChild(ta);
+        var actions = mkEl('div', 'line-actions');
+        var u = document.createElement('button'); u.textContent = '↑';
+        u.onclick = function () { if (i > 0) { arr.splice(i - 1, 0, arr.splice(i, 1)[0]); rebuild(); } };
+        var d = document.createElement('button'); d.textContent = '↓';
+        d.onclick = function () { if (i < arr.length - 1) { arr.splice(i + 1, 0, arr.splice(i, 1)[0]); rebuild(); } };
+        var x = document.createElement('button'); x.className = 'del'; x.textContent = '×';
+        x.onclick = function () { arr.splice(i, 1); rebuild(); };
+        actions.appendChild(u); actions.appendChild(d); actions.appendChild(x);
+        row.appendChild(actions);
+        s.body.appendChild(row);
+      });
+      var addBtn = document.createElement('button');
+      addBtn.className = 'add-line'; addBtn.textContent = '＋ 行を追加';
+      addBtn.onclick = function () { arr.push(''); rebuild(); };
+      s.body.appendChild(addBtn);
+    }
+    rebuild();
+    parent.appendChild(s.scene);
+  }
+
+  function makeFieldBlock(parentEl, labelText, value, onChange) {
+    var d = mkEl('div', 'flat-field');
+    var lbl = document.createElement('label'); lbl.textContent = labelText;
+    d.appendChild(lbl);
+    var ta = document.createElement('textarea'); ta.rows = 2; ta.value = value || '';
+    ta.oninput = function () { onChange(ta.value); };
+    d.appendChild(ta);
+    parentEl.appendChild(d);
+  }
+
+  function buildBattleEditor(parent) {
+    var b = data.battle;
+    var battleKeys = [
+      { key: 'ike_spar', label: 'いけ腕試し' },
+      { key: 'odoriko', label: '踊り子戦' },
+      { key: 'random', label: 'ランダム戦闘' }
+    ];
+    battleKeys.forEach(function (bk) {
+      var obj = b[bk.key];
+      var s = makeCollapsibleScene(bk.label, '', false);
+      if (obj.appearMsg != null) {
+        makeFieldBlock(s.body, '登場メッセージ', obj.appearMsg, function (v) { obj.appearMsg = v; });
+      }
+      makeFieldBlock(s.body, '攻撃ラベル', obj.atkLabel, function (v) { obj.atkLabel = v; });
+      makeFieldBlock(s.body, '勝利メッセージ', obj.winMsg, function (v) { obj.winMsg = v; });
+      parent.appendChild(s.scene);
+    });
+  }
+
+  function makeInputField(parentEl, labelText, value, onChange, type) {
+    var lbl = document.createElement('label'); lbl.textContent = labelText;
+    parentEl.appendChild(lbl);
+    var inp = document.createElement('input');
+    inp.type = type || 'text'; inp.value = value;
+    if (type === 'number') inp.style.width = '60px';
+    inp.oninput = function () { onChange(type === 'number' ? (parseInt(inp.value) || 0) : inp.value); };
+    parentEl.appendChild(inp);
+  }
+
+  function makeTextareaField(parentEl, labelText, value, onChange) {
+    var lbl = document.createElement('label'); lbl.textContent = labelText;
+    parentEl.appendChild(lbl);
+    var ta = document.createElement('textarea'); ta.rows = 2; ta.value = value || '';
+    ta.oninput = function () { onChange(ta.value); };
+    parentEl.appendChild(ta);
+  }
+
+  function buildSitesEditor(parent) {
+    var sites = data.sites;
+    sites.forEach(function (site) {
+      var s = makeCollapsibleScene(site.name + '（' + site.sub + '）', '', true);
+
+      var epLabel = mkEl('div'); epLabel.style.padding = '4px 8px';
+      var strong = document.createElement('strong');
+      strong.style.color = '#74c0fc'; strong.style.fontSize = '13px';
+      strong.textContent = 'エピソード';
+      epLabel.appendChild(strong);
+      s.body.appendChild(epLabel);
+      var epContainer = mkEl('div');
+      buildLineEditor(epContainer, site.episode, 'sites');
+      s.body.appendChild(epContainer);
+
+      var qb = mkEl('div', 'quiz-block');
+      makeInputField(qb, 'クイズ問題', site.quiz.q, function (v) { site.quiz.q = v; });
+      makeInputField(qb, '選択肢（カンマ区切り）', site.quiz.choices.join(', '), function (v) { site.quiz.choices = v.split(',').map(function (c) { return c.trim(); }); });
+      makeInputField(qb, '正解番号（0始まり）', site.quiz.answer, function (v) { site.quiz.answer = v; }, 'number');
+      makeTextareaField(qb, '解説', site.quiz.note, function (v) { site.quiz.note = v; });
+      s.body.appendChild(qb);
+
+      var eb = mkEl('div', 'enemy-block');
+      makeInputField(eb, '敵名', site.enemy.name, function (v) { site.enemy.name = v; });
+      makeInputField(eb, 'HP', site.enemy.hp, function (v) { site.enemy.hp = v; }, 'number');
+      makeInputField(eb, '攻撃ラベル', site.enemy.atkLabel, function (v) { site.enemy.atkLabel = v; });
+      makeTextareaField(eb, '勝利メッセージ', site.enemy.winMsg, function (v) { site.enemy.winMsg = v; });
+      s.body.appendChild(eb);
+
+      parent.appendChild(s.scene);
+    });
+  }
+
+  function build() {
+    var main = document.getElementById('main');
+    main.textContent = '';
+    SECTIONS.forEach(function (sec) {
+      var div = mkEl('div', 'section');
+      div.id = 'sec-' + sec.keys[0];
+      var title = mkEl('div', 'section-title');
+      title.textContent = sec.title;
+      div.appendChild(title);
+      sec.keys.forEach(function (key) {
+        if (key === 'ending') buildEndingEditor(div);
+        else if (key === 'battle') buildBattleEditor(div);
+        else if (key === 'sites') buildSitesEditor(div);
+        else buildDialogueScene(div, key);
+      });
+      main.appendChild(div);
+    });
+  }
+
+  function generateJS() {
+    var out = '/* 合戦ズ ― セリフデータ（dialogue.js）\n   editor.html で編集可。game.js から DIALOGUE.xxx で参照される。 */\nvar DIALOGUE = ';
+    out += JSON.stringify(data, null, 2);
+    out += ';\n';
+    return out;
+  }
+
+  document.getElementById('btnSave').onclick = function () {
+    localStorage.setItem('kassenzu_dialogue', JSON.stringify(data));
+    toast('保存しました');
+  };
+
+  document.getElementById('btnDownload').onclick = function () {
+    var blob = new Blob([generateJS()], { type: 'text/javascript;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'dialogue.js';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast('dialogue.js をダウンロードしました');
+  };
+
+  var searchTimer;
+  document.getElementById('search').oninput = function () {
+    clearTimeout(searchTimer);
+    var q = this.value.trim();
+    searchTimer = setTimeout(function () {
+      document.querySelectorAll('.text-input, .name-input').forEach(function (el) {
+        el.style.borderColor = '';
+      });
+      if (!q) return;
+      var inputs = document.querySelectorAll('.text-input, .name-input');
+      var first = null;
+      inputs.forEach(function (inp) {
+        if (inp.value.indexOf(q) >= 0) {
+          var parent = inp.closest('.scene');
+          if (parent) {
+            var body = parent.querySelector('.scene-body');
+            var hdr = parent.querySelector('.scene-header');
+            if (body && body.classList.contains('hidden')) {
+              body.classList.remove('hidden');
+              if (hdr) hdr.classList.remove('collapsed');
+            }
+          }
+          if (!first) first = inp;
+          inp.style.borderColor = '#ffd43b';
+        }
+      });
+      if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 300);
+  };
+
+  buildNav();
+  build();
+})();
+</script>
+</body>
+</html>

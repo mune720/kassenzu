@@ -1040,21 +1040,9 @@
     } catch (e) { return false; }
   }
 
-  // ===================== Story text =====================
-  const MUSEUM_INTRO = [
-    { name: '', text: '——どこからか、能のような しらべ。踊り子が ひとさし舞い、オダの落とした資料を そっと拾って、手渡した。' },
-    { name: 'オダ', text: 'あ…すみません、ありがとうございます。…って、あれ。いつの間に、こんな所に立ってたんだろ、わたし。' },
-    { name: 'オダ', text: 'はぁ。…閉館作業の前に、明日の ご案内、練習しとこ。ええと——' },
-    { name: 'オダ', text: '「ようこそ、長久手古戦場記念館へ。本日は、皆さん よくご存知の武将、豊臣秀吉や 徳川家康に 触れつつ、館内を ご案内します」' },
-    { name: 'オダ', text: '長久手は 圧倒的に 家康派が多いから…家康を 厚めに。で、秀吉が先か、家康が先か。時代的には、やっぱり 秀吉が——あれ、違う違う。' },
-    { name: 'オダ', text: '…って、記念館の職員が その戦いを よく知らないって、どうなの、わたし。秀吉と家康、結局どっちが 勝ったんだっけ。' },
-    { name: 'オダ', text: 'ま、いっか。屏風と、甲冑と、刀。ぜんぶ見て、戸締まりして…帰ろ。' },
-  ];
-  const FIELD_INTRO = [
-    { name: 'オダ', text: '……っ。ここ、どこ！？ さっきまで 記念館だったのに…一面の、芝生…！' },
-    { name: 'いけ', text: 'ふむ。…この地、覚えがあるような、ないような。はて、なぜ こんなに 静かなのだ。' },
-    { name: 'オダ', text: '（甲冑の人と一緒に、変な所に来ちゃった…。とりあえず、まわりを 見てみよう）' },
-  ];
+  // ===================== Story text (→ dialogue.js) =====================
+  const MUSEUM_INTRO = DIALOGUE.museum_intro;
+  const FIELD_INTRO = DIALOGUE.field_intro;
 
   // ===================== Field scene =====================
   function makeField(mapKey, spawnOverride, introLines) {
@@ -1100,165 +1088,47 @@
       if (id) runAction(id);
     }
     function runAction(id) {
-      if (id === 'byobu') Dialog.start([{ name: 'オダ', text: '『長久手合戦図屏風』の複製だ。…えーと、秀吉と家康が戦って…結局どっちが勝ったんだっけ？' }]);
-      else if (id === 'katchu') Dialog.start([{ name: 'オダ', text: '立派な甲冑。…「記念写真どうぞ」って言うと、たまにお客さんが「首を取られる！？」って身構えるんだよな。' }]);
-      else if (id === 'katana') Dialog.start([{ name: 'オダ', text: '刀のレプリカ。…なんだろう、さっきから視線を感じる。気のせい、だよな？' }]);
-      else if (id === 'save') { const ok = saveGame(); Dialog.start([{ name: '', text: ok ? '——篝火が ゆれる。…ここまでの 歩みを、書き留めた。（セーブ完了）' : '——うまく 記録できなかった…。（ブラウザの 設定で 保存が 使えない 場合があります）' }]); }
-      else if (id === 'door') Dialog.start([
-        { name: 'オダ', text: '…よし、戸締まり戸締まり。今日もおつかれ、わたし。' },
-        { name: '', text: '——その時。記念館の 奥の闇から、ぼろぼろの甲冑を まとった男が、ふらり、と 歩み出てきた。' },
-      ], function () {
+      if (id === 'byobu') Dialog.start(DIALOGUE.byobu);
+      else if (id === 'katchu') Dialog.start(DIALOGUE.katchu);
+      else if (id === 'katana') Dialog.start(DIALOGUE.katana);
+      else if (id === 'save') { const ok = saveGame(); Dialog.start(ok ? DIALOGUE.save_ok : DIALOGUE.save_fail); }
+      else if (id === 'door') Dialog.start(DIALOGUE.door_trigger, function () {
         const ike = { x: 7 * TILE + TILE / 2, y: TILE * 3.0, kind: 'ike', facing: 'down' };
         sceneActors.push(ike);
         player.facing = 'up';
         startWalkIn(ike, player.y - TILE * 1.25, 135, function () {
-          Dialog.start([
-            { name: 'オダ', text: 'ひっ…！ あ、あの。…何か、お探し物 ですか？' },
-            { name: 'いけ', text: '探してなど、おらん！（と言いつつ、きょろきょろ 探している）' },
-            { name: 'オダ', text: '（めっちゃ 探してる…）あの、落とし物 でしたら、お届けが 出てるかも…' },
-            { name: 'いけ', text: 'わしは、妖怪 などでは ないぞ！' },
-            { name: 'オダ', text: '（誰も 妖怪なんて 言ってない…）か、館長、呼んできましょうか。' },
-            { name: 'いけ', text: '覚悟ーーっ！！（と 抜こうとして、刀が 無いことに 気づく）…あ、ない。' },
-            { name: 'オダ', text: 'うわっ！？ や、やめてください、物騒な…！' },
-            { name: 'いけ', text: 'これ。…おい、これ！ 「徳川」と 書いてあるな。この刀は、いずこに。' },
-            { name: 'オダ', text: 'それ、徳川美術館の 参考資料です…。刀は、ここには 無くて…' },
-            { name: 'いけ', text: '刀が 無いとなると…いざという時、潔く 腹も 切れぬ。…ええい、切腹 いたす！' },
-            { name: 'オダ', text: 'し、しないでください！？ 閉館後の記念館で 切腹は、本当に 困ります！' },
-            { name: 'いけ', text: 'ふむ。…甲冑を着て、「きねんしゃしん」とやらが 撮れる、と 聞いたが。' },
-            { name: 'オダ', text: 'あ、はい。記念写真、お撮りしましょうか？' },
-            { name: 'いけ', text: 'きねんしゃしんを、とる……！？ つまり、わしの 首を——！' },
-            { name: 'オダ', text: 'と、取りません！ 写真です、写真！ カメラで パシャッと 写すだけ！ 首は、取りません！！' },
-            { name: 'いけ', text: 'なんだ、写し絵か。…脅かすな。心の臓が、止まるかと 思うたわ。' },
-            { name: 'いけ', text: 'その「めがね」。南蛮渡来か。…遠くまで、よう見える 代物よ。信長様も、南蛮人から 授かったと聞く。' },
-            { name: 'オダ', text: '（めがね、知ってる…。ほんとに、戦国の人なんだ…）' },
-            { name: 'いけ', text: '（記念館を 指して）あの中には、武器が しまってあるのか。武器蔵か。' },
-            { name: 'オダ', text: '武器蔵…じゃなくて、記念館です。…あ、でも 鉄砲の火薬の 硫黄は、昔この辺の 湿地で 採れたとか…' },
-            { name: 'いけ', text: '硫黄。…種子島の、火薬の。あれは、天を衝くほど 遠くへ 飛ぶ。ズドーン、とな。' },
-            { name: 'オダ', text: '（硫黄…イオン…ロケットの 燃料…！ 種子島って、ロケットの…！）え、ええ。すごく、飛びます…。' },
-            { name: 'いけ', text: 'ときに。わしの名は、池田。池田輝政よ。' },
-            { name: 'オダ', text: '（池田輝政——！？ のちに「大包平」って名刀で 有名になる…！ え、刀剣乱舞の…！）……ど、どうも。オダ、です。' },
-            { name: 'いけ', text: 'オダ、か。…ふむ。その前に、ひとつ。少し、腕試しと いこう。お前の 度胸、見せて みよ。…構えよ！' },
-            { name: 'オダ', text: 'え、ええっ！？ わ、わたしが、戦うんですか…！？（夢…だよね、これ…！）' },
-          ], function () {
+          Dialog.start(DIALOGUE.door_ike_comedy, function () {
             unlockMeikan('ike');
             startBattle({
               gated: false, spar: true,
-              enemy: { name: '池田輝政', hp: 24, kind: 'ike', atkLabel: 'いけの 一撃', winMsg: 'いけ「ほう…なかなか やるな。」', forcelose: true },
+              enemy: { name: '池田輝政', hp: 24, kind: 'ike', atkLabel: DIALOGUE.battle.ike_spar.atkLabel, winMsg: DIALOGUE.battle.ike_spar.winMsg, forcelose: true },
               onWin: function () { startTransition(function () { setScene(makeField('field', null, FIELD_INTRO)); }); },
               onLose: function () { startTransition(function () { setScene(makeField('field', null, FIELD_INTRO)); }); }
             });
           });
         });
       });
-      else if (id === 'ike') Dialog.start([
-        { name: 'いけ', text: 'オダ。…この地、どこかで 見た気が するのだ。だが、思い出せん。' },
-        { name: 'オダ', text: '（ここ、長久手の古戦場…なんですけど。言って、いいのかな…）' },
-        { name: 'いけ', text: 'ところで、刀だ。やはり、見当たらん。…無いと、どうも 落ち着かんな。' },
-      ]);
-      else if (id === 'mound') { unlockZukan('shonyu'); unlockMeikan('tsuneoki'); Dialog.start([
-        { name: 'オダ', text: 'こんもりとした塚だ。立て札には「勝入塚（しょうにゅうづか）」。…池田恒興の、お墓らしい。' },
-        { name: 'いけ', text: '……父上の。' },
-        { name: 'オダ', text: 'え、いま誰か喋った！？' },
-      ]); }
+      else if (id === 'ike') Dialog.start(DIALOGUE.ike_idle);
+      else if (id === 'mound') { unlockZukan('shonyu'); unlockMeikan('tsuneoki'); Dialog.start(DIALOGUE.mound); }
       else if (id === 'michi') {
         if (!tutorialDone) {
-          Dialog.start([
-            { name: 'みち', text: '（茂みから おどおどと、もう一人 ぼろぼろの武者が 現れる）…て、…てる？ てる、なのか？' },
-            { name: 'いけ', text: '——その声。みち。みちとも、か！？' },
-            { name: 'みち', text: 'てるーー！！ 無事 だったのか！？ うわぁ、ボロッボロ じゃねえか！' },
-            { name: 'いけ', text: 'みちこそ。…はは。人間無骨（にんげんむこつ）。天まで届くくらい、よう 喋るな。相変わらず。' },
-            { name: 'みち', text: '長可様を 探してこい、って 言われて こっち 来たんだけど…会えると 思ってなかった！ あと、兄貴は！？' },
-            { name: '', text: '——いけと みちは、固く 抱擁を 交わした。' },
-            { name: 'いけ', text: '…他の 奴らは。一人 か。' },
-            { name: 'みち', text: 'ああ。一人だ。…で、てる。お前は——' },
-            { name: 'いけ', text: '…逃げて、きた。' },
-            { name: 'みち', text: '…なんだと？' },
-            { name: 'みち', text: '（オダに気づき、刀に 手をかける）…おい、そこの。何者だ。ぼーっとしとると、はぐれ者に 食われるぞ。' },
-            { name: 'オダ', text: 'は、はぐれ者…！？' },
-            { name: 'みち', text: 'ほら、来た。…お前、ちっとは 戦えるように なっとけ。修行だ、修行！' },
-          ], function () { unlockMeikan('michi'); startTransition(function () { startBattle({ gated: true }); }); });
+          Dialog.start(DIALOGUE.ch1_michi, function () { unlockMeikan('michi'); startTransition(function () { startBattle({ gated: true }); }); });
         } else if (storyStage <= 1) {
-          Dialog.start([
-            { name: 'オダ', text: 'あの…さっきの。みなさん、戦の話、興味 あります…？ わたし、説明、得意じゃ ないんですけど。' },
-            { name: 'みち', text: '戦？ …ほう。お前の その、変わった 語り口とやらを、聞かせて みろ。' },
-            { name: 'オダ', text: 'えっと。…今はまだ 戦の 最中ですけど。羽柴秀吉と、徳川家康の——' },
-            { name: 'みち', text: '羽柴 秀吉様 だ！ 「豊臣」 などという 名では ないぞ。今は まだ、羽柴 だ。' },
-            { name: 'オダ', text: '羽柴…。（柴漬けみたいな 名前…）あ、すみません。羽柴秀吉様、と。' },
-            { name: 'いけ', text: 'この戦は、秀吉様と 家康が、唯一 直接 ぶつかり合う 戦。…のちの世まで、語られると いう。' },
-            { name: 'みち', text: 'で、池田の 殿様——いけの 父御、池田恒興様が、とんでも ない策を 言い出した。「中入り」よ。' },
-            { name: 'オダ', text: '中入り…？' },
-            { name: 'みち', text: '家康の 本拠地・三河の 岡崎城を、ぐるりと 回って 奇襲する。家康を 小牧山から 引き離す、危険な 賭けだ。' },
-            { name: 'オダ', text: '奇襲…うまく、いったんですか？' },
-            { name: 'みち', text: 'ふっ。…それは、これから その目で、見ることに なる。' },
-          ], function () { storyStage = 2; unlockMeikan('hideyoshi'); unlockMeikan('ieyasu'); });
+          Dialog.start(DIALOGUE.ch2_battle, function () { storyStage = 2; unlockMeikan('hideyoshi'); unlockMeikan('ieyasu'); });
         } else if (storyStage === 2) {
-          Dialog.start([
-            { name: 'いけ', text: '家康方には、井伊直政。…武田の 旧臣を 率い、具足を 真っ赤に 統一した、あの 軍勢。' },
-            { name: 'オダ', text: '（真っ赤な…井伊直政の「赤備え」！ しかも、これが 初陣だったって…！）' },
-            { name: 'みち', text: 'そして、我が主・森長可（もり ながよし）どの。…井伊と、どっちが 美男子かで 評判の、な。' },
-            { name: 'オダ', text: '（美男子 VS 美男子…ビジュ対決…！）え、えっと、すごい 戦ですね…。' },
-            { name: 'いけ', text: '我が父・恒興は、信長様の 乳兄弟。義理堅く、…そして 無類の、冒険好きで な。中入りも、その 血か。' },
-            { name: 'みち', text: 'だが——中入りは、家康に 読まれていた。池田の 隊は、この地で 挟み撃ちに 遭い…' },
-            { name: 'みち', text: '森長可どのは、井伊の 軍と 激突し…眉間を、鉄砲で ひとつ。…虚しく、散った。' },
-            { name: 'オダ', text: 'えっ…。' },
-            { name: 'いけ', text: '父・恒興も、討死した。…この地に、勝入塚として、眠ることに なる。' },
-            { name: 'オダ', text: '（…勝入塚。さっき 調べた、池田恒興の お墓…）じゃあ、みちさんも——' },
-            { name: 'みち', text: 'ああ。林通具（はやし みちとも）。…俺も、ここで 死ぬ。…もう、決まった ことだ。' },
-          ], function () { storyStage = 3; unlockMeikan('nagayoshi'); unlockMeikan('naomasa'); unlockZukan('shonyu'); });
+          Dialog.start(DIALOGUE.ch3_deaths, function () { storyStage = 3; unlockMeikan('nagayoshi'); unlockMeikan('naomasa'); unlockZukan('shonyu'); });
         } else if (storyStage === 3) {
-          Dialog.start([
-            { name: 'みち', text: '（いけに 刀を 向ける）…てる。刀を、とれ。' },
-            { name: 'いけ', text: 'みち…。' },
-            { name: 'みち', text: '父を 討たれ、その仇も 討たず、この場を 去る。…次男の お前は、恐れを なして、逃げ出した。武士として、恥 とは 思わぬのか！' },
-            { name: 'いけ', text: '……。' },
-            { name: 'みち', text: '生き恥を 晒して、生き続けて いく つもりか！ そんな やつは、俺が 成敗 してくれる！' },
-            { name: 'オダ', text: 'ま、待って、待ってください、二人とも…！' },
-          ], function () { storyStage = 4; });
+          Dialog.start(DIALOGUE.ch4_confrontation, function () { storyStage = 4; });
         } else if (storyStage === 4) {
-          Dialog.start([
-            { name: 'オダ', text: 'あの…秀吉様って。どこぞの 誰とも わからない 方の 天下のために、今日まで 戦ってきた…んですよね。' },
-            { name: 'みち', text: '天下、だと？' },
-            { name: 'オダ', text: 'みなさん、秀吉様に 会ったこと、あります？ …もし「天下」のためなら、味方の 池田様が、信長様を 殺すことだって、あり得た。' },
-            { name: 'いけ', text: '……父上を、侮辱するか。父上と 信長様を 侮辱する者は、わしが 許さん！' },
-            { name: 'オダ', text: 'ち、違うんです！ …恒興様は、命を 捧げてまで、この戦に 臨んだ。なんで、って 考えて…秀吉様の 天下なんて、本当は どうでも よかったんじゃ ないかって。' },
-            { name: 'オダ', text: 'もしかしたら…信長様の 目指した 天下を、見たかったんじゃ ないかな、って。' },
-            { name: 'いけ', text: '…信長様は、天下を 目指して いたと、思うか。' },
-            { name: 'オダ', text: 'あの人は、「天」を 目指してた 気がするんです。…絶対的な、神のような 存在に なって。皆が 争うことすら 考えない、そんな 世を 築こうと した。' },
-            { name: 'オダ', text: '自分の 部下同士が、殺し合うことなんて。…望んで、いなかったんじゃ ないかなって。信長様は。' },
-            { name: 'みち', text: '……戯言（ざれごと）かも しれん。だが——戯言だと しても。' },
-            { name: 'みち', text: 'わしは、父や 兄が 見ることの できなかった 来世（らいせ）を…信長様が、あの目で 見据えて いたやも しれぬ 来世を、見てみたい のだ。' },
-          ], function () { storyStage = 5; unlockMeikan('nobunaga'); });
+          Dialog.start(DIALOGUE.ch5_tenka, function () { storyStage = 5; unlockMeikan('nobunaga'); });
         } else {
-          Dialog.start([
-            { name: 'みち', text: 'なあ、オダ。…この地は、いつか。戦の 無い、静かな 場所に なるのか。' },
-            { name: 'オダ', text: '…はい。完全に 平和か、と 言われたら 微妙ですけど。でも、みんな、戦うことなく 穏やかに 暮らしてます。' },
-            { name: 'オダ', text: 'そうそう。…空を 飛ぶ 乗り物が、たくさんの 人を 乗せて、移動するんです。ちょっと 浮いてる くらい、ですけど。' },
-            { name: 'オダ', text: '長久手の 人たちは、池田恒興様に 敬意を 表して。今でも きちんと…勝入塚に、花を 手向けて います。' },
-            { name: 'みち', text: '……そうか。…そいつは、いいな。' },
-            { name: 'いけ', text: 'しかし みち。わしは、だからこそ——生きたいのだ。この戦、おそらく 秀吉様は 勝てぬ。だが、秀吉様は、生きて おいでだ。' },
-            { name: 'いけ', text: 'ならば、己も 生き延びて。秀吉様の、その先の 天下への 道を…手助けする ことが、できるやも しれぬ。' },
-            { name: 'みち', text: '……ふ。相変わらず、しぶとい 奴だ。…だが、それで いい。' },
-            { name: 'みち', text: '行くぞ。…長可様が、待って いる。戻るのだ、戦に。長可様の、元へ。' },
-            { name: 'オダ', text: 'みちさん…！' },
-            { name: 'いけ', text: '待て——！ お前は…心して、生きろ！！ わかったか！！' },
-            { name: 'みち', text: '（一瞬の 躊躇の のち、いけの胸ぐらを 掴み）…ああ。達者でな、てる。…見届けて くれて、礼を 言う。' },
-            { name: '', text: '——みちは、森の方へ 戻っていった。残されたのは、いけと、オダ。' },
-            { name: '', text: '——踊り子が、そっと いけに 手を かける。落武者の ような、その姿に。' },
-            { name: 'いけ', text: '…はは。すっかり、落武者 らしく なったか。' },
-            { name: 'オダ', text: '…どっから どう見ても、落武者です。' },
-            { name: 'いけ', text: '刀の件だが。…まあ、よい。お前の その「めがね」。三つ目、四つ目の その目で——わしの いる ここより、もう少し 先が、見えるのだろう。' },
-            { name: 'いけ', text: '一国に 替え難い 名刀よりも、確かな ものが。…だから、楽しみに して おけ。…では。' },
-            { name: '', text: '——いけは 礼を 言い、森の方へ 去っていった。あたりが、ゆっくりと、夕暮れの 記念館に 戻ってゆく。' },
-            { name: '', text: '——ふと。目の前に、踊り子が 立っていた。白い衣が、風もないのに ゆれている。' },
-            { name: 'オダ', text: '踊り子、さん…？ さっきから、ずっと 見てたの…？' },
-            { name: '', text: '——踊り子は 無言のまま、扇を 構えた。まるで、最後の 試練とでも いうように。' },
-          ], function () {
+          Dialog.start(DIALOGUE.ch6_farewell, function () {
             startBattle({
               gated: false,
               enemy: {
                 name: '踊り子', hp: 50, kind: 'odoriko',
-                atkLabel: '踊り子の舞', appearMsg: '踊り子が 静かに 構えた。\n——最後の、試練。',
-                winMsg: '踊り子は 静かに 微笑んだ。\n…「よく、見届けましたね」',
+                atkLabel: DIALOGUE.battle.odoriko.atkLabel, appearMsg: DIALOGUE.battle.odoriko.appearMsg,
+                winMsg: DIALOGUE.battle.odoriko.winMsg,
               },
               onWin: function () { startTransition(function () { setScene(makeEpilogue()); }); },
               onLose: function () { startTransition(function () { setScene(makeEpilogue()); }); },
@@ -1345,7 +1215,7 @@
     const enemy = {
       name: e.name || '落武者のもののけ', hp: hp, maxhp: hp, broken: false, weakKnown: !gated, shake: 0,
       kind: e.kind || 'enemy', spar: !!opts.spar, forcelose: !!e.forcelose,
-      atkLabel: e.atkLabel || 'もののけの反撃', winMsg: e.winMsg || '落武者のもののけを しずめた！',
+      atkLabel: e.atkLabel || DIALOGUE.battle.random.atkLabel, winMsg: e.winMsg || DIALOGUE.battle.random.winMsg,
       loseMsg: e.loseMsg || null, appearMsg: e.appearMsg || null,
     };
     const player = { name: 'オダ', hp: Hero.maxhp, maxhp: Hero.maxhp, lv: Hero.lv, miyaLv: miyaLvFromLv(Hero.lv), atkBonus: Hero.atkBonus, wAtk: weaponAtk(), aDef: armorDef() };
@@ -1462,7 +1332,7 @@
     }
 
     return {
-      enter: function () { showMsg(enemy.spar ? 'いけが 構えた！ 腕試しだ！' : (enemy.appearMsg || ((gated ? 'はぐれ者の' : '落武者の') + ' もののけが あらわれた！')), openMenu); },
+      enter: function () { showMsg(enemy.spar ? 'いけが 構えた！ 腕試しだ！' : (enemy.appearMsg || DIALOGUE.battle.random.appearMsg), openMenu); },
       update: function (dt) {
         updateParts(dt);
         spawnBattleParts();
@@ -1785,9 +1655,7 @@
         c.fillStyle = tge; c.font = 'bold 30px "Hiragino Mincho ProN",serif';
         c.fillText('― 合戦ズ ―', W / 2, 140);
         c.fillStyle = '#d4d8de'; c.font = '18px "Hiragino Sans",sans-serif';
-        c.fillText('オダは、いつもの記念館で 目を覚ました。', W / 2, 206);
-        c.fillText('窓の外には、穏やかな長久手の町。', W / 2, 236);
-        c.fillText('…勝入塚に、花を 手向けに行こう。', W / 2, 266);
+        for (var ei = 0; ei < DIALOGUE.ending.length; ei++) c.fillText(DIALOGUE.ending[ei], W / 2, 206 + ei * 30);
         var eg = c.createLinearGradient(0, 305, 0, 330);
         eg.addColorStop(0, '#ffe680'); eg.addColorStop(1, '#f0a030');
         c.fillStyle = eg; c.font = 'bold 26px "Hiragino Mincho ProN",serif'; c.fillText('― おわり ―', W / 2, 322);
@@ -1802,33 +1670,7 @@
   }
 
   // ===================== Epilogue (記念館・館長) =====================
-  const EPILOGUE = [
-    { name: '館長', text: 'オダちゃーん！ いた！ 探したのよう、もう！' },
-    { name: 'オダ', text: '館長…！ あれ、わたし、いつの間に 記念館に 戻って…？' },
-    { name: '館長', text: 'あんた以外に 誰が いるの。…記念館の ご案内、お願いしてから、浮かない顔 してたから。無茶振り しちゃったかな、って 心配してたのよ。' },
-    { name: '館長', text: 'あ。…さては。' },
-    { name: 'オダ', text: 'わ、わたしが、お化けですか…？' },
-    { name: '館長', text: 'お化けが 出ますよ〜。…ふふ。まだ夜は 冷えるわねえ。…さては。「閏月（うるうづき）」って のが、あったのよ。' },
-    { name: 'オダ', text: '閏月…？' },
-    { name: '館長', text: '織田信長は、閏月だの 暦だの、すごく きちんと してた人 でね。…ここ、古戦場でしょう？ ましてや 今は——' },
-    { name: '館長', text: '武将たちが、集まって きちゃうかも よ〜？ 小牧・長久手の戦いの、まさに、だいたい その日。四月九日。' },
-    { name: 'オダ', text: '四月九日…。' },
-    { name: '館長', text: '四月九日は、天正の 時代の話。…今の暦だと、だいたい 今日くらい なの。その ズレを 調整するのが、昔は 閏月 だったの よ。' },
-    { name: 'オダ', text: '…じゃあ、いけさんと、みちさんは。' },
-    { name: '館長', text: 'ふふ。…会えたのねえ、あなた。' },
-    { name: '館長', text: 'それにしても オダちゃん。あなた、織田信長の 末裔だって 噂、ほんとなの？' },
-    { name: 'オダ', text: 'えっ、知らないですよ そんなの！ …ただの、オダ ですけど。信長 なんて。' },
-    { name: '館長', text: '織田信長の 末裔なんて、数千人、数万人 いるって 言われてるから。…自分が 知らないだけで、オダちゃんも、信長の 血を 受け継いでるのかも しれないじゃない。' },
-    { name: '館長', text: 'さ。お腹 すいたでしょ。一蘭、行く？ 砂子の 交差点の さ。' },
-    { name: 'オダ', text: 'いいですけど…館長。ラーメン、お昼も 食べてませんでした？' },
-    { name: '館長', text: 'だって ラーメン、好きなんだもーん。' },
-    { name: 'オダ', text: '一蘭の、ちょっと 太いくらいの方が…家康っぽく ない？' },
-    { name: '館長', text: '家康に 失礼ですよ。…じゃ、事務室で 待ってるね〜。' },
-    { name: '', text: '——館長は、ゆるりと 去っていった。' },
-    { name: 'オダ', text: '（…何となく、古戦場 ぜんたいを 眺める）' },
-    { name: '', text: '——踊り子が、扇を あげ、まっすぐ 先を 指す。「…どうですか。あなたから 見た、今の 時代は」と 言うように。' },
-    { name: '', text: '踊り子の 舞は、しだいに 激しく——やがて 音も 光も 消え、あとには、いつもの 長久手の街が、静かに 残った。　〈幕〉' },
-  ];
+  const EPILOGUE = DIALOGUE.epilogue;
   function makeEpilogue() {
     const map = parseMap(MUSEUM, 'museum');
     const oda = { x: 7 * TILE + TILE / 2, y: 8 * TILE + TILE / 2, kind: 'oda', facing: 'up' };
@@ -1978,60 +1820,7 @@
   // ===================== 史跡めぐり（サイドクエスト：学び→クイズ→戦闘） =====================
   // 長久手の実在する史跡をめぐり、小エピソードで学び、歴史クイズに答え、もののけと戦う。
   // 勝つと史跡図鑑が解放される。シティプロモーション＆学習の中心機能。
-  const SITES = [
-    {
-      id: 'irogane', name: '色金山', sub: 'いろがねやま',
-      episode: [
-        { name: '', text: '——色金山（いろがねやま）。標高 約198メートル。登れば、長久手が ぐるりと 見渡せる。' },
-        { name: 'オダ', text: 'ここで 徳川家康は、軍議を 開いたと 伝わってるんだ。腰かけたっていう「床机石（しょうぎいし）」も 残ってる。' },
-        { name: 'オダ', text: 'いい眺め…って、なんだろ、さっきから 視線を 感じる。…気のせい、だよね？' },
-      ],
-      quiz: { q: '色金山で 徳川家康が したと 伝わるのは？', choices: ['軍議を ひらいた', '刀を 埋めた', '宝探しを した'], answer: 0, note: '家康は この山で 作戦会議を ひらき、見晴らしを いかして 戦の 指揮を とったと 伝わるよ。' },
-      enemy: { name: '物見の もののけ', hp: 18, atkLabel: 'もののけの 一撃', winMsg: '物見の もののけは、すっと 消えた。色金山に 静けさが 戻る。' },
-    },
-    {
-      id: 'mihata', name: '御旗山', sub: 'おはたやま',
-      episode: [
-        { name: '', text: '——御旗山（おはたやま）。こんもりとした、小高い 山。' },
-        { name: 'オダ', text: 'ここで 家康は、金の扇の「馬印（うまじるし）」を 立てたんだって。馬印は、大将が ここに いるぞ！っていう 目印。' },
-        { name: 'オダ', text: '金ピカの 扇が、山の上で キラーン。…味方は「おお、殿が いらっしゃる！」って 奮い立つ わけだ。うん、めちゃくちゃ 目立つ。' },
-      ],
-      quiz: { q: '御旗山で 家康が 立てた 目印は？', choices: ['金扇の 馬印', '鯉のぼり', '大きな 松明'], answer: 0, note: '「馬印」は 大将の 居場所を 示す しるし。金の扇で 全軍を 鼓舞したと 伝わるよ。' },
-      enemy: { name: '旗持ちの もののけ', hp: 20, atkLabel: 'もののけの 一撃', winMsg: '旗持ちの もののけは、風に 溶けて 消えた。' },
-    },
-    {
-      id: 'chinoike', name: '血の池公園', sub: 'ちのいけこうえん',
-      episode: [
-        { name: '', text: '——血の池公園。ちょっと 物騒な 名前だけど、れっきとした 史跡。' },
-        { name: 'オダ', text: '戦の あと、武士たちが 槍や 刀に ついた 血を、この池で 洗ったから…水が 赤く 染まったと 伝わってる。' },
-        { name: 'オダ', text: '今は きれいな 公園。…でも、ここで たくさんの 命が 散った、っていうのは。…忘れちゃ、いけないな。' },
-      ],
-      quiz: { q: '「血の池」の 名の 由来と 伝わるのは？', choices: ['武具の 血を 洗った', '夕日で 赤く 見える', '赤い 花が 咲く'], answer: 0, note: '武士が 血の ついた 武具を 洗い、池が 赤く 染まったと 伝わる。戦の むごさを 今に 伝えてる。' },
-      enemy: { name: '池の ぬし', hp: 22, atkLabel: 'もののけの 一撃', winMsg: '池の ぬしは、静かに 水底へ 還っていった。' },
-    },
-    {
-      id: 'musashi', name: '武蔵塚', sub: 'むさしづか',
-      episode: [
-        { name: '', text: '——武蔵塚（むさしづか）。「武蔵」と つくけれど、剣豪の 宮本武蔵とは 別人。' },
-        { name: 'オダ', text: 'ここに 眠るのは、森長可（もり ながよし）。「鬼武蔵（おにむさし）」って 異名で 恐れられた 猛将。…みちさんの、ご主人だ。' },
-        { name: 'オダ', text: '井伊直政の 隊との 激戦で、眉間を 撃たれて 討死。…ここで、散ったんだ。' },
-        { name: 'オダ', text: '（…みちさん。あなたの 長可様、ちゃんと ここで 眠って ますよ）' },
-      ],
-      quiz: { q: '武蔵塚に 眠る 武将は？', choices: ['森長可（鬼武蔵）', '宮本武蔵', '武蔵坊弁慶'], answer: 0, note: '森長可の 異名は「鬼武蔵」。剣豪の 宮本武蔵とは 別の人。名前が 似ていて まぎらわしいね。' },
-      enemy: { name: '鬼火の もののけ', hp: 24, atkLabel: 'もののけの 一撃', winMsg: '鬼火は、ふっと しずまった。…長可の 無念も、少し 晴れたろうか。' },
-    },
-    {
-      id: 'ansho', name: '安昌寺（首塚）', sub: 'あんしょうじ',
-      episode: [
-        { name: '', text: '——安昌寺（あんしょうじ）。古い、静かな お寺。' },
-        { name: 'オダ', text: '戦の あと、雲山和尚（うんざん おしょう）という お坊さんが いてね。討死した 武士たちの 亡骸を…' },
-        { name: 'オダ', text: '敵も 味方も 区別なく、ねんごろに 葬ったと 伝わってる。それが「首塚」。' },
-        { name: 'オダ', text: '勝った 負けた、じゃ なくて。…ただ、弔う。…なんか、いいな。そういうの。' },
-      ],
-      quiz: { q: '戦の あと、討死した 武士を 弔ったと 伝わるのは？', choices: ['雲山和尚', '徳川家康', '羽柴秀吉'], answer: 0, note: '安昌寺の 雲山和尚が、敵味方の 区別なく 武士を 葬ったと 伝わる。首塚が その跡。' },
-      enemy: { name: '迷える 御霊', hp: 26, atkLabel: '御霊の すすり泣き', winMsg: '迷える 御霊は、安らかな 顔で 光に 還っていった。' },
-    },
-  ];
+  const SITES = DIALOGUE.sites;
 
   function makeSiteTour() {
     let cur = 0;
@@ -2041,10 +1830,7 @@
           tourReward = true;
           if (Hero.items.indexOf('akazonae') < 0 && Hero.armor !== 'akazonae') Hero.items.push('akazonae');
           saveGame();
-          Dialog.start([
-            { name: '', text: '——史跡めぐり、ぜんぶ 達成！ 小牧・長久手の戦いの 跡を、その足で たどりきった。' },
-            { name: 'オダ', text: '…みんな、ちゃんと ここに いたんだな。記念に、これ。「赤備えの具足」の 写し、もらっちゃった。そうびに 入れておこ。' },
-          ]);
+          Dialog.start(DIALOGUE.tour_complete);
         }
       },
       update: function (dt) {
