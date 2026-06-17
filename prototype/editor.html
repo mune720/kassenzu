@@ -32,12 +32,13 @@ main{max-width:900px;margin:0 auto;padding:20px}
 .line{display:flex;gap:6px;align-items:flex-start;padding:6px 8px;border-radius:6px;margin-bottom:4px;background:#1e1f34}
 .line:hover{background:#282940}
 .line .num{color:#555;font-size:12px;min-width:20px;text-align:right;padding-top:6px}
-.line .name-input{width:80px;min-width:60px;padding:4px 6px;border:1px solid #444;border-radius:4px;background:#181928;color:#ffd43b;font-size:13px;font-family:inherit}
+.line .name-input{width:100px;min-width:80px;padding:4px 6px;border:1px solid #444;border-radius:4px;background:#181928;color:#ffd43b;font-size:13px;font-family:inherit;appearance:none;-webkit-appearance:none}
 .line .text-input{flex:1;padding:4px 8px;border:1px solid #444;border-radius:4px;background:#181928;color:#e0e0e0;font-size:13px;font-family:inherit;min-height:32px;resize:vertical}
 .line .text-input:focus,.line .name-input:focus{outline:none;border-color:#4dabf7}
 .line-actions{display:flex;flex-direction:column;gap:2px}
 .line-actions button{width:22px;height:22px;border:none;border-radius:3px;cursor:pointer;font-size:11px;background:#333;color:#adb5bd;display:flex;align-items:center;justify-content:center}
 .line-actions button:hover{background:#555;color:#fff}
+.line-actions .ins:hover{background:#2f9e44;color:#fff}
 .line-actions .del:hover{background:#c92a2a;color:#fff}
 .add-line{padding:6px 12px;border:1px dashed #555;border-radius:6px;background:transparent;color:#868e96;cursor:pointer;font-size:13px;width:100%;text-align:center;margin-top:4px}
 .add-line:hover{border-color:#4dabf7;color:#4dabf7}
@@ -133,6 +134,41 @@ main{max-width:900px;margin:0 auto;padding:20px}
     });
   }
 
+  var SPEAKERS = ['', 'オダ', 'いけ', 'みち', '館長'];
+
+  function makeSpeakerSelect(line, arr, key, container) {
+    var sel = document.createElement('select');
+    sel.className = 'name-input';
+    var knownNames = SPEAKERS.slice();
+    if (line.name && knownNames.indexOf(line.name) < 0) knownNames.splice(knownNames.length, 0, line.name);
+    knownNames.forEach(function (name) {
+      var opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name || '（ナレーション）';
+      sel.appendChild(opt);
+    });
+    var otherOpt = document.createElement('option');
+    otherOpt.value = '__other__';
+    otherOpt.textContent = 'その他…';
+    sel.appendChild(otherOpt);
+    sel.value = line.name;
+    sel.onchange = function () {
+      if (sel.value === '__other__') {
+        var custom = prompt('話者名を入力');
+        if (custom != null && custom !== '') {
+          line.name = custom;
+          if (SPEAKERS.indexOf(custom) < 0) SPEAKERS.push(custom);
+          buildLineEditor(container, arr, key);
+        } else {
+          sel.value = line.name;
+        }
+      } else {
+        line.name = sel.value;
+      }
+    };
+    return sel;
+  }
+
   function makeLineRow(arr, i, key, container) {
     var line = arr[i];
     var row = mkEl('div', 'line');
@@ -141,18 +177,12 @@ main{max-width:900px;margin:0 auto;padding:20px}
     num.textContent = i + 1;
     row.appendChild(num);
 
-    var nameIn = document.createElement('input');
-    nameIn.className = 'name-input';
-    nameIn.value = line.name;
-    nameIn.placeholder = '話者';
-    nameIn.oninput = function () { line.name = nameIn.value; };
-    row.appendChild(nameIn);
+    row.appendChild(makeSpeakerSelect(line, arr, key, container));
 
     var textIn = document.createElement('textarea');
     textIn.className = 'text-input';
     textIn.rows = 1;
     textIn.value = line.text;
-    autoHeight(textIn);
     textIn.oninput = function () { line.text = textIn.value; autoHeight(textIn); };
     row.appendChild(textIn);
 
@@ -165,6 +195,11 @@ main{max-width:900px;margin:0 auto;padding:20px}
     btnDown.textContent = '↓';
     btnDown.title = '下へ';
     btnDown.onclick = function () { if (i < arr.length - 1) { arr.splice(i + 1, 0, arr.splice(i, 1)[0]); buildLineEditor(container, arr, key); } };
+    var btnIns = document.createElement('button');
+    btnIns.className = 'ins';
+    btnIns.textContent = '＋';
+    btnIns.title = 'ここに挿入';
+    btnIns.onclick = function () { arr.splice(i + 1, 0, { name: '', text: '' }); buildLineEditor(container, arr, key); };
     var btnDel = document.createElement('button');
     btnDel.className = 'del';
     btnDel.textContent = '×';
@@ -172,6 +207,7 @@ main{max-width:900px;margin:0 auto;padding:20px}
     btnDel.onclick = function () { if (confirm((i + 1) + '行目を削除しますか？')) { arr.splice(i, 1); buildLineEditor(container, arr, key); } };
     actions.appendChild(btnUp);
     actions.appendChild(btnDown);
+    actions.appendChild(btnIns);
     actions.appendChild(btnDel);
     row.appendChild(actions);
 
@@ -188,6 +224,9 @@ main{max-width:900px;margin:0 auto;padding:20px}
     addBtn.textContent = '＋ セリフを追加';
     addBtn.onclick = function () { arr.push({ name: '', text: '' }); buildLineEditor(container, arr, key); };
     container.appendChild(addBtn);
+    requestAnimationFrame(function () {
+      container.querySelectorAll('.text-input').forEach(function (ta) { autoHeight(ta); });
+    });
   }
 
   function makeCollapsibleScene(labelText, countText, startCollapsed) {
@@ -238,9 +277,11 @@ main{max-width:900px;margin:0 auto;padding:20px}
         u.onclick = function () { if (i > 0) { arr.splice(i - 1, 0, arr.splice(i, 1)[0]); rebuild(); } };
         var d = document.createElement('button'); d.textContent = '↓';
         d.onclick = function () { if (i < arr.length - 1) { arr.splice(i + 1, 0, arr.splice(i, 1)[0]); rebuild(); } };
+        var ins = document.createElement('button'); ins.className = 'ins'; ins.textContent = '＋'; ins.title = 'ここに挿入';
+        ins.onclick = function () { arr.splice(i + 1, 0, ''); rebuild(); };
         var x = document.createElement('button'); x.className = 'del'; x.textContent = '×';
         x.onclick = function () { arr.splice(i, 1); rebuild(); };
-        actions.appendChild(u); actions.appendChild(d); actions.appendChild(x);
+        actions.appendChild(u); actions.appendChild(d); actions.appendChild(ins); actions.appendChild(x);
         row.appendChild(actions);
         s.body.appendChild(row);
       });
@@ -248,6 +289,9 @@ main{max-width:900px;margin:0 auto;padding:20px}
       addBtn.className = 'add-line'; addBtn.textContent = '＋ 行を追加';
       addBtn.onclick = function () { arr.push(''); rebuild(); };
       s.body.appendChild(addBtn);
+      requestAnimationFrame(function () {
+        s.body.querySelectorAll('.text-input').forEach(function (ta) { autoHeight(ta); });
+      });
     }
     rebuild();
     parent.appendChild(s.scene);
