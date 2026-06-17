@@ -806,6 +806,13 @@
     img.onload = function () { LOGO_IMG = img; };
     img.src = 'assets/logo/bunkalogo.png';
   })();
+  var TITLE_LOGO_IMG = null;
+  (function () {
+    var img = new Image();
+    img.onerror = function () { TITLE_LOGO_IMG = null; };
+    img.onload = function () { TITLE_LOGO_IMG = img; };
+    img.src = 'assets/logo/title_logo.png';
+  })();
   // 顔ウィンドウ（仮：図形ポートレート。画像があればそれを描く）
   function drawPortrait(c, kind, x, y, s) {
     c.fillStyle = 'rgba(0,0,0,0.35)'; roundRect(c, x + 3, y + 3, s, s, 8); c.fill();
@@ -1571,35 +1578,37 @@
         c.restore();
         // Particles (behind text)
         drawParts(c);
-        // Title text
+        // Title logo
         c.textAlign = 'center';
-        // Genre label
-        c.fillStyle = 'rgba(0,0,0,0.3)'; c.font = 'bold 14px "Hiragino Mincho ProN","Yu Mincho",serif';
-        c.fillText('歴史空想RPG', W / 2 + 1, 73);
-        var sg = c.createLinearGradient(0, 60, 0, 76);
-        sg.addColorStop(0, '#ffe0a0'); sg.addColorStop(1, '#d4a040');
-        c.fillStyle = sg; c.font = 'bold 14px "Hiragino Mincho ProN","Yu Mincho",serif';
-        c.fillText('歴史空想RPG', W / 2, 72);
-        // Title outer glow
-        c.save(); c.globalCompositeOperation = 'lighter';
-        c.fillStyle = 'rgba(255,180,50,0.06)'; c.font = 'bold 72px "Hiragino Mincho ProN","Yu Mincho",serif';
-        c.fillText('合戦ズ', W / 2, 150);
-        c.restore();
-        // Title shadow
-        c.fillStyle = 'rgba(0,0,0,0.4)'; c.font = 'bold 60px "Hiragino Mincho ProN","Yu Mincho",serif';
-        c.fillText('合戦ズ', W / 2 + 2, 148);
-        // Title main
-        var tg = c.createLinearGradient(0, 100, 0, 155);
-        tg.addColorStop(0, '#ffe680'); tg.addColorStop(0.5, '#ffd43b'); tg.addColorStop(1, '#f0a030');
-        c.fillStyle = tg; c.font = 'bold 60px "Hiragino Mincho ProN","Yu Mincho",serif';
-        c.fillText('合戦ズ', W / 2, 146);
-        // Title highlight
-        c.save(); c.globalCompositeOperation = 'lighter';
-        c.fillStyle = 'rgba(255,255,200,0.15)'; c.font = 'bold 60px "Hiragino Mincho ProN","Yu Mincho",serif';
-        c.fillText('合戦ズ', W / 2, 144);
-        c.restore();
-        c.fillStyle = '#8a9ab0'; c.font = '12px "Hiragino Sans",sans-serif';
-        c.fillText('長久手市文化の家『合戦ズ』(作: 麻原奈未) より', W / 2, 182);
+        if (TITLE_LOGO_IMG) {
+          var lh = 140, lw = lh * (TITLE_LOGO_IMG.width / TITLE_LOGO_IMG.height);
+          c.drawImage(TITLE_LOGO_IMG, W / 2 - lw / 2, 30, lw, lh);
+          c.fillStyle = '#8a9ab0'; c.font = '12px "Hiragino Sans",sans-serif';
+          c.fillText('長久手市文化の家『合戦ズ』(作: 麻原奈未) より', W / 2, 182);
+        } else {
+          c.fillStyle = 'rgba(0,0,0,0.3)'; c.font = 'bold 14px "Hiragino Mincho ProN","Yu Mincho",serif';
+          c.fillText('歴史空想RPG', W / 2 + 1, 73);
+          var sg = c.createLinearGradient(0, 60, 0, 76);
+          sg.addColorStop(0, '#ffe0a0'); sg.addColorStop(1, '#d4a040');
+          c.fillStyle = sg; c.font = 'bold 14px "Hiragino Mincho ProN","Yu Mincho",serif';
+          c.fillText('歴史空想RPG', W / 2, 72);
+          c.save(); c.globalCompositeOperation = 'lighter';
+          c.fillStyle = 'rgba(255,180,50,0.06)'; c.font = 'bold 72px "Hiragino Mincho ProN","Yu Mincho",serif';
+          c.fillText('合戦ズ', W / 2, 150);
+          c.restore();
+          c.fillStyle = 'rgba(0,0,0,0.4)'; c.font = 'bold 60px "Hiragino Mincho ProN","Yu Mincho",serif';
+          c.fillText('合戦ズ', W / 2 + 2, 148);
+          var tg = c.createLinearGradient(0, 100, 0, 155);
+          tg.addColorStop(0, '#ffe680'); tg.addColorStop(0.5, '#ffd43b'); tg.addColorStop(1, '#f0a030');
+          c.fillStyle = tg; c.font = 'bold 60px "Hiragino Mincho ProN","Yu Mincho",serif';
+          c.fillText('合戦ズ', W / 2, 146);
+          c.save(); c.globalCompositeOperation = 'lighter';
+          c.fillStyle = 'rgba(255,255,200,0.15)'; c.font = 'bold 60px "Hiragino Mincho ProN","Yu Mincho",serif';
+          c.fillText('合戦ズ', W / 2, 144);
+          c.restore();
+          c.fillStyle = '#8a9ab0'; c.font = '12px "Hiragino Sans",sans-serif';
+          c.fillText('長久手市文化の家『合戦ズ』(作: 麻原奈未) より', W / 2, 182);
+        }
         // Characters
         drawActor(c, W / 2 - 72, 280, 'ike', 'right', 1.5);
         drawActor(c, W / 2, 290, 'oda', 'down', 1.5);
@@ -1644,16 +1653,21 @@
         for (var si = 0; si < 40; si++) { var sx = (si * 374761 + 311) % W, sy = (si * 668265 + 53) % H, ss = ((si * 5 + 1) % 3) * 0.3 + 0.4; c.fillRect(sx, sy, ss, ss); }
         drawParts(c);
         c.textAlign = 'center';
-        c.save(); c.globalCompositeOperation = 'lighter';
-        c.fillStyle = 'rgba(255,180,50,0.05)'; c.font = 'bold 36px "Hiragino Mincho ProN",serif';
-        c.fillText('― 合戦ズ ―', W / 2, 142);
-        c.restore();
-        c.fillStyle = 'rgba(0,0,0,0.35)'; c.font = 'bold 30px "Hiragino Mincho ProN",serif';
-        c.fillText('― 合戦ズ ―', W / 2 + 1, 141);
-        var tge = c.createLinearGradient(0, 115, 0, 145);
-        tge.addColorStop(0, '#ffe680'); tge.addColorStop(1, '#f0a030');
-        c.fillStyle = tge; c.font = 'bold 30px "Hiragino Mincho ProN",serif';
-        c.fillText('― 合戦ズ ―', W / 2, 140);
+        if (TITLE_LOGO_IMG) {
+          var elh = 80, elw = elh * (TITLE_LOGO_IMG.width / TITLE_LOGO_IMG.height);
+          c.drawImage(TITLE_LOGO_IMG, W / 2 - elw / 2, 80, elw, elh);
+        } else {
+          c.save(); c.globalCompositeOperation = 'lighter';
+          c.fillStyle = 'rgba(255,180,50,0.05)'; c.font = 'bold 36px "Hiragino Mincho ProN",serif';
+          c.fillText('― 合戦ズ ―', W / 2, 142);
+          c.restore();
+          c.fillStyle = 'rgba(0,0,0,0.35)'; c.font = 'bold 30px "Hiragino Mincho ProN",serif';
+          c.fillText('― 合戦ズ ―', W / 2 + 1, 141);
+          var tge = c.createLinearGradient(0, 115, 0, 145);
+          tge.addColorStop(0, '#ffe680'); tge.addColorStop(1, '#f0a030');
+          c.fillStyle = tge; c.font = 'bold 30px "Hiragino Mincho ProN",serif';
+          c.fillText('― 合戦ズ ―', W / 2, 140);
+        }
         c.fillStyle = '#d4d8de'; c.font = '18px "Hiragino Sans",sans-serif';
         for (var ei = 0; ei < DIALOGUE.ending.length; ei++) c.fillText(DIALOGUE.ending[ei], W / 2, 206 + ei * 30);
         var eg = c.createLinearGradient(0, 305, 0, 330);
