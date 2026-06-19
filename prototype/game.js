@@ -1582,15 +1582,6 @@
         c.textAlign = 'center';
         if (TITLE_LOGO_IMG) {
           var lh = 140, lw = lh * (TITLE_LOGO_IMG.width / TITLE_LOGO_IMG.height);
-          var lcx = W / 2, lcy = 30 + lh / 2;
-          c.save();
-          var lg = c.createRadialGradient(lcx, lcy, lh * 0.15, lcx, lcy, lw * 0.55);
-          lg.addColorStop(0, 'rgba(10,14,28,0.7)');
-          lg.addColorStop(0.7, 'rgba(10,14,28,0.3)');
-          lg.addColorStop(1, 'rgba(10,14,28,0)');
-          c.fillStyle = lg;
-          c.fillRect(lcx - lw * 0.6, lcy - lh * 0.6, lw * 1.2, lh * 1.2);
-          c.restore();
           c.drawImage(TITLE_LOGO_IMG, W / 2 - lw / 2, 30, lw, lh);
           c.fillStyle = '#8a9ab0'; c.font = '12px "Hiragino Sans",sans-serif';
           c.fillText('長久手市文化の家『合戦ズ』(作: 麻原奈未) より', W / 2, 182);
