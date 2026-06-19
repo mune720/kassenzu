@@ -1581,10 +1581,10 @@
         // Title logo
         c.textAlign = 'center';
         if (TITLE_LOGO_IMG) {
-          var lh = 140, lw = lh * (TITLE_LOGO_IMG.width / TITLE_LOGO_IMG.height);
-          c.drawImage(TITLE_LOGO_IMG, W / 2 - lw / 2, 30, lw, lh);
+          var lh = 260, lw = lh * (TITLE_LOGO_IMG.width / TITLE_LOGO_IMG.height);
+          c.drawImage(TITLE_LOGO_IMG, W / 2 - lw / 2, -10, lw, lh);
           c.fillStyle = '#8a9ab0'; c.font = '12px "Hiragino Sans",sans-serif';
-          c.fillText('長久手市文化の家『合戦ズ』(作: 麻原奈未) より', W / 2, 182);
+          c.fillText('長久手市文化の家『合戦ズ』(作: 麻原奈未) より', W / 2, 250);
         } else {
           c.fillStyle = 'rgba(0,0,0,0.3)'; c.font = 'bold 14px "Hiragino Mincho ProN","Yu Mincho",serif';
           c.fillText('歴史空想RPG', W / 2 + 1, 73);
