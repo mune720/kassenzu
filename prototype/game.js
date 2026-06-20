@@ -501,9 +501,26 @@
     'T.....M........T',
     'TTTTTTTTTTTTTTTT',
   ];
+  const LAWN = [
+    'TTTTTTTTTTTTTTTT',
+    'T..............T',
+    'T....T....T....T',
+    'T..............T',
+    'T..............T',
+    'T..............T',
+    'T..............T',
+    'T....T....T....T',
+    'T..............T',
+    'T..............T',
+    'T..............T',
+    'T......@.......T',
+    'T..............T',
+    'TTTTTTTTTTTTTTTT',
+  ];
   const SOLID = {
     museum: new Set(['#', 'B', 'K', 'S', 'D']),
     field: new Set(['T', '~', 'M', 'P']),
+    lawn: new Set(['T']),
   };
   function parseMap(rows, key) {
     const grid = rows.map(function (r) { return r.split(''); });
@@ -513,7 +530,7 @@
     for (let row = 0; row < grid.length; row++) {
       for (let col = 0; col < grid[row].length; col++) {
         const ch = grid[row][col];
-        if (ch === '@') { spawn = { col: col, row: row }; grid[row][col] = (key === 'museum') ? '.' : ','; }
+        if (ch === '@') { spawn = { col: col, row: row }; grid[row][col] = (key === 'field') ? ',' : '.'; }
         else if (ch === 'i') { npcs.push({ col: col, row: row, kind: 'ike', id: 'ike' }); grid[row][col] = '.'; }
         else if (ch === 'm') { npcs.push({ col: col, row: row, kind: 'michi', id: 'michi' }); grid[row][col] = ','; }
         else if (ch === 'B') acts[col + ',' + row] = 'byobu';
@@ -748,6 +765,10 @@
       drawLightPool(c, 4 * TILE, 1.5 * TILE, 55, 'rgba(255,220,150,1)', 0.07);
       drawLightPool(c, 8 * TILE, 1.5 * TILE, 55, 'rgba(255,220,150,1)', 0.07);
       drawLightPool(c, 12 * TILE, 1.5 * TILE, 55, 'rgba(255,220,150,1)', 0.07);
+    } else if (map.key === 'lawn') {
+      drawFogBand(c, H - 100, 80, 'rgba(120,130,175,0.06)');
+      c.save(); c.globalAlpha = 0.18; c.fillStyle = '#1c2348'; c.fillRect(0, 0, W, H); c.restore();
+      drawLightPool(c, 7.5 * TILE, 4 * TILE, 95, 'rgba(180,170,220,1)', 0.06);
     } else {
       drawSunRays(c, 0.03);
       drawFogBand(c, H - 90, 70, 'rgba(170,195,160,0.04)');
@@ -1050,11 +1071,14 @@
   // ===================== Story text (→ dialogue.js) =====================
   const MUSEUM_INTRO = DIALOGUE.museum_intro;
   const FIELD_INTRO = DIALOGUE.field_intro;
+  const PROLOGUE_OPEN = DIALOGUE.prologue_open;
+  const PROLOGUE_MEET = DIALOGUE.prologue_meet;
 
   // ===================== Field scene =====================
   function makeField(mapKey, spawnOverride, introLines) {
-    const def = mapKey === 'museum' ? MUSEUM : FIELD;
+    const def = mapKey === 'museum' ? MUSEUM : (mapKey === 'lawn' ? LAWN : FIELD);
     const map = parseMap(def, mapKey);
+    let lawnTriggered = false;
     const sp = spawnOverride || map.spawn;
     const player = { x: sp.col * TILE + TILE / 2, y: sp.row * TILE + TILE / 2, facing: 'down', kind: 'oda' };
     let intro = introLines;
@@ -1149,7 +1173,10 @@
     return {
       enter: function () {
         activeField = this; if (mapKey === 'field') unlockZukan('kosenjo');
-        if (intro) {
+        if (mapKey === 'lawn') {
+          sceneActors.push({ x: 7 * TILE + TILE / 2, y: 4 * TILE + TILE / 2, kind: 'odoriko', facing: 'down', alpha: 1, dancing: true });
+          Dialog.start(PROLOGUE_OPEN);
+        } else if (intro) {
           if (mapKey === 'museum') {
             sceneActors.push({ x: 8 * TILE + TILE / 2, y: 5 * TILE + TILE / 2, kind: 'odoriko', facing: 'down', alpha: 1 });
           }
@@ -1161,7 +1188,7 @@
         updateParts(dt);
         spawnFieldParts(mapKey);
         if (anim) { anim(dt); return; }
-        if (Dialog.active && Dialog.lines[Dialog.i] && Dialog.lines[Dialog.i].name === 'オダ') {
+        if (mapKey === 'museum' && Dialog.active && Dialog.lines[Dialog.i] && Dialog.lines[Dialog.i].name === 'オダ') {
           for (var fk = 0; fk < sceneActors.length; fk++) { if (sceneActors[fk].kind === 'odoriko' && !sceneActors[fk].fading) sceneActors[fk].fading = true; }
         }
         for (var fi = sceneActors.length - 1; fi >= 0; fi--) {
@@ -1192,6 +1219,24 @@
             if ((t === '.' || t === ',') && Math.random() < 0.07) { encCooldown = 3.5; startTransition(function () { startBattle({ gated: false }); }); return; }
           }
         }
+        if (mapKey === 'lawn' && !lawnTriggered) {
+          for (var li = 0; li < sceneActors.length; li++) {
+            var la = sceneActors[li];
+            if (la.kind !== 'odoriko') continue;
+            var ldx = player.x - la.x, ldy = player.y - la.y;
+            if (ldx * ldx + ldy * ldy < (TILE * 1.8) * (TILE * 1.8)) {
+              lawnTriggered = true;
+              player.facing = 'up'; player.moving = false; la.dancing = false;
+              for (var pp = 0; pp < 8; pp++) {
+                emitP(player.x + (Math.random() - 0.5) * 22, player.y - 8, (Math.random() - 0.5) * 34, -22 - Math.random() * 22, 1.3 + Math.random(), 'rgba(245,240,222,0.95)', 2 + Math.random() * 1.5, 60);
+              }
+              Dialog.start(PROLOGUE_MEET, function () {
+                startTransition(function () { setScene(makeField('museum', null, MUSEUM_INTRO)); });
+              });
+            }
+            break;
+          }
+        }
         if (Input.pressed('confirm')) interact();
         if (Input.pressed('cancel')) setScene(makeMenu(activeField));
       },
@@ -1202,7 +1247,13 @@
           if (a.kind === 'odoriko' && ODORIKO_BATTLE_IMG) {
             var oh = TILE * 3, ow = oh * (ODORIKO_BATTLE_IMG.width / ODORIKO_BATTLE_IMG.height);
             c.save(); c.globalAlpha = a.alpha != null ? a.alpha : 1;
-            c.drawImage(ODORIKO_BATTLE_IMG, a.x - ow / 2, a.y - oh + TILE / 2, ow, oh);
+            if (a.dancing) {
+              var footX = a.x, footY = a.y + TILE / 2, bob = Math.sin(tick * 0.09) * 2.5;
+              c.translate(footX, footY); c.rotate(Math.sin(tick * 0.045) * 0.07); c.translate(-footX, -footY);
+              c.drawImage(ODORIKO_BATTLE_IMG, a.x - ow / 2, a.y - oh + TILE / 2 + bob, ow, oh);
+            } else {
+              c.drawImage(ODORIKO_BATTLE_IMG, a.x - ow / 2, a.y - oh + TILE / 2, ow, oh);
+            }
             c.restore();
           } else {
             drawActor(c, a.x, a.y, a.kind, a.facing, 1, a.moving, a.alpha);
@@ -1511,7 +1562,7 @@
         if (Input.pressed('confirm')) {
           if (opts[cur] === 'つづきから') { if (loadGame()) startTransition(function () { setScene(makeField('field', null, null)); }); }
           else if (opts[cur] === '史跡めぐり') { if (hasSave()) loadGame(); setScene(makeSiteTour()); }
-          else setScene(makeField('museum', null, MUSEUM_INTRO));
+          else setScene(makeField('lawn', null, null));
         }
       },
       render: function (c) {
