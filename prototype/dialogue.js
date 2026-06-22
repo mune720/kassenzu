@@ -295,8 +295,17 @@ var DIALOGUE = {
   ],
 };
 
-// エディター連携: localStorage に編集データがあればそちらを使う
+// エディター連携: localStorage に編集データがあればそちらを使う。
+// 丸ごと置き換えず、デフォルトに「上書きマージ」する。こうすることで、
+// 旧い保存データに無い新キー（後から追加したシーン等）はコード側の定義が残り、
+// 未定義参照によるフリーズを防げる。編集済みのキーは保存データが優先される。
 (function () {
   var saved = localStorage.getItem('kassenzu_dialogue');
-  if (saved) { try { DIALOGUE = JSON.parse(saved); } catch (e) {} }
+  if (!saved) return;
+  try {
+    var parsed = JSON.parse(saved);
+    for (var k in parsed) {
+      if (Object.prototype.hasOwnProperty.call(parsed, k)) DIALOGUE[k] = parsed[k];
+    }
+  } catch (e) {}
 })();
