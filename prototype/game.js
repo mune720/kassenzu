@@ -796,9 +796,20 @@
       encounter: null,
     },
   };
-  // ゾーン端のシームレス接続が解放されているか（エピローグの見回り以降）
+  // ゾーン端のシームレス接続が解放されているか（四章の現地取材クエスト以降）
   function omakeUnlocked() {
-    return (chapter === 'main2' && stageP3 >= 8) || chapter === 'post';
+    return (chapter === 'main2' && stageP3 >= 1) || chapter === 'post';
+  }
+  // 現地取材クエスト（四章: 戦トークの仕込み）の対象5史跡
+  const JUNBI_SITES = ['irogane', 'mihata', 'chinoike', 'musashi', 'ansho'];
+  function junbiCleared() {
+    for (var i = 0; i < JUNBI_SITES.length; i++) if (!tourCleared.has(JUNBI_SITES[i])) return false;
+    return true;
+  }
+  function junbiCount() {
+    var n = 0;
+    for (var i = 0; i < JUNBI_SITES.length; i++) if (tourCleared.has(JUNBI_SITES[i])) n++;
+    return n;
   }
   function parseMap(key) {
     const def = MAP_DEFS[key];
@@ -1505,8 +1516,9 @@
   let stationUsed = false;            // リニモ初回ネタ用（セッション内）
   const enteredFlavor = new Set();    // 施設の入場ナレーションを一度だけ出す用
   // main2（四章〜エピローグ）の直列進行。各値は「これから行うこと」:
-  // 0=四章導入 1=戦トーク 2=もののけ共闘戦 3=告白〜みち対峙戦 4=天下問答〜みち別れ
-  // 5=落武者ステルス 6=大包平の伏線〜いけ退場 7=館長エピローグ 8=見回り〜ラストバトル
+  // 0=四章導入＋現地取材の決意 1=現地取材クエスト（5史跡を踏破・街解放） 2=戦トーク
+  // 3=もののけ共闘戦 4=告白〜みち対峙戦 5=天下問答〜みち別れ
+  // 6=落武者ステルス 7=大包平の伏線〜いけ退場 8=館長エピローグ 9=見回り〜ラストバトル
   let stageP3 = 0;
 
   // ===================== Save / Load (localStorage) =====================
@@ -1519,7 +1531,7 @@
       localStorage.setItem(SAVE_KEY, JSON.stringify({
         v: 2, hero: Hero, difficulty: difficulty,
         tutorialDone: tutorialDone, storyStage: storyStage,
-        chapter: chapter, ch1Seen: ch1Seen, ch2step: ch2step, ch3rusu: ch3rusu, zoneAMood: zoneAMood, teaBest: teaBest, stageP3: stageP3,
+        chapter: chapter, ch1Seen: ch1Seen, ch2step: ch2step, ch3rusu: ch3rusu, zoneAMood: zoneAMood, teaBest: teaBest, stageP3: stageP3, p3v: 2,
         gold: gold, bag: bag,
         zukan: Array.from(zukanSet), meikan: Array.from(meikanSet),
         tour: Array.from(tourCleared), tourReward: tourReward,
@@ -1550,6 +1562,8 @@
       zoneAMood = d.zoneAMood || (chapter === 'pro' ? 'dusk' : 'weird');
       teaBest = d.teaBest || '';
       stageP3 = d.stageP3 || 0;
+      // 旧ステージ番号（現地取材クエスト導入前）からの移行: 1以降を+1ずらす
+      if (!d.p3v && chapter === 'main2' && stageP3 >= 1) stageP3 += 1;
       gold = (typeof d.gold === 'number') ? d.gold : 50;
       bag.onigiri = (d.bag && d.bag.onigiri) || 0;
       bag.cha = (d.bag && d.bag.cha) || 0;
@@ -1862,14 +1876,14 @@
     // ---------- P3: 四章〜エピローグ（zoneA・直列進行） ----------
     // 進行段階に応じて必要なアクターを補充（既にいれば何もしない）
     function p3Actors(stage) {
-      if (stage <= 4 && !findActor('michi')) sceneActors.push({ x: 18 * TILE, y: 14 * TILE + TILE / 2, kind: 'michi', facing: 'right', id: 'michi' });
-      if (stage <= 6 && !findActor('ike')) {
-        var ix = stage === 6 ? 7 * TILE : 22 * TILE, iy = stage === 6 ? 12.5 * TILE : 14 * TILE + TILE / 2;
+      if (stage <= 5 && !findActor('michi')) sceneActors.push({ x: 18 * TILE, y: 14 * TILE + TILE / 2, kind: 'michi', facing: 'right', id: 'michi' });
+      if (stage <= 7 && !findActor('ike')) {
+        var ix = stage === 7 ? 7 * TILE : 22 * TILE, iy = stage === 7 ? 12.5 * TILE : 14 * TILE + TILE / 2;
         sceneActors.push(ikeActor(ix, iy, 'left'));
       }
-      if (stage >= 5 && !findActor('dancer2')) {
-        var dx3 = stage >= 8 ? 19.5 * TILE : 21 * TILE, dy3 = stage >= 8 ? 15 * TILE + TILE / 2 : 12.5 * TILE;
-        sceneActors.push({ x: dx3, y: dy3, kind: 'odoriko', facing: 'down', alpha: 1, dancing: stage >= 8, id: 'dancer2' });
+      if (stage >= 6 && !findActor('dancer2')) {
+        var dx3 = stage >= 9 ? 19.5 * TILE : 21 * TILE, dy3 = stage >= 9 ? 15 * TILE + TILE / 2 : 12.5 * TILE;
+        sceneActors.push({ x: dx3, y: dy3, kind: 'odoriko', facing: 'down', alpha: 1, dancing: stage >= 9, id: 'dancer2' });
       }
     }
     function backToZoneA(col, row) {
@@ -1881,12 +1895,16 @@
       if (stageP3 === 0) {
         Dialog.start(DIALOGUE.ch4_intro, function () {
           unlockMeikan('hideyoshi'); unlockMeikan('ieyasu');
-          stageP3 = 1; saveGame();
-          setScene(makeSenTalk(function () { stageP3 = 2; saveGame(); backToZoneA(20, 13)(); }));
+          // 現地取材クエストへ（原作セリフの間に挿入。5史跡を踏破すると戦トークが始まる）
+          Dialog.start(DIALOGUE.ch4_junbi, function () {
+            stageP3 = 1; saveGame();
+          });
         });
       } else if (stageP3 === 1) {
-        setScene(makeSenTalk(function () { stageP3 = 2; saveGame(); backToZoneA(20, 13)(); }));
+        // 現地取材クエスト中。5史跡踏破後、みちに近づくと update() が進行させる
       } else if (stageP3 === 2) {
+        setScene(makeSenTalk(function () { stageP3 = 3; saveGame(); backToZoneA(20, 13)(); }));
+      } else if (stageP3 === 3) {
         Dialog.start(DIALOGUE.ch4_mononoke, function () {
           partyMembers.length = 0;
           partyMembers.push({ id: 'ike', name: 'いけ', kind: 'ike', maxhp: 26, atkLo: 3, atkHi: 5, aDef: 1 });
@@ -1894,11 +1912,11 @@
           startBattle({
             gated: false,
             enemy: { name: 'はぐれ もののけ', hp: 34, kind: 'enemy', atkLabel: DIALOGUE.battle_mononoke_party.atkLabel, appearMsg: DIALOGUE.battle_mononoke_party.appearMsg, winMsg: DIALOGUE.battle_mononoke_party.winMsg },
-            onWin: function () { partyMembers.length = 0; stageP3 = 3; saveGame(); backToZoneA(20, 13)(); },
+            onWin: function () { partyMembers.length = 0; stageP3 = 4; saveGame(); backToZoneA(20, 13)(); },
             onLose: function () { partyMembers.length = 0; backToZoneA(20, 13)(); },
           });
         });
-      } else if (stageP3 === 3) {
+      } else if (stageP3 === 4) {
         Dialog.start(DIALOGUE.ch4_mononoke_after, function () {
           Dialog.start(DIALOGUE.ch5_kokuhaku, function () {
             unlockMeikan('nagayoshi'); unlockMeikan('naomasa'); unlockMeikan('tsuneoki');
@@ -1910,12 +1928,12 @@
                 endMsg: DIALOGUE.battle_michi_taiji.endMsg, fleeMsg: DIALOGUE.battle_michi_taiji.fleeMsg,
                 atkLo: 8, atkHi: 12,
               },
-              onWin: function () { stageP3 = 4; saveGame(); backToZoneA(20, 13)(); },
-              onLose: function () { stageP3 = 4; saveGame(); backToZoneA(20, 13)(); },
+              onWin: function () { stageP3 = 5; saveGame(); backToZoneA(20, 13)(); },
+              onLose: function () { stageP3 = 5; saveGame(); backToZoneA(20, 13)(); },
             });
           });
         });
-      } else if (stageP3 === 4) {
+      } else if (stageP3 === 5) {
         Dialog.start(DIALOGUE.ch5_tenka_full, function () {
           unlockMeikan('nobunaga');
           if (!findActor('dancer2')) sceneActors.push({ x: 21 * TILE, y: 12.5 * TILE, kind: 'odoriko', facing: 'down', alpha: 1, id: 'dancer2' });
@@ -1925,42 +1943,41 @@
               if (mi) {
                 walkTo(mi, 4 * TILE, 11 * TILE, 150, function () {
                   var mi2 = findActor('michi'); if (mi2) mi2.fading = true;
-                  stageP3 = 5; saveGame(); runP3();
+                  stageP3 = 6; saveGame(); runP3();
                 });
-              } else { stageP3 = 5; saveGame(); runP3(); }
+              } else { stageP3 = 6; saveGame(); runP3(); }
             });
           });
         });
-      } else if (stageP3 === 5) {
+      } else if (stageP3 === 6) {
         Dialog.start(DIALOGUE.ch6_stealth_intro, function () {
           setScene(makeStealthGame(function () {
-            stageP3 = 6; saveGame();
+            stageP3 = 7; saveGame();
             startTransition(function () { setScene(makeField('zoneA', { col: 8, row: 12 }, null)); });
           }));
         });
-      } else if (stageP3 === 6) {
+      } else if (stageP3 === 7) {
         Dialog.start(DIALOGUE.ch6_ochimusha, function () {
           var ik = findActor('ike');
-          function proceed() { stageP3 = 7; saveGame(); runP3(); }
+          function proceed() { stageP3 = 8; saveGame(); runP3(); }
           if (ik) walkTo(ik, 4 * TILE, 10 * TILE, 90, function () { var ik2 = findActor('ike'); if (ik2) ik2.fading = true; proceed(); });
           else proceed();
         });
-      } else if (stageP3 === 7) {
+      } else if (stageP3 === 8) {
         var kan = { x: 25.5 * TILE, y: 8 * TILE, kind: 'kancho', facing: 'down', id: 'kancho' };
         sceneActors.push(kan);
         walkTo(kan, player.x + TILE, player.y - TILE, 100, function () {
           Dialog.start(DIALOGUE.epi_kancho, function () {
             var k2 = findActor('kancho');
             if (k2) walkTo(k2, 25.5 * TILE, 8 * TILE, 110, function () { var k3 = findActor('kancho'); if (k3) k3.fading = true; });
-            stageP3 = 8; saveGame();
+            stageP3 = 9; saveGame();
             var dc = findActor('dancer2');
             if (dc) { dc.x = 19.5 * TILE; dc.y = 15 * TILE + TILE / 2; dc.dancing = true; }
             else sceneActors.push({ x: 19.5 * TILE, y: 15 * TILE + TILE / 2, kind: 'odoriko', facing: 'down', alpha: 1, dancing: true, id: 'dancer2' });
-            Dialog.start(DIALOGUE.omake_unlock); // 街への出口・リニモ解放のアナウンス
           });
         });
       }
-      // stageP3 === 8 は自由行動（見回り）。踊り子への接近で update() がラストバトルを起動する
+      // stageP3 === 9 は自由行動（見回り）。踊り子に話しかけると update() がラストバトルを起動する
     }
 
     let stepAcc = 0, encCooldown = 2.5, edgeHintT = 0;
@@ -2077,8 +2094,39 @@
             }
           }
         }
+        // 四章クエスト: 待機中のいけ・みちに話しかける／5史跡踏破後にみちへ近づくと戦トークへ
+        if (mapKey === 'zoneA' && chapter === 'main2' && stageP3 === 1) {
+          var mAct = findActor('michi'), iAct = findActor('ike');
+          if (junbiCleared() && !proTriggered && mAct) {
+            var qdx = player.x - mAct.x, qdy = player.y - mAct.y;
+            if (qdx * qdx + qdy * qdy < (TILE * 3) * (TILE * 3)) {
+              proTriggered = true;
+              Dialog.start(DIALOGUE.ch4_junbi_done, function () {
+                stageP3 = 2; saveGame();
+                setScene(makeSenTalk(function () { stageP3 = 3; saveGame(); backToZoneA(20, 13)(); }));
+              });
+              return;
+            }
+          }
+          if (Input.pressed('confirm')) {
+            var nearW = null;
+            var cands = [mAct, iAct];
+            for (var ci = 0; ci < cands.length; ci++) {
+              var ca = cands[ci];
+              if (!ca) continue;
+              var cdx = player.x - ca.x, cdy = player.y - ca.y;
+              if (cdx * cdx + cdy * cdy < (TILE * 1.6) * (TILE * 1.6)) nearW = ca;
+            }
+            if (nearW) {
+              var waitLines = (nearW.id === 'ike' ? DIALOGUE.ch4_wait_ike : DIALOGUE.ch4_wait_michi)
+                .concat([{ name: '', text: '（現地取材: ' + junbiCount() + ' / 5 史跡を 踏破。色金山・御旗山・血の池・武蔵塚・安昌寺は 北の 岩作エリアに）' }]);
+              Dialog.start(waitLines);
+              return;
+            }
+          }
+        }
         // エピローグ: 見回り中、舞う踊り子に「話しかける」とラストバトル（誤発動防止のため決定キー式）
-        if (mapKey === 'zoneA' && chapter === 'main2' && stageP3 === 8 && !proTriggered && Input.pressed('confirm')) {
+        if (mapKey === 'zoneA' && chapter === 'main2' && stageP3 === 9 && !proTriggered && Input.pressed('confirm')) {
           var dz = findActor('dancer2');
           if (dz) {
             var zdx = player.x - dz.x, zdy = player.y - dz.y;

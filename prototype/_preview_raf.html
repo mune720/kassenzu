@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>合戦ズ ― preview</title>
+<link rel="stylesheet" href="style.css">
+<script>
+  (function () {
+    var ch = new MessageChannel();
+    var queue = [];
+    var lastRun = 0;
+    function flush() {
+      var now = performance.now();
+      if (now - lastRun < 15) { ch.port2.postMessage(0); return; }
+      lastRun = now;
+      var cbs = queue; queue = [];
+      for (var i = 0; i < cbs.length; i++) { try { cbs[i](now); } catch (e) { console.error(e); } }
+    }
+    ch.port1.onmessage = flush;
+    window.requestAnimationFrame = function (cb) { queue.push(cb); ch.port2.postMessage(0); return queue.length; };
+    window.cancelAnimationFrame = function () {};
+  })();
+</script>
+</head>
+<body>
+<div id="app">
+  <h1 id="apptitle">合戦ズ <small>歴史空想RPG</small></h1>
+  <div id="stage"><canvas id="game" width="512" height="448"></canvas></div>
+  <div id="controls">
+    <div id="dpad">
+      <button id="btnUP" class="pad">▲</button>
+      <div class="midrow">
+        <button id="btnLEFT" class="pad">◀</button>
+        <button id="btnDOWN" class="pad">▼</button>
+        <button id="btnRIGHT" class="pad">▶</button>
+      </div>
+    </div>
+    <div id="actions"><button id="btnB" class="act">B</button><button id="btnA" class="act">A</button></div>
+  </div>
+</div>
+<script>
+  (function () {
+    var files = ['dialogue.js', 'game.js'];
+    function loadNext(i) {
+      if (i >= files.length) return;
+      var s = document.createElement('script');
+      s.src = files[i] + '?t=' + Date.now();
+      s.onload = function () { loadNext(i + 1); };
+      document.body.appendChild(s);
+    }
+    loadNext(0);
+  })();
+</script>
+</body>
+</html>
