@@ -1537,7 +1537,7 @@
           });
         });
       } else if (stageP3 === 4) {
-        Dialog.start(DIALOGUE.ch5_tenka, function () {
+        Dialog.start(DIALOGUE.ch5_tenka_full, function () {
           unlockMeikan('nobunaga');
           if (!findActor('dancer2')) sceneActors.push({ x: 21 * TILE, y: 12.5 * TILE, kind: 'odoriko', facing: 'down', alpha: 1, id: 'dancer2' });
           Dialog.start(DIALOGUE.ch6_ikitai, function () {
