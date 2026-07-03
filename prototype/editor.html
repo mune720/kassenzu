@@ -73,7 +73,7 @@ main{max-width:900px;margin:0 auto;padding:20px}
 <main id="main"></main>
 <div class="toast" id="toast"></div>
 
-<script src="dialogue.js?v=20260704p3"></script>
+<script src="dialogue.js?v=20260704p4"></script>
 <script>
 (function () {
   'use strict';
@@ -94,7 +94,8 @@ main{max-width:900px;margin:0 auto;padding:20px}
     { title: '旧ダイジェスト版（未使用）', keys: ['museum_intro', 'door_trigger', 'door_ike_comedy', 'field_intro', 'ike_idle', 'mound', 'ch1_michi', 'ch2_battle', 'ch3_deaths', 'ch4_confrontation', 'ch5_tenka', 'ch6_farewell', 'epilogue'] },
     { title: 'エンディング', keys: ['ending'] },
     { title: '戦闘メッセージ', keys: ['battle'] },
-    { title: '史跡めぐり・茶室', keys: ['tour_complete', 'sites', 'tea_intro', 'tea_rank_c', 'tea_rank_b', 'tea_rank_a'] },
+    { title: '史跡めぐり・茶室', keys: ['tour_complete', 'sites', 'tea_intro', 'tea_rank_c', 'tea_rank_b', 'tea_rank_a', 'tour_battle_intro'] },
+    { title: '長久手の街（おまけ）', keys: ['omake_locked', 'omake_unlock', 'station_first', 'station_ride', 'aeon_welcome', 'ramen_event', 'cityhall_talk', 'kodomo_talk', 'library_talk', 'higane_event', 'higane_done', 'expo1_talk', 'expo2_talk', 'expo3_talk', 'wheel_talk', 'sakamoto_talk', 'bunka_galleria', 'bunka_2f', 'bunka_mori'] },
   ];
 
   var SCENE_LABELS = {
@@ -122,6 +123,15 @@ main{max-width:900px;margin:0 auto;padding:20px}
     tour_complete: '史跡めぐり全達成',
     battle: '戦闘メッセージ', sites: '史跡データ',
     tea_intro: '茶室：はじまり', tea_rank_c: '茶室：ふつう', tea_rank_b: '茶室：きれい', tea_rank_a: '茶室：クリーミー',
+    tour_battle_intro: '史跡：もののけ出現',
+    omake_locked: '街：まだ行けない', omake_unlock: '街：解放アナウンス',
+    station_first: 'リニモ：初回', station_ride: 'リニモ：乗車',
+    aeon_welcome: 'イオン：入店', ramen_event: '一蘭：下見',
+    cityhall_talk: '市役所', kodomo_talk: '平成こども塾', library_talk: '中央図書館',
+    higane_event: '桧ヶ根公園：赤備え入手', higane_done: '桧ヶ根公園：再訪',
+    expo1_talk: 'モリコロ：万博の話', expo2_talk: 'モリコロ：マンモス', expo3_talk: 'モリコロ：記念公園',
+    wheel_talk: '観覧車', sakamoto_talk: '坂元さん（文化の家）',
+    bunka_galleria: '文化の家：ガレリア', bunka_2f: '文化の家：2階', bunka_mori: '文化の家：森のホール',
   };
 
   function mkEl(tag, cls) {

@@ -174,6 +174,9 @@
     michi: { body: '#2f9e44', legs: '#1b4332', skin: '#ffd8a8', hair: '#3b2b20', helmet: '#3b5d3b', crest: '#c0c0c0' },
     kancho: { body: '#2b3a4a', legs: '#212529', skin: '#ffd8a8', hair: '#adb5bd', short: true },
     odoriko: { body: '#e8dff0', legs: '#c9b8d8', skin: '#ffd8a8', hair: '#3d2a55' },
+    civ1: { body: '#c98747', legs: '#5a4632', skin: '#ffd8a8', hair: '#4a3423', short: true },
+    civ2: { body: '#5b8c5a', legs: '#33502f', skin: '#ffd8a8', hair: '#6b4a35' },
+    sakamoto: { body: '#7048a8', legs: '#3d2a55', skin: '#ffd8a8', hair: '#2b2b2b', short: true },
   };
   function drawShadow(c, cx, cy, s) {
     c.fillStyle = 'rgba(0,0,0,0.25)';
@@ -506,7 +509,7 @@
   // ゾーンA: 長久手古戦場公園（40x28・カメラスクロール）
   // W/^=記念館外観, D=記念館入口, M=勝入塚, N=庄九郎塚, R=岩, b=茂み, P=セーブ篝火
   const ZONEA = [
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT..TTTT',
     'T......................................T',
     'T...................^^^^^^^^^^^^^......T',
     'T...................^^^^^^^^^^^^^......T',
@@ -519,21 +522,194 @@
     'T..bbb...................,,.......M....T',
     'T..bbb..R................,,............T',
     'T........................,,....N.......T',
-    'T......................................T',
-    'T......................................T',
+    '.......................................T',
+    '.......................................T',
     'T......................................T',
     'T..................................~~~.T',
     'T..................................~~~.T',
     'T......................................T',
     'T...........................P..........T',
-    'T......................................T',
+    'TIII...................................T',
+    'TI4I................................eeeT',
     'T......................................T',
     'T......................................T',
     'T..................@...................T',
+    'T....T....T.............T....T.........T',
+    'T......................................T',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  ];
+  // ゾーンB: 市街地（グリーンロード・砂子交差点・一蘭・桧ヶ根公園）
+  const ZONEB = [
+    'TTTTTTTTTTTTTTTTTTT..TTTTTTTTTTTTTTTTTTT',
+    'T..................rrr.................T',
+    'T..................rrr.................T',
+    'T..................rrr.................T',
+    'T..................rrr.................T',
+    'T..................rrr.................T',
+    'T..................rrr.................T',
+    'T..................rrr.................T',
+    'T..................rrr.................T',
+    'T..................rrr..YYYYY..........T',
+    'T..................rrr..YYYYY..........T',
+    'T..................rrr..Y11YY..........T',
+    'T..................rrr.................T',
+    'Trrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr',
+    'Trrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr',
+    'TrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrT',
+    'T..................rrr.................T',
+    'T..................rrr.................T',
+    'T..................rrr.................T',
+    'T...bTb............rrr.................T',
+    'T...b.b............rrr.................T',
+    'T...b.a.b..........rrr.................T',
+    'T...b.b............rrr.................T',
+    'T...bbb............rrr.................T',
+    'T..................rrr.................T',
+    'T..................rrr.................T',
+    'T..................rrr.................T',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  ];
+  // ゾーンC: 岩作・色金山（色金山＋床机石・茶室・市役所・こども塾・血の池・安昌寺・武蔵塚・御旗山）
+  const ZONEC = [
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'T......................................T',
+    'T...........TTTTTTTT,TTTTTTTT..........T',
+    'T...........TTTTTTTT,TTTTTTTT..........T',
+    'T...........TTTTTT..R..TTTTTT..........T',
+    'T...........TTTTTT..,..TTTTTT..........T',
+    'T...........TTTTTT..,..TTTTTT..........T',
+    'T...........TTTTTT..,..TTTTTT..........T',
+    'T..................,,..................T',
+    'T..................,,..................T',
+    'T..............JJJJJ,..................T',
+    'T..............JJJJJ,..................T',
+    'T..............JJ1JJ,....WWWWWW........T',
+    '....................,....WWWWWW........T',
+    '....................,....WWWWWW........T',
+    'T...................,....WW2WWW........T',
+    'T...................,..................T',
+    'T.......~~~~~.......,..................T',
+    'T.......~~~~~.......,...........KKKKK..T',
+    'T.......~~~~~.......,...........KKKKK..T',
+    'T.......a...........,...........KK3KK..T',
+    'T..JJJJJ............,...M..............T',
+    'T..JJJJJ............,..................T',
+    'T..JJJJJ............,..........N.......T',
+    'T....o..............,..................T',
+    'T...................,..................T',
+    'T......................................T',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT..TTTT',
+  ];
+  // ゾーンD: 文化の家周辺（文化の家・中央図書館）
+  const ZONED = [
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'T......................................T',
+    'T......................................T',
+    'T......................................T',
+    'T......................................T',
+    'T......................................T',
+    'T...........^^^^^^^^^^^^^^^^...........T',
+    'T...........^^^^^^^^^^^^^^^^...........T',
+    'T...........^^^^^^^^^^^^^^^^...........T',
+    'T...........FFFFFFFFFFFFFFFF...........T',
+    'T...........FFFFFFFFFFFFFFFF...........T',
+    'T...........FFFFFFFFFFFFFFFF...........T',
+    'T...........FFFFFFF11FFFFFFF...........T',
+    'T.......................................',
+    'T.......................................',
+    'T......................................T',
+    'T......................................T',
+    'T.............................LLLLLLL..T',
+    'T.............................LLLLLLL..T',
+    'T.............................LLLLLLL..T',
+    'T.............................LLL2LLL..T',
+    'T......................................T',
+    'T......................................T',
+    'T......................................T',
+    'T......................................T',
+    'T......................................T',
+    'T......................................T',
+    'TTTTTTTTTTTTTTTTTTT..TTTTTTTTTTTTTTTTTTT',
+  ];
+  // ゾーンE: モリコロパーク（リニモでのみ来園）
+  const ZONEE = [
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'T......................................T',
+    'T......................................T',
+    'T...............................OOOO...T',
+    'T...............................OOOO...T',
+    'T...............................OOOO...T',
+    'T...............................OOOO...T',
+    'T......................................T',
+    'T......................................T',
+    'T.........p............................T',
+    'T...........................q..........T',
+    'T......................................T',
+    'T.............~~~~~~~~~~~..............T',
+    'T.............~~~~~~~~~~~..............T',
+    'T.............~~~~~~~~~~~..............T',
+    'T.............~~~~~~~~~~~..............T',
+    'T.............~~~~~~~~~~~..............T',
+    'T.............~~~~~~~~~~~..............T',
+    'T......................................T',
+    'T......................................T',
+    'T.eee..................................T',
+    'T...................u..................T',
+    'T......................................T',
+    'T......................................T',
     'T......................................T',
     'T....T....T.............T....T.........T',
     'T......................................T',
     'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  ];
+  // 文化の家・屋内（1階ガレリア / 2階 / 森のホール）
+  const BUNKA1 = [
+    '################',
+    '#U............V#',
+    '#..............#',
+    '#..............#',
+    '#..............#',
+    '#..............#',
+    '#......@.......#',
+    '#..............#',
+    '#..............#',
+    '#..............#',
+    '#..............#',
+    '#..............#',
+    '#..............#',
+    '#######DD#######',
+  ];
+  const BUNKA2 = [
+    '################',
+    '#U.............#',
+    '#..............#',
+    '#..............#',
+    '#..............#',
+    '#..............#',
+    '#......@.......#',
+    '#..............#',
+    '#..............#',
+    '#..............#',
+    '#..............#',
+    '#..............#',
+    '#..............#',
+    '################',
+  ];
+  const MORIHALL = [
+    '################',
+    '#==============#',
+    '#==============#',
+    '#..............#',
+    '#.......s......#',
+    '#..............#',
+    '#......@.......#',
+    '#..............#',
+    '#..............#',
+    '#..............#',
+    '#..............#',
+    '#..............#',
+    '#..............#',
+    '#######DD#######',
   ];
   // マップレジストリ。新マップは rows＋この定義を追加するだけで動く。
   //  kind: outdoor はカメラスクロール対象（画面より大きい場合）、indoor は固定画面
@@ -557,12 +733,73 @@
     },
     zoneA: {
       rows: ZONEA, kind: 'outdoor', tileset: 'outdoor', playerFloor: '.',
-      solid: ['T', '~', 'M', 'N', 'R', 'b', 'W', '^', 'D', 'P'],
+      solid: ['T', '~', 'M', 'N', 'R', 'b', 'W', '^', 'D', 'P', 'I', '4', 'e'],
       npcs: {},
-      acts: { M: 'mound', N: 'shokuro', R: 'rock', D: 'museum_enter', P: 'save' },
+      acts: { M: 'mound', N: 'shokuro', R: 'rock', D: 'museum_enter', P: 'save', 4: 'aeon', e: 'station' },
+      edges: { west: 'zoneB', north: 'zoneC' },
+      encounter: null,
+    },
+    zoneB: {
+      rows: ZONEB, kind: 'outdoor', tileset: 'outdoor', playerFloor: '.',
+      solid: ['T', 'b', 'Y', '1'],
+      npcs: {},
+      acts: { 1: 'ramen', a: 'higane' },
+      edges: { east: 'zoneA', north: 'zoneD' },
+      encounter: null,
+    },
+    zoneC: {
+      rows: ZONEC, kind: 'outdoor', tileset: 'outdoor', playerFloor: '.',
+      solid: ['T', '~', 'M', 'N', 'R', 'J', 'W', 'K', '1', '2', '3'],
+      npcs: {},
+      acts: { R: 'site_irogane', 1: 'tearoom', 2: 'cityhall', 3: 'kodomo', a: 'site_chinoike', o: 'site_ansho', M: 'site_musashi', N: 'site_mihata' },
+      edges: { south: 'zoneA', west: 'zoneD' },
+      encounter: null,
+    },
+    zoneD: {
+      rows: ZONED, kind: 'outdoor', tileset: 'outdoor', playerFloor: '.',
+      solid: ['T', 'F', '^', 'L', '1', '2'],
+      npcs: {},
+      acts: { 1: 'bunka_in', 2: 'library' },
+      edges: { east: 'zoneC', south: 'zoneB' },
+      encounter: null,
+    },
+    zoneE: {
+      rows: ZONEE, kind: 'outdoor', tileset: 'outdoor', playerFloor: '.',
+      solid: ['T', '~', 'O', 'e'],
+      npcs: {
+        p: { kind: 'civ1', id: 'expo1', floor: '.' },
+        q: { kind: 'civ2', id: 'expo2', floor: '.' },
+        u: { kind: 'civ1', id: 'expo3', floor: '.' },
+      },
+      acts: { e: 'station', O: 'wheel' },
+      encounter: null,
+    },
+    bunka1: {
+      rows: BUNKA1, kind: 'indoor', tileset: 'museum', playerFloor: '.',
+      solid: ['#', 'D', 'U', 'V'],
+      npcs: {},
+      acts: { D: 'bunka_exit', U: 'bunka_up', V: 'mori_in' },
+      encounter: null,
+    },
+    bunka2: {
+      rows: BUNKA2, kind: 'indoor', tileset: 'museum', playerFloor: '.',
+      solid: ['#', 'U'],
+      npcs: {},
+      acts: { U: 'bunka_down' },
+      encounter: null,
+    },
+    mori: {
+      rows: MORIHALL, kind: 'indoor', tileset: 'museum', playerFloor: '.',
+      solid: ['#', 'D', '='],
+      npcs: { s: { kind: 'sakamoto', id: 'sakamoto', floor: '.' } },
+      acts: { D: 'mori_exit' },
       encounter: null,
     },
   };
+  // ゾーン端のシームレス接続が解放されているか（エピローグの見回り以降）
+  function omakeUnlocked() {
+    return (chapter === 'main2' && stageP3 >= 8) || chapter === 'post';
+  }
   function parseMap(key) {
     const def = MAP_DEFS[key];
     const grid = def.rows.map(function (r) { return r.split(''); });
@@ -638,6 +875,26 @@
         c.fillStyle = '#8a6a3b'; c.fillRect(x + 3, y + T / 2 - 1, T - 6, 2); c.fillRect(x + T / 2 - 1, y + 2, 2, T - 4);
         c.fillStyle = '#d4aa40'; c.beginPath(); c.arc(x + T - 8, y + T / 2, 2.5, 0, Math.PI * 2); c.fill();
         c.fillStyle = '#f0c850'; c.beginPath(); c.arc(x + T - 8.5, y + T / 2 - 0.5, 1, 0, Math.PI * 2); c.fill();
+      } else if (ch === 'U') {
+        // 階段
+        c.fillStyle = '#4a5058'; c.fillRect(x + 2, y + 2, T - 4, T - 4);
+        for (var st2 = 0; st2 < 4; st2++) {
+          c.fillStyle = st2 % 2 === 0 ? '#6b7280' : '#5a626b';
+          c.fillRect(x + 4, y + 4 + st2 * 6, T - 8, 5);
+        }
+        c.fillStyle = '#ffd43b'; c.font = 'bold 10px sans-serif'; c.fillText('2F', x + T / 2 - 6, y + T - 5);
+      } else if (ch === 'V') {
+        // 森のホールへの扉（赤）
+        c.fillStyle = '#7a2a30'; c.fillRect(x, y, T, T);
+        c.fillStyle = '#8e3540'; c.fillRect(x + 3, y + 2, T - 6, T - 4);
+        c.fillStyle = '#d4aa40'; c.beginPath(); c.arc(x + T - 9, y + T / 2, 2.5, 0, Math.PI * 2); c.fill();
+        c.fillStyle = 'rgba(255,255,255,0.12)'; c.fillRect(x + 4, y + 3, 3, T - 6);
+      } else if (ch === '=') {
+        // ホールのステージ
+        c.fillStyle = '#3b2a20'; c.fillRect(x, y, T, T);
+        c.fillStyle = '#4d3828'; c.fillRect(x, y + 2, T, T - 8);
+        c.fillStyle = 'rgba(255,220,150,0.08)'; c.fillRect(x, y + 4, T, 4);
+        c.fillStyle = '#2a1c14'; c.fillRect(x, y + T - 4, T, 4);
       }
     } else {
       fillSmooth(c, tc, tr, x, y, function(v) {
@@ -822,13 +1079,65 @@
         c.beginPath(); c.moveTo(x, y + 10); c.lineTo(x + T, y + 10); c.stroke();
         c.beginPath(); c.moveTo(x, y + 21); c.lineTo(x + T, y + 21); c.stroke();
         c.fillStyle = 'rgba(255,255,255,0.05)'; c.fillRect(x, y + 1, T, 2);
-      } else if (ch === 'D') {
-        // 記念館の入口（屋外側）
+      } else if (ch === 'D' || ch === '1' || ch === '2' || ch === '3' || ch === '4') {
+        // 施設の入口（屋外側・共通の扉）
         c.fillStyle = '#7a5a30'; c.fillRect(x, y, T, T);
         c.fillStyle = '#6a4a20'; c.fillRect(x + 3, y + 2, T - 6, T - 4);
         c.fillStyle = '#8a6a3b'; c.fillRect(x + 3, y + T / 2 - 1, T - 6, 2); c.fillRect(x + T / 2 - 1, y + 2, 2, T - 4);
         c.fillStyle = '#d4aa40'; c.beginPath(); c.arc(x + T - 8, y + T / 2, 2.5, 0, Math.PI * 2); c.fill();
         c.fillStyle = '#f0c850'; c.beginPath(); c.arc(x + T - 8.5, y + T / 2 - 0.5, 1, 0, Math.PI * 2); c.fill();
+      } else if (ch === 'r') {
+        // アスファルト道路
+        fillSmooth(c, tc, tr, x, y, function(v) {
+          var ab = 88 + v * 12 | 0;
+          return 'rgb(' + ab + ',' + (ab + 2) + ',' + (ab + 6) + ')';
+        });
+        c.fillStyle = 'rgba(0,0,0,0.08)'; c.fillRect(x, y, T, 2);
+        if (h0 > 0.85) { c.fillStyle = 'rgba(255,255,255,0.06)'; c.fillRect(x + h1 * 20, y + h2 * 20, 6, 2); }
+      } else if (ch === 'a' || ch === 'o') {
+        // 史跡の標柱（a=赤旗つき / o=寺標）
+        c.fillStyle = 'rgba(0,0,0,0.18)'; c.beginPath(); c.ellipse(x + T / 2, y + T - 3, 9, 3.5, 0, 0, Math.PI * 2); c.fill();
+        c.fillStyle = '#8a6a40'; c.fillRect(x + T / 2 - 2, y + 6, 4, T - 10);
+        c.fillStyle = '#c8b088'; c.fillRect(x + T / 2 - 5, y + 4, 10, 6);
+        if (ch === 'a') { c.fillStyle = '#c0392b'; c.beginPath(); c.moveTo(x + T / 2 + 2, y + 6); c.lineTo(x + T / 2 + 13, y + 9); c.lineTo(x + T / 2 + 2, y + 13); c.closePath(); c.fill(); }
+      } else if (ch === 'e') {
+        // リニモ駅（ホーム・サイン）
+        c.fillStyle = '#3e4a5c'; c.fillRect(x, y, T, T);
+        c.fillStyle = '#556680'; c.fillRect(x + 2, y + 2, T - 4, T - 4);
+        c.fillStyle = '#8fd3f4'; c.fillRect(x + 5, y + 5, T - 10, 8);
+        c.fillStyle = '#ffffff'; c.font = 'bold 9px sans-serif'; c.fillText('リニモ', x + 5, y + T - 7);
+      } else if (ch === 'O') {
+        // 観覧車（大きな円の一部）
+        fillSmooth(c, tc, tr, x, y, function(v) {
+          var gb2 = 74 + v * 22 | 0, gg2 = 140 + v * 28 | 0;
+          return 'rgb(' + gb2 + ',' + gg2 + ',' + (gb2 - 8) + ')';
+        });
+        var wcx2 = (Math.floor(tc / 4) * 4 + 2) * T, wcy2 = (Math.floor(tr / 4) * 4 + 2) * T;
+        c.strokeStyle = '#d8dce4'; c.lineWidth = 3;
+        c.beginPath(); c.arc(wcx2, wcy2, T * 1.7, 0, Math.PI * 2); c.stroke();
+        c.lineWidth = 1.5;
+        for (var sp2 = 0; sp2 < 8; sp2++) {
+          var ang2 = tick * 0.004 + sp2 * Math.PI / 4;
+          c.beginPath(); c.moveTo(wcx2, wcy2); c.lineTo(wcx2 + Math.cos(ang2) * T * 1.7, wcy2 + Math.sin(ang2) * T * 1.7); c.stroke();
+          c.fillStyle = ['#e74c3c', '#f1c40f', '#2ecc71', '#3498db'][sp2 % 4];
+          c.beginPath(); c.arc(wcx2 + Math.cos(ang2) * T * 1.7, wcy2 + Math.sin(ang2) * T * 1.7, 4, 0, Math.PI * 2); c.fill();
+        }
+        c.lineWidth = 1;
+      } else if (ch === 'I' || ch === 'J' || ch === 'Y' || ch === 'F' || ch === 'L' || ch === 'K') {
+        // 施設の外壁（色ちがい）: I=イオン J=和風 Y=一蘭 F=文化の家 L=図書館 K=丸太の家
+        var wallCol = { I: ['#f2eff3', '#d9539a'], J: ['#d9cdb2', '#5a4632'], Y: ['#c0392b', '#f0ead8'], F: ['#5b7ea6', '#2e4a6b'], L: ['#9caf94', '#5c705a'], K: ['#a0703c', '#6b4620'] }[ch];
+        fillSmooth(c, tc, tr, x, y, function(v) { return wallCol[0]; });
+        c.fillStyle = 'rgba(0,0,0,0.08)'; c.fillRect(x, y + T - 4, T, 4);
+        c.fillStyle = wallCol[1];
+        if (ch === 'I') { c.fillRect(x, y + 8, T, 5); }
+        else if (ch === 'Y') { if (tr % 2 === 0) c.fillRect(x, y, T, 6); }
+        else if (ch === 'K') { c.fillRect(x, y + 9, T, 2); c.fillRect(x, y + 20, T, 2); }
+        else { c.fillRect(x, y + T - 7, T, 3); }
+        if (ch === 'J') { c.fillStyle = '#3d3225'; c.fillRect(x, y, T, 5); }
+        if ((tc + tr) % 3 === 1 && ch !== 'K' && ch !== 'J') {
+          c.fillStyle = 'rgba(60,80,110,0.5)'; c.fillRect(x + 9, y + 10, T - 18, 10);
+          c.fillStyle = 'rgba(255,240,190,0.4)'; c.fillRect(x + 10, y + 11, (T - 20) / 2, 8);
+        }
       }
     }
   }
@@ -909,6 +1218,8 @@
     if (name === 'みち') return 'michi';
     if (name === '館長') return 'kancho';
     if (name === '踊り子') return 'odoriko';
+    if (name === '坂元') return 'sakamoto';
+    if (name === '通行人') return 'civ1';
     return null;
   }
   // 立ち絵画像の差し替え用キャッシュ（assets/face/<kind>.png があれば自動で使う）
@@ -1121,6 +1432,15 @@
   function weaponAtk() { return (ITEMS[Hero.weapon] && ITEMS[Hero.weapon].atk) || 0; }
   function armorDef() { return (ITEMS[Hero.armor] && ITEMS[Hero.armor].def) || 0; }
 
+  // ===================== 通貨・消耗品（イオンで購入・戦闘中に使用） =====================
+  const GOODS = {
+    onigiri: { name: 'おにぎり', heal: 15, price: 30, desc: '戦闘中に HPを 15 回復する。' },
+    cha:     { name: '長久手茶', heal: 40, price: 80, desc: '戦闘中に HPを 40 回復する。香りがいい。' },
+  };
+  let gold = 50; // 所持金（りょう）
+  const bag = { onigiri: 0, cha: 0 };
+  function bagCount() { return (bag.onigiri || 0) + (bag.cha || 0); }
+
   // 史跡図鑑・武将名鑑
   const ZUKAN = [
     { id: 'kinenkan', name: '長久手古戦場記念館', desc: '国指定史跡・長久手古戦場公園に建つ記念館。小牧・長久手の戦いを語り継ぐ。' },
@@ -1133,6 +1453,9 @@
     { id: 'chinoike', name: '血の池公園', desc: '戦の後、武士が槍や刀の血を洗い、水が赤く染まったと伝わる池の跡。' },
     { id: 'musashi', name: '武蔵塚', desc: '「鬼武蔵」と恐れられた猛将・森長可が討死した地に建つ塚。剣豪の宮本武蔵とは別人。' },
     { id: 'ansho', name: '安昌寺（首塚）', desc: '戦の後、雲山和尚が敵味方の区別なく討死した武士を葬ったと伝わる寺。首塚がある。' },
+    { id: 'higane', name: '桧ヶ根公園（井伊直政陣地跡）', desc: '「赤備え」の井伊直政が陣を構えたと伝わる地。長久手の戦いの布陣が街に残る。' },
+    { id: 'bunka', name: '文化の家', desc: '長久手市の文化芸術の拠点。森のホールで『合戦ズ』が上演された。ガレリアには公演ポスターが並ぶ。' },
+    { id: 'moricoro', name: 'モリコロパーク', desc: '2005年の愛知万博「愛・地球博」の会場跡地に整備された記念公園。リニモで行ける。' },
   ];
   const MEIKAN = [
     { id: 'oda', name: 'オダ', desc: '記念館の職員。歴史は ちょっと苦手。実は織田信長の末裔…？' },
@@ -1179,6 +1502,8 @@
   let ch3rusu = false;         // 館長不在を確認したか
   let zoneAMood = 'dusk';      // dusk → weird（踊り子の舞で世界が変わった後）
   let teaBest = '';            // 抹茶体験のベストランク（'' / 'C' / 'B' / 'A'）
+  let stationUsed = false;            // リニモ初回ネタ用（セッション内）
+  const enteredFlavor = new Set();    // 施設の入場ナレーションを一度だけ出す用
   // main2（四章〜エピローグ）の直列進行。各値は「これから行うこと」:
   // 0=四章導入 1=戦トーク 2=もののけ共闘戦 3=告白〜みち対峙戦 4=天下問答〜みち別れ
   // 5=落武者ステルス 6=大包平の伏線〜いけ退場 7=館長エピローグ 8=見回り〜ラストバトル
@@ -1195,6 +1520,7 @@
         v: 2, hero: Hero, difficulty: difficulty,
         tutorialDone: tutorialDone, storyStage: storyStage,
         chapter: chapter, ch1Seen: ch1Seen, ch2step: ch2step, ch3rusu: ch3rusu, zoneAMood: zoneAMood, teaBest: teaBest, stageP3: stageP3,
+        gold: gold, bag: bag,
         zukan: Array.from(zukanSet), meikan: Array.from(meikanSet),
         tour: Array.from(tourCleared), tourReward: tourReward,
       }));
@@ -1224,6 +1550,9 @@
       zoneAMood = d.zoneAMood || (chapter === 'pro' ? 'dusk' : 'weird');
       teaBest = d.teaBest || '';
       stageP3 = d.stageP3 || 0;
+      gold = (typeof d.gold === 'number') ? d.gold : 50;
+      bag.onigiri = (d.bag && d.bag.onigiri) || 0;
+      bag.cha = (d.bag && d.bag.cha) || 0;
       // 旧ダイジェスト版セーブ（legacy）は原作フル収録の四章から再開
       if (chapter === 'legacy') { chapter = 'main2'; stageP3 = 0; }
       zukanSet.clear(); (d.zukan || []).forEach(function (x) { zukanSet.add(x); });
@@ -1326,6 +1655,56 @@
       else if (id === 'museum_exit') {
         startTransition(function () { setScene(makeField('zoneA', { col: 25, row: 7 }, null)); });
       }
+      else if (id === 'aeon') {
+        Dialog.start(DIALOGUE.aeon_welcome, function () {
+          setScene(makeShop(function () { startTransition(function () { setScene(makeField(mapKey, { x: player.x, y: player.y }, null)); }); }));
+        });
+      }
+      else if (id === 'station') {
+        var stLines = stationUsed ? DIALOGUE.station_ride : DIALOGUE.station_first;
+        stationUsed = true;
+        Dialog.start(stLines, function () {
+          startTransition(function () {
+            if (mapKey === 'zoneE') setScene(makeField('zoneA', { col: 34, row: 21 }, null));
+            else setScene(makeField('zoneE', { col: 6, row: 20 }, null));
+          });
+        });
+      }
+      else if (id === 'ramen') {
+        if (gold >= 90) { gold -= 90; Dialog.start(DIALOGUE.ramen_event, function () { saveGame(); }); }
+        else Dialog.start([{ name: 'オダ', text: '（一杯 90りょう…。いまは 持ち合わせが 足りない。もののけ退治で 稼いでこよう）' }]);
+      }
+      else if (id === 'cityhall') Dialog.start(DIALOGUE.cityhall_talk);
+      else if (id === 'kodomo') Dialog.start(DIALOGUE.kodomo_talk);
+      else if (id === 'library') Dialog.start(DIALOGUE.library_talk);
+      else if (id === 'wheel') Dialog.start(DIALOGUE.wheel_talk);
+      else if (id === 'higane') {
+        if (!zukanSet.has('higane')) {
+          unlockZukan('higane'); unlockMeikan('naomasa');
+          if (Hero.items.indexOf('akazonae') < 0 && Hero.armor !== 'akazonae') Hero.items.push('akazonae');
+          Dialog.start(DIALOGUE.higane_event, function () { saveGame(); });
+        } else Dialog.start(DIALOGUE.higane_done);
+      }
+      else if (id === 'tearoom') {
+        setScene(makeTeaRoom(function () { startTransition(function () { setScene(makeField('zoneC', { col: 17, row: 13 }, null)); }); }));
+      }
+      else if (id && id.indexOf('site_') === 0) {
+        var site = siteById(id.slice(5));
+        if (site) {
+          var backX = player.x, backY = player.y;
+          setScene(makeSiteVisit(site, function () { startTransition(function () { setScene(makeField(mapKey, { x: backX, y: backY }, null)); }); }));
+        }
+      }
+      else if (id === 'bunka_in') { unlockZukan('bunka'); startTransition(function () { setScene(makeField('bunka1', null, null)); }); }
+      else if (id === 'bunka_exit') startTransition(function () { setScene(makeField('zoneD', { col: 19, row: 13 }, null)); });
+      else if (id === 'bunka_up') startTransition(function () { setScene(makeField('bunka2', { col: 2, row: 2 }, null)); });
+      else if (id === 'bunka_down') startTransition(function () { setScene(makeField('bunka1', { col: 2, row: 2 }, null)); });
+      else if (id === 'mori_in') startTransition(function () { setScene(makeField('mori', null, null)); });
+      else if (id === 'mori_exit') startTransition(function () { setScene(makeField('bunka1', { col: 13, row: 2 }, null)); });
+      else if (id === 'sakamoto') Dialog.start(DIALOGUE.sakamoto_talk);
+      else if (id === 'expo1') Dialog.start(DIALOGUE.expo1_talk);
+      else if (id === 'expo2') Dialog.start(DIALOGUE.expo2_talk);
+      else if (id === 'expo3') { unlockZukan('moricoro'); Dialog.start(DIALOGUE.expo3_talk); }
       else if (id === 'ike') Dialog.start(DIALOGUE.ike_idle);
       else if (id === 'mound') { unlockZukan('shonyu'); unlockMeikan('tsuneoki'); Dialog.start(DIALOGUE.mound, function () { ch1Seen.mound = true; checkCh1Done(); }); }
       else if (id === 'michi') {
@@ -1577,13 +1956,14 @@
             var dc = findActor('dancer2');
             if (dc) { dc.x = 19.5 * TILE; dc.y = 15 * TILE + TILE / 2; dc.dancing = true; }
             else sceneActors.push({ x: 19.5 * TILE, y: 15 * TILE + TILE / 2, kind: 'odoriko', facing: 'down', alpha: 1, dancing: true, id: 'dancer2' });
+            Dialog.start(DIALOGUE.omake_unlock); // 街への出口・リニモ解放のアナウンス
           });
         });
       }
       // stageP3 === 8 は自由行動（見回り）。踊り子への接近で update() がラストバトルを起動する
     }
 
-    let stepAcc = 0, encCooldown = 2.5;
+    let stepAcc = 0, encCooldown = 2.5, edgeHintT = 0;
     return {
       enter: function () {
         activeField = this;
@@ -1605,6 +1985,9 @@
           // chapter === 'post' はクリア後の自由散策（イベントなし）
         } else if (mapKey === 'museum' && chapter === 'ch3' && !ch3rusu) {
           Dialog.start(DIALOGUE.ch3_rusu, function () { ch3rusu = true; saveGame(); });
+        } else if ((mapKey === 'bunka1' || mapKey === 'bunka2' || mapKey === 'mori') && !enteredFlavor.has(mapKey)) {
+          enteredFlavor.add(mapKey);
+          Dialog.start(mapKey === 'bunka1' ? DIALOGUE.bunka_galleria : (mapKey === 'bunka2' ? DIALOGUE.bunka_2f : DIALOGUE.bunka_mori));
         } else if (intro) {
           Dialog.start(intro);
           intro = null;
@@ -1638,6 +2021,33 @@
         const sp = SPEED * dt;
         if (dx !== 0) { const nx = player.x + dx * sp; if (canWalk(nx, player.y)) player.x = nx; }
         if (dy !== 0) { const ny = player.y + dy * sp; if (canWalk(player.x, ny)) player.y = ny; }
+        // ゾーン端のシームレス移動（おまけフィールド。エピローグの見回り以降に解放）
+        if (map.def.edges) {
+          if (edgeHintT > 0) edgeHintT -= dt;
+          var edgeDir = null;
+          if (player.x < HALF + 2 && map.def.edges.west) edgeDir = 'west';
+          else if (player.x > map.pxW - HALF - 2 && map.def.edges.east) edgeDir = 'east';
+          else if (player.y < HALF + 2 && map.def.edges.north) edgeDir = 'north';
+          else if (player.y > map.pxH - HALF - 2 && map.def.edges.south) edgeDir = 'south';
+          if (edgeDir) {
+            if (omakeUnlocked()) {
+              var toKey = map.def.edges[edgeDir];
+              var tw2 = MAP_DEFS[toKey].rows[0].length * TILE, th2 = MAP_DEFS[toKey].rows.length * TILE;
+              var sx2 = player.x, sy2 = player.y;
+              if (edgeDir === 'west') sx2 = tw2 - TILE * 0.8;
+              if (edgeDir === 'east') sx2 = TILE * 0.8;
+              if (edgeDir === 'north') sy2 = th2 - TILE * 0.8;
+              if (edgeDir === 'south') sy2 = TILE * 0.8;
+              sx2 = Math.max(TILE * 0.6, Math.min(tw2 - TILE * 0.6, sx2));
+              sy2 = Math.max(TILE * 0.6, Math.min(th2 - TILE * 0.6, sy2));
+              setScene(makeField(toKey, { x: sx2, y: sy2 }, null));
+              return;
+            } else if (edgeHintT <= 0) {
+              edgeHintT = 4;
+              Dialog.start(DIALOGUE.omake_locked);
+            }
+          }
+        }
         if ((dx !== 0 || dy !== 0) && tutorialDone && map.def.encounter && encCooldown <= 0) {
           stepAcc += sp;
           if (stepAcc > 40) {
@@ -1667,8 +2077,8 @@
             }
           }
         }
-        // エピローグ: 見回り中、舞う踊り子に近づくとラストバトル
-        if (mapKey === 'zoneA' && chapter === 'main2' && stageP3 === 8 && !proTriggered) {
+        // エピローグ: 見回り中、舞う踊り子に「話しかける」とラストバトル（誤発動防止のため決定キー式）
+        if (mapKey === 'zoneA' && chapter === 'main2' && stageP3 === 8 && !proTriggered && Input.pressed('confirm')) {
           var dz = findActor('dancer2');
           if (dz) {
             var zdx = player.x - dz.x, zdy = player.y - dz.y;
@@ -1785,7 +2195,10 @@
   }
   function makeBattle(enemy, allies, gated, onWin, onLose) {
     const player = allies[0]; // オダ（forcelose/spar/みやぶる はオダ基準）
-    function commandsFor(a) { return a.isOda ? ['たたかう', 'みやぶる', 'にげる'] : ['たたかう', 'にげる']; }
+    function commandsFor(a) {
+      if (!a.isOda) return ['たたかう', 'にげる'];
+      return bagCount() > 0 ? ['たたかう', 'みやぶる', 'どうぐ', 'にげる'] : ['たたかう', 'みやぶる', 'にげる'];
+    }
     let turnIdx = 0;
     let commands = commandsFor(player);
     let cursor = 0;
@@ -1838,8 +2251,10 @@
     function winSequence() {
       if (gated) { tutorialDone = true; storyStage = 1; }
       const reward = rnd(5, 8);
+      const goldGain = rnd(4, 9);
       Hero.exp += reward;
-      const seq = [enemy.winMsg, '経験値を ' + reward + ' 手に入れた！'];
+      gold += goldGain;
+      const seq = [enemy.winMsg, '経験値を ' + reward + '、' + goldGain + 'りょうを 手に入れた！'];
       while (Hero.exp >= expToNext(Hero.lv)) {
         Hero.exp -= expToNext(Hero.lv);
         const before = miyaLvFromLv(Hero.lv);
@@ -1913,6 +2328,18 @@
             const d = 9; hitEnemy(d, false); showMsg('オダは 心眼を 開いた！【みやぶる・極】\n完全に 見切った！ ' + d + 'のダメージ！', nextTurn);
           }
         }
+      } else if (cmd === 'どうぐ') {
+        // 回復量が大きく減っているなら長久手茶を優先、そうでなければおにぎり
+        var useKey = null;
+        var deficit = actor.maxhp - actor.hp;
+        if (bag.cha > 0 && (deficit >= 25 || bag.onigiri <= 0)) useKey = 'cha';
+        else if (bag.onigiri > 0) useKey = 'onigiri';
+        else if (bag.cha > 0) useKey = 'cha';
+        if (!useKey) { showMsg('どうぐを 何も 持っていない！', openMenu); return; }
+        bag[useKey]--;
+        var healed = Math.min(GOODS[useKey].heal, deficit);
+        actor.hp += healed;
+        showMsg('オダは ' + GOODS[useKey].name + 'を つかった！\nHPが ' + healed + ' 回復した！', nextTurn);
       } else {
         showMsg(enemy.fleeMsg || (enemy.spar ? 'いけ「逃げるな、オダ！ これも 修行だ！」' : 'みち「逃げるな、お前！ ここで覚えるんだよ！」'), nextTurn);
       }
@@ -2771,6 +3198,8 @@
         '武器　　' + ITEMS[Hero.weapon].name,
         '防具　　' + ITEMS[Hero.armor].name,
         '難易度　　' + DIFF[difficulty].label,
+        '所持金　　' + gold + ' りょう',
+        'どうぐ　　おにぎり×' + bag.onigiri + '　長久手茶×' + bag.cha,
       ];
       let y = cy + 32;
       for (let i = 0; i < lines.length; i++) { c.fillText(lines[i], cx + 22, y); y += 32; }
@@ -2825,6 +3254,61 @@
     const dl = wrapText(c, got0 ? cur0.desc : '（まだ 発見していない）', dw - 24);
     let dy = cy + 70;
     for (let i = 0; i < dl.length; i++) { c.fillText(dl[i], dx + 12, dy); dy += 22; }
+  }
+
+  // ===================== ショップ（イオンモール長久手） =====================
+  function makeShop(onReturn) {
+    const keys = Object.keys(GOODS);
+    let cur = 0, msg = '', msgT = 0;
+    const n = keys.length + 1; // 末尾「みせを でる」
+    return {
+      enter: function () {},
+      update: function (dt) {
+        if (msgT > 0) msgT -= dt;
+        if (Input.pressed('cancel')) { onReturn(); return; }
+        if (Input.pressed('up')) cur = (cur + n - 1) % n;
+        if (Input.pressed('down')) cur = (cur + 1) % n;
+        if (Input.pressed('confirm')) {
+          if (cur === keys.length) { onReturn(); return; }
+          const g = GOODS[keys[cur]];
+          if (gold >= g.price) { gold -= g.price; bag[keys[cur]]++; saveGame(); msg = g.name + 'を 買った！'; msgT = 1.4; }
+          else { msg = 'お金が 足りない…！'; msgT = 1.4; }
+        }
+      },
+      render: function (c) {
+        var g2 = c.createLinearGradient(0, 0, 0, H);
+        g2.addColorStop(0, '#f4f0f5'); g2.addColorStop(1, '#e5dce8');
+        c.fillStyle = g2; c.fillRect(0, 0, W, H);
+        c.fillStyle = '#d9539a'; c.fillRect(0, 0, W, 56);
+        c.fillStyle = '#ffffff'; c.font = 'bold 24px "Hiragino Sans",sans-serif'; c.textAlign = 'center';
+        c.fillText('イオンモール長久手', W / 2, 37);
+        c.fillStyle = '#5a4a55'; c.font = '13px "Hiragino Sans",sans-serif';
+        c.fillText('冒険のおとも、そろってます', W / 2, 78);
+        c.fillStyle = '#3a2a35'; c.font = 'bold 15px "Hiragino Sans",sans-serif';
+        c.fillText('所持金　' + gold + ' りょう', W / 2, 104);
+        let y = 136;
+        for (let i = 0; i < keys.length; i++) {
+          const gd = GOODS[keys[i]], sel = i === cur;
+          c.fillStyle = sel ? 'rgba(217,83,154,0.15)' : 'rgba(255,255,255,0.75)';
+          roundRect(c, 48, y, W - 96, 56, 10); c.fill();
+          if (sel) { c.strokeStyle = '#d9539a'; c.lineWidth = 2; roundRect(c, 48, y, W - 96, 56, 10); c.stroke(); c.lineWidth = 1; }
+          c.textAlign = 'left';
+          c.fillStyle = sel ? '#b03578' : '#3a2a35'; c.font = 'bold 17px "Hiragino Sans",sans-serif';
+          c.fillText((sel ? '▶ ' : '　 ') + gd.name + '　' + gd.price + 'りょう', 62, y + 24);
+          c.fillStyle = '#7a6a75'; c.font = '12px "Hiragino Sans",sans-serif';
+          c.fillText(gd.desc + '（所持 ' + bag[keys[i]] + '）', 78, y + 44);
+          c.textAlign = 'center';
+          y += 66;
+        }
+        const selE = cur === keys.length;
+        c.fillStyle = selE ? '#b03578' : '#5a4a55'; c.font = (selE ? 'bold ' : '') + '17px "Hiragino Sans",sans-serif';
+        c.fillText((selE ? '▶ ' : '') + 'みせを でる', W / 2, y + 24);
+        if (msgT > 0) { c.fillStyle = 'rgba(176,53,120,' + Math.min(1, msgT) + ')'; c.font = 'bold 16px "Hiragino Sans",sans-serif'; c.fillText(msg, W / 2, H - 46); }
+        c.fillStyle = '#8a7a85'; c.font = '12px "Hiragino Sans",sans-serif';
+        c.fillText('↑ ↓ 選択　　Z 決定　　X / B もどる', W / 2, H - 16);
+        c.textAlign = 'left';
+      },
+    };
   }
 
   // ===================== 茶室（色金山歴史公園・抹茶体験ミニゲーム） =====================
@@ -2966,6 +3450,10 @@
   // 長久手の実在する史跡をめぐり、小エピソードで学び、歴史クイズに答え、もののけと戦う。
   // 勝つと史跡図鑑が解放される。シティプロモーション＆学習の中心機能。
   const SITES = DIALOGUE.sites;
+  function siteById(id) {
+    for (var i = 0; i < SITES.length; i++) if (SITES[i].id === id) return SITES[i];
+    return null;
+  }
 
   function makeSiteTour() {
     let cur = 0;
@@ -3046,31 +3534,41 @@
     c.textAlign = 'left';
   }
 
-  function makeSiteVisit(site) {
-    let phase = 'episode'; // episode → quiz → 踏破
+  function makeSiteVisit(site, onReturn) {
+    // onReturn 省略時は史跡めぐり一覧へ（タイトルモード互換）
+    const back = onReturn || function () { startTransition(function () { setScene(makeSiteTour()); }); };
+    let phase = 'episode'; // episode → quiz → 戦闘 → 踏破
     let qcur = 0, answered = false, correct = false;
     return {
       enter: function () { Dialog.start(site.episode, function () { phase = 'quiz'; }); },
       update: function (dt) {
-        if (phase === 'episode') { if (Dialog.active) Dialog.update(dt); return; }
+        if (Dialog.active) { Dialog.update(dt); return; }
+        if (phase === 'episode') return;
         // quiz
         const ch = site.quiz.choices;
         if (!answered) {
-          if (Input.pressed('cancel')) { setScene(makeSiteTour()); return; }
+          if (Input.pressed('cancel')) { back(); return; }
           if (Input.pressed('up')) qcur = (qcur + ch.length - 1) % ch.length;
           if (Input.pressed('down')) qcur = (qcur + 1) % ch.length;
-          if (Input.pressed('confirm')) { answered = true; correct = (qcur === site.quiz.answer); }
+          if (Input.pressed('confirm')) { answered = true; correct = (qcur === site.quiz.answer); if (correct) gold += 5; }
         } else {
           if (Input.pressed('confirm')) {
-            unlockZukan(site.id); tourCleared.add(site.id); saveGame();
-            startTransition(function () { setScene(makeSiteTour()); });
+            // 学び → クイズ → もののけ戦。勝つと踏破
+            Dialog.start(DIALOGUE.tour_battle_intro, function () {
+              startBattle({
+                gated: false,
+                enemy: { name: site.enemy.name, hp: site.enemy.hp, kind: 'enemy', atkLabel: site.enemy.atkLabel, winMsg: site.enemy.winMsg },
+                onWin: function () { unlockZukan(site.id); tourCleared.add(site.id); saveGame(); back(); },
+                onLose: function () { back(); },
+              });
+            });
           }
         }
       },
       render: function (c) {
         drawSiteBg(c, site);
         if (phase === 'episode') { if (Dialog.active) Dialog.render(c); }
-        else drawQuiz(c, site, qcur, answered, correct);
+        else { drawQuiz(c, site, qcur, answered, correct); if (Dialog.active) Dialog.render(c); }
       },
     };
   }
