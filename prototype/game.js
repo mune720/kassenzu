@@ -1128,6 +1128,7 @@
     { id: 'shonyu', name: '勝入塚', desc: '池田恒興（勝入斎）の墓と伝わる塚。今も人々が花を手向ける。' },
     { id: 'shokuro', name: '庄九郎塚', desc: '池田元助（庄九郎）——恒興の長男の墓と伝わる塚。親子でこの地に眠る。' },
     { id: 'irogane', name: '色金山', desc: '徳川家康が軍議を開いたと伝わる標高約198mの山。腰かけたという「床机石」が残る。' },
+    { id: 'chashitsu', name: '色金山の茶室', desc: '色金山歴史公園のふもとに建つ茶室。日本庭園を眺めながら、自分で抹茶を点てる体験ができる（500円・季節の和菓子付き）。' },
     { id: 'mihata', name: '御旗山', desc: '家康が金扇の馬印（大将の目印）を立て、全軍を鼓舞したと伝わる山。' },
     { id: 'chinoike', name: '血の池公園', desc: '戦の後、武士が槍や刀の血を洗い、水が赤く染まったと伝わる池の跡。' },
     { id: 'musashi', name: '武蔵塚', desc: '「鬼武蔵」と恐れられた猛将・森長可が討死した地に建つ塚。剣豪の宮本武蔵とは別人。' },
@@ -1177,6 +1178,7 @@
   let ch2step = 0;
   let ch3rusu = false;         // 館長不在を確認したか
   let zoneAMood = 'dusk';      // dusk → weird（踊り子の舞で世界が変わった後）
+  let teaBest = '';            // 抹茶体験のベストランク（'' / 'C' / 'B' / 'A'）
 
   // ===================== Save / Load (localStorage) =====================
   // v2: difficulty を追加。v1 セーブは初回読み込み時に v2 へ変換する（difficulty='easy'）。
@@ -1188,7 +1190,7 @@
       localStorage.setItem(SAVE_KEY, JSON.stringify({
         v: 2, hero: Hero, difficulty: difficulty,
         tutorialDone: tutorialDone, storyStage: storyStage,
-        chapter: chapter, ch1Seen: ch1Seen, ch2step: ch2step, ch3rusu: ch3rusu, zoneAMood: zoneAMood,
+        chapter: chapter, ch1Seen: ch1Seen, ch2step: ch2step, ch3rusu: ch3rusu, zoneAMood: zoneAMood, teaBest: teaBest,
         zukan: Array.from(zukanSet), meikan: Array.from(meikanSet),
         tour: Array.from(tourCleared), tourReward: tourReward,
       }));
@@ -1216,6 +1218,7 @@
       ch2step = d.ch2step || 0;
       ch3rusu = !!d.ch3rusu;
       zoneAMood = d.zoneAMood || (chapter === 'pro' ? 'dusk' : 'weird');
+      teaBest = d.teaBest || '';
       zukanSet.clear(); (d.zukan || []).forEach(function (x) { zukanSet.add(x); });
       meikanSet.clear(); (d.meikan || []).forEach(function (x) { meikanSet.add(x); });
       tourCleared.clear(); (d.tour || []).forEach(function (x) { tourCleared.add(x); });
@@ -2466,6 +2469,141 @@
     for (let i = 0; i < dl.length; i++) { c.fillText(dl[i], dx + 12, dy); dy += 22; }
   }
 
+  // ===================== 茶室（色金山歴史公園・抹茶体験ミニゲーム） =====================
+  // ← → を交互に押して茶筅をシャカシャカ。ちょうどいいリズムを保つと泡ゲージが上がる。
+  // 速すぎるとお湯がこぼれ、止まると泡が消えていく。時間内にきめ細かい泡を目指す。
+  function makeTeaRoom(onReturn) {
+    const hard = difficulty === 'hard';
+    const TIME = hard ? 20 : 25;                 // 制限時間（秒）
+    const BAND_MIN = 0.09;                        // これより速い連打は「こぼれる」
+    const BAND_MAX = hard ? 0.30 : 0.48;          // これより遅いとボーナスなし
+    let phase = 'intro';                          // intro → play → result
+    let foam = 0, timeLeft = TIME, lastDir = null, lastPress = -1, splashT = 0, msgT = 0, msg = '';
+    let rank = 'C';
+    let bubbles = [];                             // 泡の見た目（{a: 角度, r: 半径, s: 大きさ}）
+    function addBubbles(n) {
+      for (var i = 0; i < n; i++) {
+        if (bubbles.length > 220) return;
+        bubbles.push({ a: Math.random() * Math.PI * 2, r: Math.sqrt(Math.random()) * 78, s: 1.2 + Math.random() * 2.4 });
+      }
+    }
+    function pressWhisk(dir) {
+      if (lastDir === dir) return;                // 交互でないと数えない
+      lastDir = dir;
+      var now = timeLeft;
+      var interval = (lastPress < 0) ? 999 : (lastPress - now);
+      lastPress = now;
+      if (interval < BAND_MIN) {
+        foam = Math.max(0, foam - 3); splashT = 0.5;
+        msg = 'はやすぎ！ お湯が こぼれた！'; msgT = 1.0;
+        for (var s = 0; s < 5; s++) emitP(W / 2 + (Math.random() - 0.5) * 90, 265 + (Math.random() - 0.5) * 40, (Math.random() - 0.5) * 120, -60 - Math.random() * 60, 0.7, 'rgba(190,230,170,0.9)', 2.5, 220);
+        if (bubbles.length > 8) bubbles.splice(0, 6);
+      } else if (interval <= BAND_MAX) {
+        foam = Math.min(100, foam + 2.4);          // ちょうどいいリズム
+        addBubbles(4);
+      } else {
+        foam = Math.min(100, foam + 0.9);          // 遅め: 少しだけ
+        addBubbles(1);
+      }
+    }
+    return {
+      enter: function () {
+        Dialog.start(DIALOGUE.tea_intro, function () { phase = 'play'; lastPress = -1; });
+      },
+      update: function (dt) {
+        updateParts(dt);
+        if (splashT > 0) splashT -= dt;
+        if (msgT > 0) msgT -= dt;
+        if (phase === 'intro') { if (Dialog.active) Dialog.update(dt); return; }
+        if (phase === 'result') { if (Dialog.active) Dialog.update(dt); return; }
+        // play
+        timeLeft -= dt;
+        // 放置すると泡が消えていく
+        if (lastPress - timeLeft > 0.9) { foam = Math.max(0, foam - 5 * dt); if (bubbles.length > 0 && tick % 20 === 0) bubbles.pop(); }
+        if (Input.pressed('left')) pressWhisk('L');
+        if (Input.pressed('right')) pressWhisk('R');
+        if (timeLeft <= 0) {
+          phase = 'result';
+          rank = foam >= 75 ? 'A' : (foam >= 45 ? 'B' : 'C');
+          if ('CBA'.indexOf(rank) > 'CBA'.indexOf(teaBest)) teaBest = rank;
+          unlockZukan('chashitsu'); saveGame();
+          Dialog.start(rank === 'A' ? DIALOGUE.tea_rank_a : (rank === 'B' ? DIALOGUE.tea_rank_b : DIALOGUE.tea_rank_c), function () { onReturn(rank); });
+        }
+      },
+      render: function (c) {
+        // 茶室の背景（仮素材: 板の間＋窓の外の紅葉庭園）
+        var g = c.createLinearGradient(0, 0, 0, H);
+        g.addColorStop(0, '#4a3220'); g.addColorStop(0.35, '#5d4128'); g.addColorStop(1, '#3a2818');
+        c.fillStyle = g; c.fillRect(0, 0, W, H);
+        // 窓（紅葉の庭園）
+        c.fillStyle = '#2a1c10'; c.fillRect(28, 22, W - 56, 96);
+        var wg = c.createLinearGradient(0, 26, 0, 112);
+        wg.addColorStop(0, '#cfe3ea'); wg.addColorStop(1, '#e8d5c0');
+        c.fillStyle = wg; c.fillRect(34, 28, W - 68, 84);
+        for (var mi = 0; mi < 26; mi++) {
+          var mx = 40 + (mi * 137 + 31) % (W - 84), my = 34 + (mi * 71 + 13) % 60;
+          c.fillStyle = ['#c94f3d', '#e0703a', '#d98f2b', '#b23a2f'][mi % 4];
+          c.beginPath(); c.arc(mx, my, 7 + (mi * 5) % 6, 0, Math.PI * 2); c.fill();
+        }
+        c.fillStyle = '#2a1c10';
+        for (var wi2 = 0; wi2 < 4; wi2++) c.fillRect(34 + (wi2 + 1) * (W - 68) / 5, 28, 5, 84);
+        c.fillRect(34, 66, W - 68, 4);
+        // 赤い毛氈（もうせん）の台
+        c.fillStyle = '#8e2f3c'; roundRect(c, 60, 180, W - 120, 190, 8); c.fill();
+        c.fillStyle = 'rgba(0,0,0,0.15)'; roundRect(c, 60, 340, W - 120, 30, 8); c.fill();
+        // 茶碗（俯瞰）
+        var bx = W / 2, by = 265;
+        c.fillStyle = 'rgba(0,0,0,0.3)'; c.beginPath(); c.ellipse(bx + 4, by + 8, 96, 88, 0, 0, Math.PI * 2); c.fill();
+        c.fillStyle = '#23272e'; c.beginPath(); c.arc(bx, by, 95, 0, Math.PI * 2); c.fill();
+        c.fillStyle = '#31363f'; c.beginPath(); c.arc(bx, by, 86, 0, Math.PI * 2); c.fill();
+        // 抹茶の液面（泡が増えるほど明るく）
+        var foamRatio = foam / 100;
+        var teaCol = 'rgb(' + (52 + foamRatio * 60 | 0) + ',' + (110 + foamRatio * 55 | 0) + ',' + (44 + foamRatio * 45 | 0) + ')';
+        c.fillStyle = teaCol; c.beginPath(); c.arc(bx, by, 80, 0, Math.PI * 2); c.fill();
+        // 泡
+        for (var bi2 = 0; bi2 < bubbles.length; bi2++) {
+          var bb = bubbles[bi2];
+          var bbx = bx + Math.cos(bb.a) * bb.r, bby = by + Math.sin(bb.a) * bb.r * 0.92;
+          c.fillStyle = 'rgba(214,240,196,0.5)';
+          c.beginPath(); c.arc(bbx, bby, bb.s, 0, Math.PI * 2); c.fill();
+        }
+        // 茶筅（左右に振れる）
+        if (phase === 'play') {
+          var wx = bx + (lastDir === 'L' ? -26 : lastDir === 'R' ? 26 : 0);
+          c.strokeStyle = '#c9a86a'; c.lineWidth = 5;
+          c.beginPath(); c.moveTo(wx, by - 130); c.lineTo(wx, by - 40); c.stroke();
+          c.lineWidth = 1.6; c.strokeStyle = '#e5cf9a';
+          for (var ti2 = -4; ti2 <= 4; ti2++) {
+            c.beginPath(); c.moveTo(wx, by - 44); c.quadraticCurveTo(wx + ti2 * 7, by - 20, wx + ti2 * 9, by + 4); c.stroke();
+          }
+          c.lineWidth = 1;
+        }
+        drawParts(c);
+        c.textAlign = 'center';
+        if (phase === 'play') {
+          c.fillStyle = '#ffd43b'; c.font = 'bold 20px "Hiragino Mincho ProN",serif';
+          c.fillText('← → 交互に シャカシャカ！', W / 2, 152);
+          c.fillStyle = '#e8dcc8'; c.font = '12px "Hiragino Sans",sans-serif';
+          c.fillText('ちょうどいい リズムで。はやすぎると こぼれるよ', W / 2, 172);
+          // 泡ゲージ
+          var gx2 = 76, gw2 = W - 152, gy2 = 396;
+          c.fillStyle = 'rgba(0,0,0,0.5)'; roundRect(c, gx2, gy2, gw2, 20, 7); c.fill();
+          var fg2 = c.createLinearGradient(gx2, 0, gx2 + gw2, 0);
+          fg2.addColorStop(0, '#7fb95c'); fg2.addColorStop(1, '#c3e88d');
+          c.fillStyle = fg2; roundRect(c, gx2, gy2 + 2, Math.max(4, gw2 * foamRatio), 16, 6); c.fill();
+          c.strokeStyle = 'rgba(255,255,255,0.4)'; roundRect(c, gx2, gy2, gw2, 20, 7); c.stroke();
+          c.fillStyle = '#f5f0e0'; c.font = 'bold 13px "Hiragino Sans",sans-serif';
+          c.fillText('泡 ' + Math.round(foam) + '　　のこり ' + Math.max(0, Math.ceil(timeLeft)) + '秒', W / 2, gy2 - 8);
+          if (msgT > 0) { c.fillStyle = 'rgba(255,150,140,' + Math.min(1, msgT * 2) + ')'; c.font = 'bold 16px "Hiragino Sans",sans-serif'; c.fillText(msg, W / 2, 205); }
+        }
+        if (splashT > 0) { c.fillStyle = 'rgba(190,230,170,' + splashT * 0.3 + ')'; c.fillRect(0, 0, W, H); }
+        drawVignette(c);
+        c.textAlign = 'left';
+        if (Dialog.active) Dialog.render(c);
+      },
+    };
+  }
+
   // ===================== 史跡めぐり（サイドクエスト：学び→クイズ→戦闘） =====================
   // 長久手の実在する史跡をめぐり、小エピソードで学び、歴史クイズに答え、もののけと戦う。
   // 勝つと史跡図鑑が解放される。シティプロモーション＆学習の中心機能。
@@ -2484,13 +2622,15 @@
       },
       update: function (dt) {
         if (Dialog.active) { Dialog.update(dt); return; }
-        const n = SITES.length + 1; // 末尾に「もどる」
+        const teaAvail = tourCleared.has('irogane'); // 色金山を踏破すると茶室が出現
+        const n = SITES.length + (teaAvail ? 1 : 0) + 1; // 末尾に「もどる」
         if (Input.pressed('up')) cur = (cur + n - 1) % n;
         if (Input.pressed('down')) cur = (cur + 1) % n;
         if (Input.pressed('cancel')) { setScene(makeTitle()); return; }
         if (Input.pressed('confirm')) {
-          if (cur === SITES.length) { setScene(makeTitle()); return; }
-          setScene(makeSiteVisit(SITES[cur]));
+          if (cur < SITES.length) { setScene(makeSiteVisit(SITES[cur])); return; }
+          if (teaAvail && cur === SITES.length) { setScene(makeTeaRoom(function () { setScene(makeSiteTour()); })); return; }
+          setScene(makeTitle());
         }
       },
       render: function (c) { drawSiteTour(c, cur); if (Dialog.active) Dialog.render(c); },
@@ -2508,23 +2648,39 @@
     c.fillStyle = '#adb5bd'; c.font = '13px "Hiragino Sans",sans-serif';
     c.fillText('踏破 ' + tourCleared.size + ' / ' + SITES.length, W / 2, 104);
     c.textAlign = 'left';
-    let y = 132;
+    const teaAvail = tourCleared.has('irogane');
+    const rowH = teaAvail ? 41 : 46, rowBh = teaAvail ? 35 : 38;
+    let y = teaAvail ? 122 : 132;
     for (let i = 0; i < SITES.length; i++) {
       const s = SITES[i], done = tourCleared.has(s.id), sel = i === cur;
-      const bx = 40, bw = W - 80, bh = 38;
+      const bx = 40, bw = W - 80, bh = rowBh;
       c.fillStyle = sel ? 'rgba(255,212,59,0.16)' : 'rgba(255,255,255,0.05)';
       roundRect(c, bx, y, bw, bh, 8); c.fill();
       if (sel) { c.strokeStyle = '#ffd43b'; c.lineWidth = 2; roundRect(c, bx, y, bw, bh, 8); c.stroke(); c.lineWidth = 1; }
       c.fillStyle = done ? '#37b24d' : (sel ? '#ffd43b' : '#cdd9ff');
       c.font = 'bold 18px "Hiragino Sans",sans-serif';
-      c.fillText((sel ? '▶ ' : '　 ') + s.name, bx + 14, y + 25);
+      c.fillText((sel ? '▶ ' : '　 ') + s.name, bx + 14, y + 24);
       c.fillStyle = '#9aa7c0'; c.font = '12px "Hiragino Sans",sans-serif';
-      c.fillText(s.sub, bx + bw - 120, y + 16);
+      c.fillText(s.sub, bx + bw - 120, y + 15);
       c.fillStyle = done ? '#37b24d' : '#6b7894'; c.font = '13px "Hiragino Sans",sans-serif';
-      c.fillText(done ? '踏破ずみ ✓' : '未踏破', bx + bw - 120, y + 31);
-      y += 46;
+      c.fillText(done ? '踏破ずみ ✓' : '未踏破', bx + bw - 120, y + 30);
+      y += rowH;
     }
-    const sel2 = cur === SITES.length;
+    if (teaAvail) {
+      const selT = cur === SITES.length;
+      const bx2 = 40, bw2 = W - 80;
+      c.fillStyle = selT ? 'rgba(127,185,92,0.22)' : 'rgba(127,185,92,0.08)';
+      roundRect(c, bx2, y, bw2, rowBh, 8); c.fill();
+      if (selT) { c.strokeStyle = '#c3e88d'; c.lineWidth = 2; roundRect(c, bx2, y, bw2, rowBh, 8); c.stroke(); c.lineWidth = 1; }
+      c.fillStyle = selT ? '#c3e88d' : '#8fbf74'; c.font = 'bold 18px "Hiragino Sans",sans-serif';
+      c.fillText((selT ? '▶ ' : '　 ') + '色金山の茶室（抹茶体験）', bx2 + 14, y + 24);
+      c.fillStyle = '#9aa7c0'; c.font = '12px "Hiragino Sans",sans-serif';
+      c.fillText('ちゃしつ', bx2 + bw2 - 120, y + 15);
+      c.fillStyle = teaBest ? '#c3e88d' : '#6b7894'; c.font = '13px "Hiragino Sans",sans-serif';
+      c.fillText(teaBest ? 'ベスト ' + teaBest : 'あたらしい！', bx2 + bw2 - 120, y + 30);
+      y += rowH;
+    }
+    const sel2 = cur === SITES.length + (teaAvail ? 1 : 0);
     c.fillStyle = sel2 ? '#ffd43b' : '#cdd9ff'; c.font = (sel2 ? 'bold ' : '') + '17px "Hiragino Sans",sans-serif';
     c.fillText((sel2 ? '▶ ' : '　 ') + 'タイトルへ もどる', 54, y + 22);
     c.fillStyle = '#868e96'; c.font = '12px "Hiragino Sans",sans-serif'; c.textAlign = 'center';
