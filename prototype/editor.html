@@ -83,26 +83,36 @@ main{max-width:900px;margin:0 auto;padding:20px}
   if (saved) { try { data = JSON.parse(saved); } catch (e) {} }
 
   var SECTIONS = [
-    { title: '序章（記念館）', keys: ['museum_intro', 'byobu', 'katchu', 'katana', 'save_ok', 'save_fail', 'door_trigger', 'door_ike_comedy'] },
-    { title: '一章（戦国フィールド）', keys: ['field_intro', 'ike_idle', 'mound', 'ch1_michi'] },
-    { title: '二章〜五章', keys: ['ch2_battle', 'ch3_deaths', 'ch4_confrontation', 'ch5_tenka', 'ch6_farewell'] },
+    { title: 'プロローグ（芝生）', keys: ['prologue_open', 'prologue_meet'] },
+    { title: '一章（見回り）', keys: ['ch1_open', 'ch1_shokuro', 'ch1_rock', 'ch1_todomari', 'byobu', 'katchu', 'katana', 'save_ok', 'save_fail'] },
+    { title: '二章（いけ出会い）', keys: ['ch2_appear', 'ch2_kakugo', 'ch2_mai', 'ch2_katana', 'ch2_hayakuchi_intro', 'ch2_hayakuchi_clear', 'ch2_megane', 'ch2_ion', 'ch2_run1', 'ch2_mate', 'ch2_spar_intro', 'ch2_after', 'ch2_ike_wait'] },
+    { title: '三章（みち再会）', keys: ['ch3_rusu', 'ch3_michi', 'ch3_terminator', 'ch3_bridge'] },
+    { title: '旧ダイジェスト版（P3で置換予定）', keys: ['museum_intro', 'door_trigger', 'door_ike_comedy', 'field_intro', 'ike_idle', 'mound', 'ch1_michi', 'ch2_battle', 'ch3_deaths', 'ch4_confrontation', 'ch5_tenka', 'ch6_farewell'] },
     { title: 'エピローグ', keys: ['epilogue'] },
     { title: 'エンディング', keys: ['ending'] },
     { title: '戦闘メッセージ', keys: ['battle'] },
-    { title: '史跡めぐり', keys: ['tour_complete', 'sites'] },
+    { title: '史跡めぐり・茶室', keys: ['tour_complete', 'sites', 'tea_intro', 'tea_rank_c', 'tea_rank_b', 'tea_rank_a'] },
   ];
 
   var SCENE_LABELS = {
-    museum_intro: '序章：オープニング',
+    prologue_open: 'プロローグ：踊り子の舞', prologue_meet: 'プロローグ：駆け寄り〜変質者スピーチ',
+    ch1_open: '一章：資料返却〜ガイド練習', ch1_shokuro: '庄九郎塚', ch1_rock: '岩', ch1_todomari: '戸締まり〜茂みが揺れる',
+    ch2_appear: 'いけ登場', ch2_kakugo: '覚悟ー！〜見えない刀', ch2_mai: '舞真似〜資料釘付け',
+    ch2_katana: '徳川！？〜切腹未遂〜守兼定', ch2_hayakuchi_intro: '早口言葉（前）', ch2_hayakuchi_clear: '早口言葉（後）',
+    ch2_megane: 'きねんしゃしん＝首〜めがね', ch2_ion: '使い〜イオン〜種子島', ch2_run1: '三段の走り出し',
+    ch2_mate: '待てー！〜使い宣言', ch2_spar_intro: '腕試しの前', ch2_after: '110番〜離れない', ch2_ike_wait: 'いけ待機中の会話',
+    ch3_rusu: '館長不在', ch3_michi: 'みち再会（フル）', ch3_terminator: 'ターミネーターオダ', ch3_bridge: '橋渡しナレーション',
+    museum_intro: '旧：序章オープニング',
     byobu: '屏風を調べる', katchu: '甲冑を調べる', katana: '刀を調べる',
     save_ok: 'セーブ成功', save_fail: 'セーブ失敗',
-    door_trigger: '戸締まり', door_ike_comedy: 'いけ登場〜腕試し',
-    field_intro: 'フィールド到着', ike_idle: 'いけに話す', mound: '勝入塚',
-    ch1_michi: 'みち登場', ch2_battle: '二章：戦の話', ch3_deaths: '三章：討死',
-    ch4_confrontation: '対峙', ch5_tenka: '天下論', ch6_farewell: '別れ',
+    door_trigger: '旧：戸締まり', door_ike_comedy: '旧：いけ登場〜腕試し',
+    field_intro: '旧：フィールド到着', ike_idle: '旧：いけに話す', mound: '勝入塚',
+    ch1_michi: '旧：みち登場', ch2_battle: '旧：戦の話', ch3_deaths: '旧：討死',
+    ch4_confrontation: '旧：対峙', ch5_tenka: '旧：天下論', ch6_farewell: '旧：別れ',
     epilogue: 'エピローグ', ending: 'エンディング画面',
     tour_complete: '史跡めぐり全達成',
     battle: '戦闘メッセージ', sites: '史跡データ',
+    tea_intro: '茶室：はじまり', tea_rank_c: '茶室：ふつう', tea_rank_b: '茶室：きれい', tea_rank_a: '茶室：クリーミー',
   };
 
   function mkEl(tag, cls) {
@@ -134,7 +144,7 @@ main{max-width:900px;margin:0 auto;padding:20px}
     });
   }
 
-  var SPEAKERS = ['', 'オダ', 'いけ', 'みち', '館長'];
+  var SPEAKERS = ['', 'オダ', 'いけ', 'みち', '館長', '踊り子'];
 
   function makeSpeakerSelect(line, arr, key, container) {
     var sel = document.createElement('select');
