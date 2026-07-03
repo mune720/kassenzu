@@ -152,12 +152,14 @@
     }
     c.restore();
   }
-  function spawnFieldParts(mapKey) {
-    if (mapKey === 'museum') {
-      if (tick % 12 === 0) emitP(rnd(40, W - 40), rnd(20, H - 160), 3 + Math.random() * 4, 6 + Math.random() * 4, 5, 'rgba(255,230,180,0.5)', 1 + Math.random() * 0.5, 0);
+  // パーティクルはワールド座標で保持。発生位置はカメラ可視範囲を基準にする。
+  function spawnFieldParts(tileset, camX, camY) {
+    camX = camX || 0; camY = camY || 0;
+    if (tileset === 'museum') {
+      if (tick % 12 === 0) emitP(camX + rnd(40, W - 40), camY + rnd(20, H - 160), 3 + Math.random() * 4, 6 + Math.random() * 4, 5, 'rgba(255,230,180,0.5)', 1 + Math.random() * 0.5, 0);
     } else {
-      if (tick % 20 === 0) emitP(rnd(20, W - 20), rnd(20, H - 100), (Math.random() - 0.5) * 6, -2 + Math.random() * 2, 6, 'rgba(160,255,120,0.6)', 1.5 + Math.random(), 0);
-      if (tick % 45 === 0) emitP(rnd(0, W), -5, 8 + Math.random() * 12, 15 + Math.random() * 8, 7, 'rgba(255,200,210,0.5)', 2 + Math.random(), 2);
+      if (tick % 20 === 0) emitP(camX + rnd(20, W - 20), camY + rnd(20, H - 100), (Math.random() - 0.5) * 6, -2 + Math.random() * 2, 6, 'rgba(160,255,120,0.6)', 1.5 + Math.random(), 0);
+      if (tick % 45 === 0) emitP(camX + rnd(0, W), camY - 5, 8 + Math.random() * 12, 15 + Math.random() * 8, 7, 'rgba(255,200,210,0.5)', 2 + Math.random(), 2);
     }
   }
   function spawnBattleParts() {
@@ -517,31 +519,53 @@
     'T..............T',
     'TTTTTTTTTTTTTTTT',
   ];
-  const SOLID = {
-    museum: new Set(['#', 'B', 'K', 'S', 'D']),
-    field: new Set(['T', '~', 'M', 'P']),
-    lawn: new Set(['T']),
+  // マップレジストリ。新マップは rows＋この定義を追加するだけで動く。
+  //  kind: outdoor はカメラスクロール対象（画面より大きい場合）、indoor は固定画面
+  //  tileset: drawTile の描画スタイル（museum / outdoor。将来 mall / library 等を追加）
+  //  solid: 通行不可文字、npcs: NPC文字→{kind,id,floor}、acts: アクション文字→ID
+  //  encounter: { rate } でエンカウント有効（null なら無効）
+  const MAP_DEFS = {
+    museum: {
+      rows: MUSEUM, kind: 'indoor', tileset: 'museum', playerFloor: '.',
+      solid: ['#', 'B', 'K', 'S', 'D'],
+      npcs: {},
+      acts: { B: 'byobu', K: 'katchu', S: 'katana', D: 'door', P: 'save' },
+      encounter: null,
+    },
+    field: {
+      rows: FIELD, kind: 'outdoor', tileset: 'outdoor', playerFloor: ',',
+      solid: ['T', '~', 'M', 'P'],
+      npcs: { i: { kind: 'ike', id: 'ike', floor: '.' }, m: { kind: 'michi', id: 'michi', floor: ',' } },
+      acts: { M: 'mound', P: 'save' },
+      encounter: { rate: 0.07 },
+    },
+    lawn: {
+      rows: LAWN, kind: 'outdoor', tileset: 'outdoor', playerFloor: '.',
+      solid: ['T'],
+      npcs: {},
+      acts: {},
+      encounter: null,
+    },
   };
-  function parseMap(rows, key) {
-    const grid = rows.map(function (r) { return r.split(''); });
+  function parseMap(key) {
+    const def = MAP_DEFS[key];
+    const grid = def.rows.map(function (r) { return r.split(''); });
     let spawn = { col: 1, row: 1 };
     const npcs = [];
     const acts = {};
     for (let row = 0; row < grid.length; row++) {
       for (let col = 0; col < grid[row].length; col++) {
         const ch = grid[row][col];
-        if (ch === '@') { spawn = { col: col, row: row }; grid[row][col] = (key === 'field') ? ',' : '.'; }
-        else if (ch === 'i') { npcs.push({ col: col, row: row, kind: 'ike', id: 'ike' }); grid[row][col] = '.'; }
-        else if (ch === 'm') { npcs.push({ col: col, row: row, kind: 'michi', id: 'michi' }); grid[row][col] = ','; }
-        else if (ch === 'B') acts[col + ',' + row] = 'byobu';
-        else if (ch === 'K') acts[col + ',' + row] = 'katchu';
-        else if (ch === 'S') acts[col + ',' + row] = 'katana';
-        else if (ch === 'D') acts[col + ',' + row] = 'door';
-        else if (ch === 'M') acts[col + ',' + row] = 'mound';
-        else if (ch === 'P') acts[col + ',' + row] = 'save';
+        if (ch === '@') { spawn = { col: col, row: row }; grid[row][col] = def.playerFloor; }
+        else if (def.npcs[ch]) { const nd = def.npcs[ch]; npcs.push({ col: col, row: row, kind: nd.kind, id: nd.id }); grid[row][col] = nd.floor; }
+        else if (def.acts[ch]) acts[col + ',' + row] = def.acts[ch];
       }
     }
-    return { key: key, grid: grid, spawn: spawn, npcs: npcs, acts: acts };
+    return {
+      key: key, def: def, grid: grid, spawn: spawn, npcs: npcs, acts: acts,
+      solid: new Set(def.solid), tileset: def.tileset, kind: def.kind,
+      pxW: grid[0].length * TILE, pxH: grid.length * TILE,
+    };
   }
 
   // ===================== Tile rendering =====================
@@ -734,16 +758,20 @@
       }
     }
   }
-  function drawField(c, map, player) {
-    for (let r = 0; r < map.grid.length; r++) {
-      for (let col = 0; col < map.grid[r].length; col++) {
-        drawTile(c, map.grid[r][col], col * TILE, r * TILE, map.key);
+  // ワールドパス: カメラ translate の内側で描くもの（タイル・篝火グロー・アクター）。
+  // タイルは可視範囲のみループする（カメラ対応・スクロール中も tileHash 模様が安定）。
+  function drawFieldWorld(c, map, player, camX, camY) {
+    const r0 = Math.max(0, (camY / TILE) | 0), r1 = Math.min(map.grid.length - 1, ((camY + H) / TILE | 0) + 1);
+    const c0 = Math.max(0, (camX / TILE) | 0), c1 = Math.min(map.grid[0].length - 1, ((camX + W) / TILE | 0) + 1);
+    for (let r = r0; r <= r1; r++) {
+      for (let col = c0; col <= c1; col++) {
+        drawTile(c, map.grid[r][col], col * TILE, r * TILE, map.tileset);
       }
     }
     // Light glow pass
     c.save(); c.globalCompositeOperation = 'lighter';
-    for (let r = 0; r < map.grid.length; r++) {
-      for (let col = 0; col < map.grid[r].length; col++) {
+    for (let r = r0; r <= r1; r++) {
+      for (let col = c0; col <= c1; col++) {
         if (map.grid[r][col] === 'P') {
           var px = col * TILE + TILE / 2, py = r * TILE + 10;
           var fg = c.createRadialGradient(px, py, 0, px, py, TILE * 2.8);
@@ -759,22 +787,29 @@
     actors.push({ x: player.x, y: player.y, kind: player.kind, facing: player.facing, moving: player.moving });
     actors.sort(function (a, b) { return a.y - b.y; });
     actors.forEach(function (a) { drawActor(c, a.x, a.y, a.kind, a.facing, 1, a.moving); });
-    // Atmospheric overlay
-    if (map.key === 'museum') {
-      c.save(); c.globalAlpha = 0.04; c.fillStyle = '#ffc070'; c.fillRect(0, 0, W, H); c.restore();
+  }
+  // ワールドパス後半: ワールド座標の光だまり（カメラ translate の内側）
+  function drawFieldAtmoWorld(c, map) {
+    if (map.tileset === 'museum') {
       drawLightPool(c, 4 * TILE, 1.5 * TILE, 55, 'rgba(255,220,150,1)', 0.07);
       drawLightPool(c, 8 * TILE, 1.5 * TILE, 55, 'rgba(255,220,150,1)', 0.07);
       drawLightPool(c, 12 * TILE, 1.5 * TILE, 55, 'rgba(255,220,150,1)', 0.07);
     } else if (map.key === 'lawn') {
+      drawLightPool(c, 7.5 * TILE, 4 * TILE, 95, 'rgba(180,170,220,1)', 0.06);
+    }
+  }
+  // スクリーンパス: 画面座標のオーバーレイ（カメラ translate の外側）
+  function drawFieldAtmoScreen(c, map) {
+    if (map.tileset === 'museum') {
+      c.save(); c.globalAlpha = 0.04; c.fillStyle = '#ffc070'; c.fillRect(0, 0, W, H); c.restore();
+    } else if (map.key === 'lawn') {
       drawFogBand(c, H - 100, 80, 'rgba(120,130,175,0.06)');
       c.save(); c.globalAlpha = 0.18; c.fillStyle = '#1c2348'; c.fillRect(0, 0, W, H); c.restore();
-      drawLightPool(c, 7.5 * TILE, 4 * TILE, 95, 'rgba(180,170,220,1)', 0.06);
     } else {
       drawSunRays(c, 0.03);
       drawFogBand(c, H - 90, 70, 'rgba(170,195,160,0.04)');
       c.save(); c.globalAlpha = 0.03; c.fillStyle = '#ffd080'; c.fillRect(0, 0, W, H); c.restore();
     }
-    drawParts(c);
   }
 
   // ===================== UI: textbox / HP =====================
@@ -1041,24 +1076,49 @@
   function expToNext(lv) { return 8 + (lv - 1) * 6; }
   function miyaLvFromLv(lv) { return Math.min(3, Math.ceil(lv / 2)); }
 
+  // ===================== 難易度（イージー / ハード） =====================
+  // enemyHp/enemyAtk: 敵のHP・攻撃倍率、encRate: エンカウント率倍率（バランスは P6 で調整）
+  let difficulty = 'easy';
+  const DIFF = {
+    easy: { label: 'イージー', enemyHp: 1.0, enemyAtk: 1.0, encRate: 1.0 },
+    hard: { label: 'ハード',   enemyHp: 1.5, enemyAtk: 1.35, encRate: 1.3 },
+  };
+
+  // ===================== パーティ（仲間） =====================
+  // オダ以外の同行メンバー。加入時に push、離脱時に除去する（P2/P3 で使用）。
+  // 形式: { id, name, kind, hp, maxhp, atkLo, atkHi, aDef }
+  const partyMembers = [];
+
   // ===================== Save / Load (localStorage) =====================
-  const SAVE_KEY = 'kassenzu_save_v1';
+  // v2: difficulty を追加。v1 セーブは初回読み込み時に v2 へ変換する（difficulty='easy'）。
+  // storyStage は現状数値のまま。章ID化する際（P2/P3）はここに変換表を足す。
+  const SAVE_KEY = 'kassenzu_save_v2';
+  const SAVE_KEY_V1 = 'kassenzu_save_v1';
   function saveGame() {
     try {
       localStorage.setItem(SAVE_KEY, JSON.stringify({
-        hero: Hero, tutorialDone: tutorialDone, storyStage: storyStage,
+        v: 2, hero: Hero, difficulty: difficulty,
+        tutorialDone: tutorialDone, storyStage: storyStage,
         zukan: Array.from(zukanSet), meikan: Array.from(meikanSet),
         tour: Array.from(tourCleared), tourReward: tourReward,
       }));
       return true;
     } catch (e) { return false; }
   }
-  function hasSave() { try { return !!localStorage.getItem(SAVE_KEY); } catch (e) { return false; } }
+  function hasSave() {
+    try { return !!(localStorage.getItem(SAVE_KEY) || localStorage.getItem(SAVE_KEY_V1)); }
+    catch (e) { return false; }
+  }
   function loadGame() {
     try {
-      const d = JSON.parse(localStorage.getItem(SAVE_KEY));
-      if (!d) return false;
+      let d = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
+      if (!d) {
+        const d1 = JSON.parse(localStorage.getItem(SAVE_KEY_V1) || 'null');
+        if (!d1) return false;
+        d = d1; d.v = 2; d.difficulty = 'easy'; // v1 → v2 変換
+      }
       if (d.hero) { Hero.lv = d.hero.lv; Hero.exp = d.hero.exp; Hero.maxhp = d.hero.maxhp; Hero.atkBonus = d.hero.atkBonus; Hero.weapon = d.hero.weapon; Hero.armor = d.hero.armor; Hero.items = d.hero.items || []; }
+      difficulty = (d.difficulty === 'hard') ? 'hard' : 'easy';
       tutorialDone = !!d.tutorialDone; storyStage = d.storyStage || 0;
       zukanSet.clear(); (d.zukan || []).forEach(function (x) { zukanSet.add(x); });
       meikanSet.clear(); (d.meikan || []).forEach(function (x) { meikanSet.add(x); });
@@ -1076,11 +1136,20 @@
 
   // ===================== Field scene =====================
   function makeField(mapKey, spawnOverride, introLines) {
-    const def = mapKey === 'museum' ? MUSEUM : (mapKey === 'lawn' ? LAWN : FIELD);
-    const map = parseMap(def, mapKey);
+    const map = parseMap(mapKey);
     let lawnTriggered = false;
+    // spawnOverride はタイル {col,row} と ピクセル {x,y} の両対応（ゾーン間シームレス切替用）
     const sp = spawnOverride || map.spawn;
-    const player = { x: sp.col * TILE + TILE / 2, y: sp.row * TILE + TILE / 2, facing: 'down', kind: 'oda' };
+    const px = (sp.x != null) ? sp.x : sp.col * TILE + TILE / 2;
+    const py = (sp.y != null) ? sp.y : sp.row * TILE + TILE / 2;
+    const player = { x: px, y: py, facing: 'down', kind: 'oda' };
+    // カメラ: プレイヤー中心・マップ端でクランプ。画面より小さいマップでは常に0（固定画面）
+    function camPos() {
+      var cx = 0, cy = 0;
+      if (map.pxW > W) cx = Math.max(0, Math.min(map.pxW - W, player.x - W / 2));
+      if (map.pxH > H) cy = Math.max(0, Math.min(map.pxH - H, player.y - H / 2));
+      return { x: Math.round(cx), y: Math.round(cy) };
+    }
     let intro = introLines;
     const SPEED = 132, HALF = 11;
     let sceneActors = [], anim = null;
@@ -1097,7 +1166,7 @@
       for (let k = 0; k < pts.length; k++) {
         const col = Math.floor(pts[k][0] / TILE), row = Math.floor(pts[k][1] / TILE);
         if (row < 0 || col < 0 || row >= map.grid.length || col >= map.grid[0].length) return false;
-        if (SOLID[mapKey].has(map.grid[row][col])) return false;
+        if (map.solid.has(map.grid[row][col])) return false;
       }
       const pcol = Math.floor(cx / TILE), prow = Math.floor(cy / TILE);
       for (let n = 0; n < map.npcs.length; n++) { if (map.npcs[n].col === pcol && map.npcs[n].row === prow) return false; }
@@ -1186,7 +1255,8 @@
       },
       update: function (dt) {
         updateParts(dt);
-        spawnFieldParts(mapKey);
+        var camU = camPos();
+        spawnFieldParts(map.tileset, camU.x, camU.y);
         if (anim) { anim(dt); return; }
         if (mapKey === 'museum' && Dialog.active && Dialog.lines[Dialog.i] && Dialog.lines[Dialog.i].name === 'オダ') {
           for (var fk = 0; fk < sceneActors.length; fk++) { if (sceneActors[fk].kind === 'odoriko' && !sceneActors[fk].fading) sceneActors[fk].fading = true; }
@@ -1210,13 +1280,14 @@
         const sp = SPEED * dt;
         if (dx !== 0) { const nx = player.x + dx * sp; if (canWalk(nx, player.y)) player.x = nx; }
         if (dy !== 0) { const ny = player.y + dy * sp; if (canWalk(player.x, ny)) player.y = ny; }
-        if ((dx !== 0 || dy !== 0) && tutorialDone && mapKey === 'field' && encCooldown <= 0) {
+        if ((dx !== 0 || dy !== 0) && tutorialDone && map.def.encounter && encCooldown <= 0) {
           stepAcc += sp;
           if (stepAcc > 40) {
             stepAcc = 0;
             const tc = Math.floor(player.x / TILE), tr = Math.floor(player.y / TILE);
             const t = map.grid[tr] && map.grid[tr][tc];
-            if ((t === '.' || t === ',') && Math.random() < 0.07) { encCooldown = 3.5; startTransition(function () { startBattle({ gated: false }); }); return; }
+            const encRate = map.def.encounter.rate * DIFF[difficulty].encRate;
+            if ((t === '.' || t === ',') && Math.random() < encRate) { encCooldown = 3.5; startTransition(function () { startBattle({ gated: false }); }); return; }
           }
         }
         if (mapKey === 'lawn' && !lawnTriggered) {
@@ -1241,7 +1312,9 @@
         if (Input.pressed('cancel')) setScene(makeMenu(activeField));
       },
       render: function (c) {
-        drawField(c, map, player);
+        var cam = camPos();
+        c.save(); c.translate(-cam.x, -cam.y);
+        drawFieldWorld(c, map, player, cam.x, cam.y);
         for (let i = 0; i < sceneActors.length; i++) {
           const a = sceneActors[i];
           if (a.kind === 'odoriko' && ODORIKO_BATTLE_IMG) {
@@ -1259,30 +1332,48 @@
             drawActor(c, a.x, a.y, a.kind, a.facing, 1, a.moving, a.alpha);
           }
         }
+        drawFieldAtmoWorld(c, map);
+        drawParts(c);
+        c.restore();
+        drawFieldAtmoScreen(c, map);
         drawVignette(c); if (Dialog.active) Dialog.render(c);
       },
     };
   }
 
   // ===================== Battle scene =====================
+  // パーティ戦闘（最大3人）。allies[0] は常にオダ。
+  // 全滅条件はオダのHP0（仲間が倒れても戦闘は続く）。経験値・レベルはオダに集約。
   function startBattle(opts) {
     opts = opts || {};
     const gated = !!opts.gated;
     const e = opts.enemy || {};
-    const hp = e.hp || 22;
+    const dm = DIFF[difficulty];
+    const hp = Math.max(1, Math.round((e.hp || 22) * dm.enemyHp));
     const enemy = {
       name: e.name || '落武者のもののけ', hp: hp, maxhp: hp, broken: false, weakKnown: !gated, shake: 0,
       kind: e.kind || 'enemy', spar: !!opts.spar, forcelose: !!e.forcelose,
       atkLabel: e.atkLabel || DIALOGUE.battle.random.atkLabel, winMsg: e.winMsg || DIALOGUE.battle.random.winMsg,
       loseMsg: e.loseMsg || null, appearMsg: e.appearMsg || null,
+      atkMul: dm.enemyAtk,
     };
-    const player = { name: 'オダ', hp: Hero.maxhp, maxhp: Hero.maxhp, lv: Hero.lv, miyaLv: miyaLvFromLv(Hero.lv), atkBonus: Hero.atkBonus, wAtk: weaponAtk(), aDef: armorDef() };
-    setScene(makeBattle(enemy, player, gated,
+    const allies = [{
+      id: 'oda', name: 'オダ', kind: 'oda', isOda: true,
+      hp: Hero.maxhp, maxhp: Hero.maxhp, lv: Hero.lv, miyaLv: miyaLvFromLv(Hero.lv),
+      atkBonus: Hero.atkBonus, wAtk: weaponAtk(), aDef: armorDef(),
+    }];
+    partyMembers.forEach(function (m) {
+      allies.push({ id: m.id, name: m.name, kind: m.kind, isOda: false, hp: m.maxhp, maxhp: m.maxhp, atkLo: m.atkLo, atkHi: m.atkHi, aDef: m.aDef || 0 });
+    });
+    setScene(makeBattle(enemy, allies, gated,
       opts.onWin || function () { startTransition(function () { setScene(activeField); }); },
       opts.onLose || function () { startTransition(function () { setScene(makeTitle()); }); }));
   }
-  function makeBattle(enemy, player, gated, onWin, onLose) {
-    const commands = ['たたかう', 'みやぶる', 'にげる'];
+  function makeBattle(enemy, allies, gated, onWin, onLose) {
+    const player = allies[0]; // オダ（forcelose/spar/みやぶる はオダ基準）
+    function commandsFor(a) { return a.isOda ? ['たたかう', 'みやぶる', 'にげる'] : ['たたかう', 'にげる']; }
+    let turnIdx = 0;
+    let commands = commandsFor(player);
     let cursor = 0;
     let mode = 'msg';
     let msg = '';
@@ -1292,7 +1383,7 @@
     const popups = [];
 
     function showMsg(t, fn) { mode = 'msg'; msg = t; after = fn || null; }
-    function openMenu() { mode = 'menu'; msg = ''; }
+    function openMenu() { mode = 'menu'; msg = ''; commands = commandsFor(allies[turnIdx]); if (cursor >= commands.length) cursor = 0; }
     function addPopup(text, x, y, color) { popups.push({ text: text, x: x, y: y, life: 1.0, color: color }); }
     function hitEnemy(dmg, crit) {
       enemy.hp -= dmg; if (enemy.hp < 0) enemy.hp = 0;
@@ -1301,10 +1392,32 @@
       if (crit) shake = 7;
       addPopup((crit ? '会心 ' : '') + dmg, W / 2, 150, crit ? '#ffd43b' : '#fff');
     }
-    function hitPlayer(dmg) {
-      player.hp -= dmg; if (player.hp < 0) player.hp = 0;
+    function hitAlly(a, dmg) {
+      a.hp -= dmg; if (a.hp < 0) a.hp = 0;
       shake = 5; flash = 0.2;
       addPopup('' + dmg, 110, 250, '#ff8787');
+    }
+    function aliveAllies() { return allies.filter(function (a) { return a.hp > 0; }); }
+    function loseCheck(then) {
+      // 全滅条件 = オダのHP0
+      if (player.hp <= 0) {
+        if (enemy.spar) showMsg('オダは 膝を ついた…！\nいけ「はは、まだまだ だな。…だが、筋は 悪くない」', function () { mode = 'end'; endKind = 'win'; msg = '（Z / タップで つづける）'; });
+        else showMsg('オダは目の前が真っ暗に…！', function () { mode = 'end'; endKind = 'lose'; msg = enemy.loseMsg || '気を失った…（Z / タップで タイトルへ）'; });
+      } else then();
+    }
+    // 味方の手番を進める。全員行動したら敵の手番へ。
+    function nextTurn() {
+      if (enemy.hp <= 0) { winSequence(); return; }
+      turnIdx++;
+      while (turnIdx < allies.length && allies[turnIdx].hp <= 0) turnIdx++;
+      if (turnIdx >= allies.length) { turnIdx = 0; enemyTurn(); }
+      else openMenu();
+    }
+    function startRound() {
+      turnIdx = 0;
+      while (turnIdx < allies.length && allies[turnIdx].hp <= 0) turnIdx++;
+      if (turnIdx >= allies.length) turnIdx = 0;
+      openMenu();
     }
     function winSequence() {
       if (gated) { tutorialDone = true; storyStage = 1; }
@@ -1329,23 +1442,16 @@
     function enemyTurn() {
       if (enemy.hp <= 0) { winSequence(); return; }
       if (enemy.forcelose) {
-        var fdmg = rnd(14, 18); hitPlayer(fdmg);
-        showMsg(enemy.atkLabel + '！\nオダは ' + fdmg + 'の ダメージ！', function () {
-          if (player.hp <= 0) {
-            if (enemy.spar) showMsg('オダは 膝を ついた…！\nいけ「はは、まだまだ だな。…だが、筋は 悪くない」', function () { mode = 'end'; endKind = 'win'; msg = '（Z / タップで つづける）'; });
-            else showMsg('オダは目の前が真っ暗に…！', function () { mode = 'end'; endKind = 'lose'; msg = enemy.loseMsg || '気を失った…（Z / タップで タイトルへ）'; });
-          } else openMenu();
-        });
+        var fdmg = rnd(14, 18); hitAlly(player, fdmg);
+        showMsg(enemy.atkLabel + '！\nオダは ' + fdmg + 'の ダメージ！', function () { loseCheck(startRound); });
         return;
       }
-      if (Math.random() < 0.22) { showMsg(enemy.atkLabel + '！\nオダは ひらりと身をかわした！', openMenu); return; }
-      const dmg = Math.max(1, rnd(3, 6) - player.aDef); hitPlayer(dmg);
-      showMsg(enemy.atkLabel + '！ オダは ' + dmg + 'のダメージ！', function () {
-        if (player.hp <= 0) {
-          if (enemy.spar) showMsg('オダは 膝を ついた…！\nいけ「はは、まだまだ だな。…だが、筋は 悪くない」', function () { mode = 'end'; endKind = 'win'; msg = '（Z / タップで つづける）'; });
-          else showMsg('オダは目の前が真っ暗に…！', function () { mode = 'end'; endKind = 'lose'; msg = enemy.loseMsg || '気を失った…（Z / タップで タイトルへ）'; });
-        } else openMenu();
-      });
+      // 対象は生存メンバーからランダム
+      const alive = aliveAllies();
+      const target = alive[rnd(0, alive.length - 1)] || player;
+      if (Math.random() < 0.22) { showMsg(enemy.atkLabel + '！\n' + target.name + 'は ひらりと身をかわした！', startRound); return; }
+      const dmg = Math.max(1, Math.round(rnd(3, 6) * (enemy.atkMul || 1)) - target.aDef); hitAlly(target, dmg);
+      showMsg(enemy.atkLabel + '！ ' + target.name + 'は ' + dmg + 'のダメージ！', function () { loseCheck(startRound); });
     }
     function miyaTier(lv) {
       const r = Math.random();
@@ -1353,44 +1459,46 @@
       if (lv >= 2) { if (r < 0.55) return 0; if (r < 0.92) return 1; return 2; }
       if (r < 0.82) return 0; return 1;
     }
-    function playerTurn(cmd) {
-      if (cmd === 0) {
-        if (enemy.forcelose) { showMsg('オダの こうげき！\nしかし いけは 軽く 受け流した！', enemyTurn); return; }
-        if (!enemy.weakKnown) { showMsg('オダのこうげき！\nしかし手ごたえがない…！ まず「みやぶる」で 弱点を さがそう。', enemyTurn); return; }
-        if (Math.random() < 0.16) { showMsg('オダのこうげき！\nしかし攻撃は 空を切った…！', enemyTurn); return; }
-        let dmg = rnd(5, 8) + player.atkBonus + player.wAtk;
+    function actorTurn(cmdIdx) {
+      const actor = allies[turnIdx];
+      const cmd = commands[cmdIdx];
+      if (cmd === 'たたかう') {
+        if (enemy.forcelose) { showMsg(actor.name + 'の こうげき！\nしかし いけは 軽く 受け流した！', nextTurn); return; }
+        if (!enemy.weakKnown && actor.isOda) { showMsg('オダのこうげき！\nしかし手ごたえがない…！ まず「みやぶる」で 弱点を さがそう。', nextTurn); return; }
+        if (Math.random() < 0.16) { showMsg(actor.name + 'のこうげき！\nしかし攻撃は 空を切った…！', nextTurn); return; }
+        let dmg = actor.isOda ? (rnd(5, 8) + actor.atkBonus + actor.wAtk) : rnd(actor.atkLo || 4, actor.atkHi || 7);
         if (enemy.broken) dmg += 3;
         const crit = Math.random() < 0.18;
-        if (crit) { dmg = Math.floor(dmg * 1.8); hitEnemy(dmg, true); showMsg('オダのこうげき！ 急所に当たった！\n' + dmg + 'の大ダメージ！', enemyTurn); }
-        else { hitEnemy(dmg, false); showMsg('オダのこうげき！ ' + dmg + 'のダメージ！', enemyTurn); }
-      } else if (cmd === 1) {
-        if (enemy.forcelose) { showMsg('オダは 相手を みやぶろうとした！\nしかし いけは まるで 隙を 見せない…！', enemyTurn); return; }
+        if (crit) { dmg = Math.floor(dmg * 1.8); hitEnemy(dmg, true); showMsg(actor.name + 'のこうげき！ 急所に当たった！\n' + dmg + 'の大ダメージ！', nextTurn); }
+        else { hitEnemy(dmg, false); showMsg(actor.name + 'のこうげき！ ' + dmg + 'のダメージ！', nextTurn); }
+      } else if (cmd === 'みやぶる') {
+        if (enemy.forcelose) { showMsg('オダは 相手を みやぶろうとした！\nしかし いけは まるで 隙を 見せない…！', nextTurn); return; }
         enemy.broken = true; enemy.weakKnown = true;
         const tier = miyaTier(player.miyaLv);
         if (enemy.kind === 'enemy') {
           if (tier === 0) {
-            showMsg('オダは敵をみやぶった！\n「この子…戦で散った兵の無念か…」\n弱点が見えた！（守りが下がった）', enemyTurn);
+            showMsg('オダは敵をみやぶった！\n「この子…戦で散った兵の無念か…」\n弱点が見えた！（守りが下がった）', nextTurn);
           } else if (tier === 1) {
-            const d = 5; hitEnemy(d, false); showMsg('オダの観察眼が冴えた！【みやぶる＋】\n「落武者は“塚”に心を残してる…」\n心の隙を突いた！ ' + d + 'のダメージ！', enemyTurn);
+            const d = 5; hitEnemy(d, false); showMsg('オダの観察眼が冴えた！【みやぶる＋】\n「落武者は“塚”に心を残してる…」\n心の隙を突いた！ ' + d + 'のダメージ！', nextTurn);
           } else {
-            const d = 9; hitEnemy(d, false); showMsg('オダは心眼を開いた！【みやぶる・極】\n「無念は ちゃんと残ってる。もう休んで」\n落武者の心がやわらいだ！ ' + d + 'のダメージ！', enemyTurn);
+            const d = 9; hitEnemy(d, false); showMsg('オダは心眼を開いた！【みやぶる・極】\n「無念は ちゃんと残ってる。もう休んで」\n落武者の心がやわらいだ！ ' + d + 'のダメージ！', nextTurn);
           }
         } else {
           if (tier === 0) {
-            showMsg('オダは 相手を みやぶった！\n構えの 隙が 見えた！（守りが下がった）', enemyTurn);
+            showMsg('オダは 相手を みやぶった！\n構えの 隙が 見えた！（守りが下がった）', nextTurn);
           } else if (tier === 1) {
-            const d = 5; hitEnemy(d, false); showMsg('オダの 観察眼が 冴えた！【みやぶる＋】\n隙を 突いた！ ' + d + 'のダメージ！', enemyTurn);
+            const d = 5; hitEnemy(d, false); showMsg('オダの 観察眼が 冴えた！【みやぶる＋】\n隙を 突いた！ ' + d + 'のダメージ！', nextTurn);
           } else {
-            const d = 9; hitEnemy(d, false); showMsg('オダは 心眼を 開いた！【みやぶる・極】\n完全に 見切った！ ' + d + 'のダメージ！', enemyTurn);
+            const d = 9; hitEnemy(d, false); showMsg('オダは 心眼を 開いた！【みやぶる・極】\n完全に 見切った！ ' + d + 'のダメージ！', nextTurn);
           }
         }
       } else {
-        showMsg(enemy.spar ? 'いけ「逃げるな、オダ！ これも 修行だ！」' : 'みち「逃げるな、お前！ ここで覚えるんだよ！」', enemyTurn);
+        showMsg(enemy.spar ? 'いけ「逃げるな、オダ！ これも 修行だ！」' : 'みち「逃げるな、お前！ ここで覚えるんだよ！」', nextTurn);
       }
     }
 
     return {
-      enter: function () { showMsg(enemy.spar ? 'いけが 構えた！ 腕試しだ！' : (enemy.appearMsg || DIALOGUE.battle.random.appearMsg), openMenu); },
+      enter: function () { showMsg(enemy.spar ? 'いけが 構えた！ 腕試しだ！' : (enemy.appearMsg || DIALOGUE.battle.random.appearMsg), startRound); },
       update: function (dt) {
         updateParts(dt);
         spawnBattleParts();
@@ -1401,17 +1509,18 @@
         if (mode === 'menu') {
           if (Input.pressed('up')) cursor = (cursor + commands.length - 1) % commands.length;
           if (Input.pressed('down')) cursor = (cursor + 1) % commands.length;
-          if (Input.pressed('confirm')) playerTurn(cursor);
+          if (Input.pressed('confirm')) actorTurn(cursor);
         } else if (mode === 'msg') {
           if (Input.pressed('confirm')) { const fn = after; after = null; if (fn) fn(); }
         } else if (mode === 'end') {
           if (Input.pressed('confirm')) { if (endKind === 'win') onWin(); else onLose(); }
         }
       },
-      render: function (c) { drawBattle(c, enemy, player, commands, cursor, mode, msg, shake, flash, popups); drawParts(c); },
+      render: function (c) { drawBattle(c, enemy, allies, turnIdx, commands, cursor, mode, msg, shake, flash, popups); drawParts(c); },
     };
   }
-  function drawBattle(c, enemy, player, commands, cursor, mode, msg, shake, flash, popups) {
+  function drawBattle(c, enemy, allies, turnIdx, commands, cursor, mode, msg, shake, flash, popups) {
+    const player = allies[0];
     var g = c.createLinearGradient(0, 0, 0, H);
     g.addColorStop(0, '#100818'); g.addColorStop(0.35, '#1a0f22'); g.addColorStop(0.7, '#150e1c'); g.addColorStop(1, '#0c0a14');
     c.fillStyle = g; c.fillRect(0, 0, W, H);
@@ -1497,11 +1606,27 @@
     c.fillText(enemy.name, W / 2, 208);
     if (!enemy.forcelose) drawHPBar(c, W / 2 - 80, 216, 160, enemy.hp, enemy.maxhp, '#e8590c');
     c.textAlign = 'left';
-    c.fillStyle = '#cdd9ff'; c.font = '15px "Hiragino Sans",sans-serif';
-    c.fillText('オダ　Lv' + player.lv + '　HP ' + player.hp + '/' + player.maxhp, 22, 296);
-    drawHPBar(c, 22, 304, 170, player.hp, player.maxhp, '#37b24d');
+    if (allies.length === 1) {
+      // 1人（従来レイアウト）
+      c.fillStyle = '#cdd9ff'; c.font = '15px "Hiragino Sans",sans-serif';
+      c.fillText('オダ　Lv' + player.lv + '　HP ' + player.hp + '/' + player.maxhp, 22, 296);
+      drawHPBar(c, 22, 304, 170, player.hp, player.maxhp, '#37b24d');
+    } else {
+      // パーティ: 左下に縦積み（y=240 から 28px 間隔）
+      for (let ai = 0; ai < allies.length; ai++) {
+        const a = allies[ai];
+        const ay = 240 + ai * 28;
+        const isTurn = (mode === 'menu' && ai === turnIdx);
+        c.fillStyle = a.hp <= 0 ? '#6b7280' : (isTurn ? '#ffd43b' : '#cdd9ff');
+        c.font = (isTurn ? 'bold ' : '') + '13px "Hiragino Sans",sans-serif';
+        const lvTxt = a.isOda ? ' Lv' + a.lv : '';
+        c.fillText((isTurn ? '▶' : '　') + a.name + lvTxt + '　' + a.hp + '/' + a.maxhp, 22, ay + 10);
+        drawHPBar(c, 22, ay + 14, 150, a.hp, a.maxhp, a.hp <= 0 ? '#495057' : '#37b24d');
+      }
+    }
     if (mode === 'menu') {
-      drawTextbox(c, '', 'どうする？', false, true);
+      const actorName = allies[turnIdx] ? allies[turnIdx].name : 'オダ';
+      drawTextbox(c, '', allies.length === 1 ? 'どうする？' : actorName + 'は どうする？', false, true);
       const cx = W - 196, cy = 286, cw = 184, chh = 24 + commands.length * 30;
       c.fillStyle = 'rgba(8,16,40,0.97)'; roundRect(c, cx, cy, cw, chh, 10); c.fill();
       c.strokeStyle = '#cdd9ff'; c.lineWidth = 2; roundRect(c, cx + 2, cy + 2, cw - 4, chh - 4, 8); c.stroke(); c.lineWidth = 1;
@@ -1509,7 +1634,7 @@
       for (let i = 0; i < commands.length; i++) {
         c.fillStyle = i === cursor ? '#ffd43b' : '#f1f3f5';
         let label = commands[i];
-        if (i === 1) label += ' Lv' + player.miyaLv;
+        if (commands[i] === 'みやぶる') label += ' Lv' + player.miyaLv;
         c.fillText((i === cursor ? '▶ ' : '　 ') + label, cx + 16, cy + 32 + i * 30);
       }
     } else {
@@ -1562,7 +1687,7 @@
         if (Input.pressed('confirm')) {
           if (opts[cur] === 'つづきから') { if (loadGame()) startTransition(function () { setScene(makeField('field', null, null)); }); }
           else if (opts[cur] === '史跡めぐり') { if (hasSave()) loadGame(); setScene(makeSiteTour()); }
-          else setScene(makeField('lawn', null, null));
+          else setScene(makeDifficultySelect());
         }
       },
       render: function (c) {
@@ -1687,6 +1812,52 @@
       },
     };
   }
+  // ===================== 難易度選択（はじめから → ここ → プロローグ） =====================
+  function makeDifficultySelect() {
+    const opts = [
+      { id: 'easy', name: 'イージー', desc: 'どなたでも 気軽に 楽しめる。\nクイズには ヒントつき。' },
+      { id: 'hard', name: 'ハード',   desc: '敵は 手ごわく、クイズも 本格派。\n歯ごたえを 求める あなたに。' },
+    ];
+    let cur = 0;
+    return {
+      enter: function () {},
+      update: function (dt) {
+        updateParts(dt);
+        if (Input.pressed('cancel')) { setScene(makeTitle()); return; }
+        if (Input.pressed('up')) cur = (cur + opts.length - 1) % opts.length;
+        if (Input.pressed('down')) cur = (cur + 1) % opts.length;
+        if (Input.pressed('confirm')) {
+          difficulty = opts[cur].id;
+          setScene(makeField('lawn', null, null));
+        }
+      },
+      render: function (c) {
+        var g = c.createLinearGradient(0, 0, 0, H);
+        g.addColorStop(0, '#060d1e'); g.addColorStop(0.5, '#101b36'); g.addColorStop(1, '#0a0e1c');
+        c.fillStyle = g; c.fillRect(0, 0, W, H);
+        c.fillStyle = 'rgba(255,255,255,0.4)';
+        for (var si = 0; si < 40; si++) { var sx = (si * 374761 + 311) % W, sy = (si * 668265 + 53) % (H * 0.6), ss = ((si * 5 + 1) % 3) * 0.3 + 0.4; c.fillRect(sx, sy, ss, ss); }
+        c.textAlign = 'center';
+        c.fillStyle = '#ffd43b'; c.font = 'bold 26px "Hiragino Mincho ProN","Yu Mincho",serif';
+        c.fillText('難易度を えらぶ', W / 2, 84);
+        for (let i = 0; i < opts.length; i++) {
+          const oy = 140 + i * 116, sel = i === cur;
+          c.fillStyle = sel ? 'rgba(255,212,59,0.14)' : 'rgba(255,255,255,0.04)';
+          roundRect(c, 76, oy, W - 152, 96, 12); c.fill();
+          if (sel) { c.strokeStyle = '#ffd43b'; c.lineWidth = 2; roundRect(c, 76, oy, W - 152, 96, 12); c.stroke(); c.lineWidth = 1; }
+          c.fillStyle = sel ? '#ffd43b' : '#cdd9ff'; c.font = 'bold 22px "Hiragino Sans",sans-serif';
+          c.fillText((sel ? '▶ ' : '') + opts[i].name, W / 2, oy + 34);
+          c.fillStyle = sel ? '#e8ecf2' : '#8a97b0'; c.font = '14px "Hiragino Sans",sans-serif';
+          var dls = opts[i].desc.split('\n');
+          for (var d = 0; d < dls.length; d++) c.fillText(dls[d], W / 2, oy + 58 + d * 20);
+        }
+        c.fillStyle = '#868e96'; c.font = '12px "Hiragino Sans",sans-serif';
+        c.fillText('↑ ↓ 選択　　Z 決定　　X / B もどる', W / 2, H - 16);
+        drawVignette(c);
+        c.textAlign = 'left';
+      },
+    };
+  }
   function makeEnding() {
     return {
       enter: function () {},
@@ -1737,7 +1908,7 @@
   // ===================== Epilogue (記念館・館長) =====================
   const EPILOGUE = DIALOGUE.epilogue;
   function makeEpilogue() {
-    const map = parseMap(MUSEUM, 'museum');
+    const map = parseMap('museum');
     const oda = { x: 7 * TILE + TILE / 2, y: 8 * TILE + TILE / 2, kind: 'oda', facing: 'up' };
     const kancho = { x: 7 * TILE + TILE / 2, y: 5 * TILE + TILE / 2, kind: 'kancho', facing: 'down' };
     return {
@@ -1745,7 +1916,7 @@
       update: function (dt) { if (Dialog.active) Dialog.update(dt); },
       render: function (c) {
         for (let r = 0; r < map.grid.length; r++) {
-          for (let col = 0; col < map.grid[r].length; col++) drawTile(c, map.grid[r][col], col * TILE, r * TILE, map.key);
+          for (let col = 0; col < map.grid[r].length; col++) drawTile(c, map.grid[r][col], col * TILE, r * TILE, map.tileset);
         }
         drawActor(c, kancho.x, kancho.y, kancho.kind, kancho.facing, 1);
         drawActor(c, oda.x, oda.y, oda.kind, oda.facing, 1);
@@ -1826,6 +1997,7 @@
         '経験値　　' + Hero.exp + ' / ' + expToNext(Hero.lv),
         '武器　　' + ITEMS[Hero.weapon].name,
         '防具　　' + ITEMS[Hero.armor].name,
+        '難易度　　' + DIFF[difficulty].label,
       ];
       let y = cy + 32;
       for (let i = 0; i < lines.length; i++) { c.fillText(lines[i], cx + 22, y); y += 32; }
