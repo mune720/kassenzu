@@ -1179,6 +1179,10 @@
   let ch3rusu = false;         // 館長不在を確認したか
   let zoneAMood = 'dusk';      // dusk → weird（踊り子の舞で世界が変わった後）
   let teaBest = '';            // 抹茶体験のベストランク（'' / 'C' / 'B' / 'A'）
+  // main2（四章〜エピローグ）の直列進行。各値は「これから行うこと」:
+  // 0=四章導入 1=戦トーク 2=もののけ共闘戦 3=告白〜みち対峙戦 4=天下問答〜みち別れ
+  // 5=落武者ステルス 6=大包平の伏線〜いけ退場 7=館長エピローグ 8=見回り〜ラストバトル
+  let stageP3 = 0;
 
   // ===================== Save / Load (localStorage) =====================
   // v2: difficulty を追加。v1 セーブは初回読み込み時に v2 へ変換する（difficulty='easy'）。
@@ -1190,7 +1194,7 @@
       localStorage.setItem(SAVE_KEY, JSON.stringify({
         v: 2, hero: Hero, difficulty: difficulty,
         tutorialDone: tutorialDone, storyStage: storyStage,
-        chapter: chapter, ch1Seen: ch1Seen, ch2step: ch2step, ch3rusu: ch3rusu, zoneAMood: zoneAMood, teaBest: teaBest,
+        chapter: chapter, ch1Seen: ch1Seen, ch2step: ch2step, ch3rusu: ch3rusu, zoneAMood: zoneAMood, teaBest: teaBest, stageP3: stageP3,
         zukan: Array.from(zukanSet), meikan: Array.from(meikanSet),
         tour: Array.from(tourCleared), tourReward: tourReward,
       }));
@@ -1219,6 +1223,9 @@
       ch3rusu = !!d.ch3rusu;
       zoneAMood = d.zoneAMood || (chapter === 'pro' ? 'dusk' : 'weird');
       teaBest = d.teaBest || '';
+      stageP3 = d.stageP3 || 0;
+      // 旧ダイジェスト版セーブ（legacy）は原作フル収録の四章から再開
+      if (chapter === 'legacy') { chapter = 'main2'; stageP3 = 0; }
       zukanSet.clear(); (d.zukan || []).forEach(function (x) { zukanSet.add(x); });
       meikanSet.clear(); (d.meikan || []).forEach(function (x) { meikanSet.add(x); });
       tourCleared.clear(); (d.tour || []).forEach(function (x) { tourCleared.add(x); });
@@ -1462,15 +1469,118 @@
               darkFx = false;
               unlockMeikan('michi');
               Dialog.start(DIALOGUE.ch3_bridge, function () {
-                chapter = 'legacy'; tutorialDone = true;
+                chapter = 'main2'; stageP3 = 0; tutorialDone = true;
                 if (storyStage < 1) storyStage = 1;
                 saveGame();
-                startTransition(function () { setScene(makeField('field', null, null)); });
+                runP3(); // そのまま四章「戦トーク」へ（舞台は変わらず古戦場公園）
               });
             });
           });
         });
       });
+    }
+
+    // ---------- P3: 四章〜エピローグ（zoneA・直列進行） ----------
+    // 進行段階に応じて必要なアクターを補充（既にいれば何もしない）
+    function p3Actors(stage) {
+      if (stage <= 4 && !findActor('michi')) sceneActors.push({ x: 18 * TILE, y: 14 * TILE + TILE / 2, kind: 'michi', facing: 'right', id: 'michi' });
+      if (stage <= 6 && !findActor('ike')) {
+        var ix = stage === 6 ? 7 * TILE : 22 * TILE, iy = stage === 6 ? 12.5 * TILE : 14 * TILE + TILE / 2;
+        sceneActors.push(ikeActor(ix, iy, 'left'));
+      }
+      if (stage >= 5 && !findActor('dancer2')) {
+        var dx3 = stage >= 8 ? 19.5 * TILE : 21 * TILE, dy3 = stage >= 8 ? 15 * TILE + TILE / 2 : 12.5 * TILE;
+        sceneActors.push({ x: dx3, y: dy3, kind: 'odoriko', facing: 'down', alpha: 1, dancing: stage >= 8, id: 'dancer2' });
+      }
+    }
+    function backToZoneA(col, row) {
+      return function () { startTransition(function () { setScene(makeField('zoneA', { col: col, row: row }, null)); }); };
+    }
+    function runP3() {
+      if (mapKey !== 'zoneA') return;
+      p3Actors(stageP3);
+      if (stageP3 === 0) {
+        Dialog.start(DIALOGUE.ch4_intro, function () {
+          unlockMeikan('hideyoshi'); unlockMeikan('ieyasu');
+          stageP3 = 1; saveGame();
+          setScene(makeSenTalk(function () { stageP3 = 2; saveGame(); backToZoneA(20, 13)(); }));
+        });
+      } else if (stageP3 === 1) {
+        setScene(makeSenTalk(function () { stageP3 = 2; saveGame(); backToZoneA(20, 13)(); }));
+      } else if (stageP3 === 2) {
+        Dialog.start(DIALOGUE.ch4_mononoke, function () {
+          partyMembers.length = 0;
+          partyMembers.push({ id: 'ike', name: 'いけ', kind: 'ike', maxhp: 26, atkLo: 3, atkHi: 5, aDef: 1 });
+          partyMembers.push({ id: 'michi', name: 'みち', kind: 'michi', maxhp: 30, atkLo: 6, atkHi: 9, aDef: 1 });
+          startBattle({
+            gated: false,
+            enemy: { name: 'はぐれ もののけ', hp: 34, kind: 'enemy', atkLabel: DIALOGUE.battle_mononoke_party.atkLabel, appearMsg: DIALOGUE.battle_mononoke_party.appearMsg, winMsg: DIALOGUE.battle_mononoke_party.winMsg },
+            onWin: function () { partyMembers.length = 0; stageP3 = 3; saveGame(); backToZoneA(20, 13)(); },
+            onLose: function () { partyMembers.length = 0; backToZoneA(20, 13)(); },
+          });
+        });
+      } else if (stageP3 === 3) {
+        Dialog.start(DIALOGUE.ch4_mononoke_after, function () {
+          Dialog.start(DIALOGUE.ch5_kokuhaku, function () {
+            unlockMeikan('nagayoshi'); unlockMeikan('naomasa'); unlockMeikan('tsuneoki');
+            startBattle({
+              gated: false,
+              enemy: {
+                name: 'みち', hp: 60, kind: 'michi', hideHp: true, noKO: true, roundLimit: 2,
+                atkLabel: DIALOGUE.battle_michi_taiji.atkLabel, appearMsg: DIALOGUE.battle_michi_taiji.appearMsg,
+                endMsg: DIALOGUE.battle_michi_taiji.endMsg, fleeMsg: DIALOGUE.battle_michi_taiji.fleeMsg,
+                atkLo: 8, atkHi: 12,
+              },
+              onWin: function () { stageP3 = 4; saveGame(); backToZoneA(20, 13)(); },
+              onLose: function () { stageP3 = 4; saveGame(); backToZoneA(20, 13)(); },
+            });
+          });
+        });
+      } else if (stageP3 === 4) {
+        Dialog.start(DIALOGUE.ch5_tenka, function () {
+          unlockMeikan('nobunaga');
+          if (!findActor('dancer2')) sceneActors.push({ x: 21 * TILE, y: 12.5 * TILE, kind: 'odoriko', facing: 'down', alpha: 1, id: 'dancer2' });
+          Dialog.start(DIALOGUE.ch6_ikitai, function () {
+            Dialog.start(DIALOGUE.ch6_mirai, function () {
+              var mi = findActor('michi');
+              if (mi) {
+                walkTo(mi, 4 * TILE, 11 * TILE, 150, function () {
+                  var mi2 = findActor('michi'); if (mi2) mi2.fading = true;
+                  stageP3 = 5; saveGame(); runP3();
+                });
+              } else { stageP3 = 5; saveGame(); runP3(); }
+            });
+          });
+        });
+      } else if (stageP3 === 5) {
+        Dialog.start(DIALOGUE.ch6_stealth_intro, function () {
+          setScene(makeStealthGame(function () {
+            stageP3 = 6; saveGame();
+            startTransition(function () { setScene(makeField('zoneA', { col: 8, row: 12 }, null)); });
+          }));
+        });
+      } else if (stageP3 === 6) {
+        Dialog.start(DIALOGUE.ch6_ochimusha, function () {
+          var ik = findActor('ike');
+          function proceed() { stageP3 = 7; saveGame(); runP3(); }
+          if (ik) walkTo(ik, 4 * TILE, 10 * TILE, 90, function () { var ik2 = findActor('ike'); if (ik2) ik2.fading = true; proceed(); });
+          else proceed();
+        });
+      } else if (stageP3 === 7) {
+        var kan = { x: 25.5 * TILE, y: 8 * TILE, kind: 'kancho', facing: 'down', id: 'kancho' };
+        sceneActors.push(kan);
+        walkTo(kan, player.x + TILE, player.y - TILE, 100, function () {
+          Dialog.start(DIALOGUE.epi_kancho, function () {
+            var k2 = findActor('kancho');
+            if (k2) walkTo(k2, 25.5 * TILE, 8 * TILE, 110, function () { var k3 = findActor('kancho'); if (k3) k3.fading = true; });
+            stageP3 = 8; saveGame();
+            var dc = findActor('dancer2');
+            if (dc) { dc.x = 19.5 * TILE; dc.y = 15 * TILE + TILE / 2; dc.dancing = true; }
+            else sceneActors.push({ x: 19.5 * TILE, y: 15 * TILE + TILE / 2, kind: 'odoriko', facing: 'down', alpha: 1, dancing: true, id: 'dancer2' });
+          });
+        });
+      }
+      // stageP3 === 8 は自由行動（見回り）。踊り子への接近で update() がラストバトルを起動する
     }
 
     let stepAcc = 0, encCooldown = 2.5;
@@ -1489,7 +1599,10 @@
           } else if (chapter === 'ch3') {
             sceneActors.push(ikeActor(27 * TILE, 14 * TILE + TILE / 2, 'down'));
             if (ch3rusu) startCh3Michi();
+          } else if (chapter === 'main2') {
+            runP3();
           }
+          // chapter === 'post' はクリア後の自由散策（イベントなし）
         } else if (mapKey === 'museum' && chapter === 'ch3' && !ch3rusu) {
           Dialog.start(DIALOGUE.ch3_rusu, function () { ch3rusu = true; saveGame(); });
         } else if (intro) {
@@ -1551,6 +1664,40 @@
                 chapter = 'ch1'; saveGame();
                 Dialog.start(DIALOGUE.ch1_open);
               });
+            }
+          }
+        }
+        // エピローグ: 見回り中、舞う踊り子に近づくとラストバトル
+        if (mapKey === 'zoneA' && chapter === 'main2' && stageP3 === 8 && !proTriggered) {
+          var dz = findActor('dancer2');
+          if (dz) {
+            var zdx = player.x - dz.x, zdy = player.y - dz.y;
+            if (zdx * zdx + zdy * zdy < (TILE * 1.8) * (TILE * 1.8)) {
+              proTriggered = true;
+              player.facing = 'up'; player.moving = false;
+              Dialog.start(DIALOGUE.epi_odoriko, function () {
+                partyMembers.length = 0;
+                startBattle({
+                  gated: false,
+                  enemy: {
+                    name: '踊り子', hp: 60, kind: 'odoriko',
+                    atkLabel: DIALOGUE.battle.odoriko.atkLabel, appearMsg: DIALOGUE.battle.odoriko.appearMsg,
+                    winMsg: DIALOGUE.battle.odoriko.winMsg,
+                  },
+                  onWin: function () { finishGame(); },
+                  onLose: function () { finishGame(); },
+                });
+              });
+              function finishGame() {
+                chapter = 'post'; saveGame();
+                startTransition(function () {
+                  setScene({
+                    enter: function () { Dialog.start(DIALOGUE.epi_maku, function () { startTransition(function () { setScene(makeEnding()); }); }); },
+                    update: function (dt) { if (Dialog.active) Dialog.update(dt); },
+                    render: function (c) { c.fillStyle = '#04050c'; c.fillRect(0, 0, W, H); if (Dialog.active) Dialog.render(c); },
+                  });
+                });
+              }
             }
           }
         }
@@ -1618,6 +1765,11 @@
       atkLabel: e.atkLabel || DIALOGUE.battle.random.atkLabel, winMsg: e.winMsg || DIALOGUE.battle.random.winMsg,
       loseMsg: e.loseMsg || null, appearMsg: e.appearMsg || null,
       atkMul: dm.enemyAtk,
+      // イベント戦用: roundLimit=Nラウンドで endMsg を表示して終了（勝ち扱い）。
+      // noKO=味方はHP1で耐える。hideHp=敵HPバー非表示。fleeMsg=にげる時の専用セリフ。
+      roundLimit: e.roundLimit || 0, noKO: !!e.noKO, endMsg: e.endMsg || null,
+      hideHp: !!e.hideHp, fleeMsg: e.fleeMsg || null,
+      atkLo: e.atkLo || 3, atkHi: e.atkHi || 6,
     };
     const allies = [{
       id: 'oda', name: 'オダ', kind: 'oda', isOda: true,
@@ -1656,9 +1808,11 @@
     }
     function hitAlly(a, dmg) {
       a.hp -= dmg; if (a.hp < 0) a.hp = 0;
+      if (enemy.noKO && a.hp <= 0) a.hp = 1; // イベント戦: 倒れない
       shake = 5; flash = 0.2;
       addPopup('' + dmg, 110, 250, '#ff8787');
     }
+    let rounds = 0; // イベント戦（roundLimit）用
     function aliveAllies() { return allies.filter(function (a) { return a.hp > 0; }); }
     function loseCheck(then) {
       // 全滅条件 = オダのHP0
@@ -1711,9 +1865,14 @@
       // 対象は生存メンバーからランダム
       const alive = aliveAllies();
       const target = alive[rnd(0, alive.length - 1)] || player;
-      if (Math.random() < 0.22) { showMsg(enemy.atkLabel + '！\n' + target.name + 'は ひらりと身をかわした！', startRound); return; }
-      const dmg = Math.max(1, Math.round(rnd(3, 6) * (enemy.atkMul || 1)) - target.aDef); hitAlly(target, dmg);
-      showMsg(enemy.atkLabel + '！ ' + target.name + 'は ' + dmg + 'のダメージ！', function () { loseCheck(startRound); });
+      rounds++;
+      // イベント戦: 規定ラウンドで幕引き（勝ち扱い）
+      const afterAtk = (enemy.roundLimit && rounds >= enemy.roundLimit)
+        ? function () { showMsg(enemy.endMsg || '……戦いは、ふいに 終わった。', function () { mode = 'end'; endKind = 'win'; msg = '（Z / タップで つづける）'; }); }
+        : function () { loseCheck(startRound); };
+      if (Math.random() < 0.22) { showMsg(enemy.atkLabel + '！\n' + target.name + 'は ひらりと身をかわした！', afterAtk); return; }
+      const dmg = Math.max(1, Math.round(rnd(enemy.atkLo, enemy.atkHi) * (enemy.atkMul || 1)) - target.aDef); hitAlly(target, dmg);
+      showMsg(enemy.atkLabel + '！ ' + target.name + 'は ' + dmg + 'のダメージ！', function () { loseCheck(afterAtk); });
     }
     function miyaTier(lv) {
       const r = Math.random();
@@ -1755,7 +1914,7 @@
           }
         }
       } else {
-        showMsg(enemy.spar ? 'いけ「逃げるな、オダ！ これも 修行だ！」' : 'みち「逃げるな、お前！ ここで覚えるんだよ！」', nextTurn);
+        showMsg(enemy.fleeMsg || (enemy.spar ? 'いけ「逃げるな、オダ！ これも 修行だ！」' : 'みち「逃げるな、お前！ ここで覚えるんだよ！」'), nextTurn);
       }
     }
 
@@ -1866,7 +2025,7 @@
     c.textAlign = 'center';
     c.fillStyle = '#f1f3f5'; c.font = 'bold 18px "Hiragino Sans",sans-serif';
     c.fillText(enemy.name, W / 2, 208);
-    if (!enemy.forcelose) drawHPBar(c, W / 2 - 80, 216, 160, enemy.hp, enemy.maxhp, '#e8590c');
+    if (!enemy.forcelose && !enemy.hideHp) drawHPBar(c, W / 2 - 80, 216, 160, enemy.hp, enemy.maxhp, '#e8590c');
     c.textAlign = 'left';
     if (allies.length === 1) {
       // 1人（従来レイアウト）
@@ -2043,6 +2202,205 @@
           c.fillStyle = 'rgba(255,255,255,' + Math.max(0, 0.5 - doneT) + ')'; c.fillRect(0, 0, W, H);
           c.fillStyle = 'rgba(255,212,59,' + ca + ')'; c.font = 'bold 44px "Hiragino Mincho ProN",serif';
           c.fillText('待てーーー！！', W / 2, 210);
+        }
+        drawVignette(c);
+        c.textAlign = 'left';
+      },
+    };
+  }
+
+  // ===================== 四章: 戦トーク（陣幕・語り部モード） =====================
+  // オダの解説（原作フル）を陣幕背景で読み進め、区切りごとに「合いの手クイズ」。
+  // 正解すると士気ゲージが上がる（演出。失敗しても進行する）
+  function makeSenTalk(onDone) {
+    let phase = 'talk';
+    let seg = 0;
+    let qcur = 0, answered = false, correct = false;
+    let morale = 0;
+    const TALKS = [DIALOGUE.ch4_talk1, DIALOGUE.ch4_talk2, DIALOGUE.ch4_talk3];
+    function startSeg() { Dialog.start(TALKS[seg], function () { phase = 'quiz'; qcur = 0; answered = false; }); }
+    return {
+      enter: function () { startSeg(); },
+      update: function (dt) {
+        if (phase === 'talk') { if (Dialog.active) Dialog.update(dt); return; }
+        const q = DIALOGUE.sen_quiz[seg];
+        if (!answered) {
+          if (Input.pressed('up')) qcur = (qcur + q.choices.length - 1) % q.choices.length;
+          if (Input.pressed('down')) qcur = (qcur + 1) % q.choices.length;
+          if (Input.pressed('confirm')) { answered = true; correct = (qcur === q.answer); if (correct) morale++; }
+        } else if (Input.pressed('confirm')) {
+          seg++;
+          if (seg >= TALKS.length) { phase = 'done'; onDone(morale); return; }
+          phase = 'talk'; startSeg();
+        }
+      },
+      render: function (c) {
+        // 夜空と陣幕（紅白の幕）
+        var g = c.createLinearGradient(0, 0, 0, H);
+        g.addColorStop(0, '#0a0d20'); g.addColorStop(1, '#141a30');
+        c.fillStyle = g; c.fillRect(0, 0, W, H);
+        c.fillStyle = 'rgba(255,255,255,0.4)';
+        for (var si = 0; si < 30; si++) { var sx = (si * 374761 + 55) % W, sy = (si * 668265 + 91) % 90; c.fillRect(sx, sy, 1, 1); }
+        // 陣幕
+        var camY0 = 96, camH = 210;
+        for (var st = 0; st < 12; st++) {
+          c.fillStyle = st % 2 === 0 ? '#a8323c' : '#f0ead8';
+          c.fillRect(st * (W / 12), camY0, W / 12 + 1, camH);
+        }
+        c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(0, camY0, W, 14);
+        c.fillStyle = 'rgba(0,0,0,0.28)'; c.fillRect(0, camY0 + camH - 8, W, 8);
+        // 幕の家紋風マーク
+        c.fillStyle = 'rgba(255,255,255,0.85)';
+        c.beginPath(); c.arc(W / 2, camY0 + camH / 2 - 10, 30, 0, Math.PI * 2); c.fill();
+        c.fillStyle = '#a8323c'; c.font = 'bold 30px "Hiragino Mincho ProN",serif'; c.textAlign = 'center';
+        c.fillText('戦', W / 2, camY0 + camH / 2);
+        // 地面
+        c.fillStyle = '#1a2812'; c.fillRect(0, camY0 + camH, W, H - camY0 - camH);
+        // 三人（立ち姿）
+        drawActor(c, W / 2, camY0 + camH + 34, 'oda', 'down', 1.3);
+        drawActor(c, W / 2 - 90, camY0 + camH + 26, 'michi', 'right', 1.2);
+        drawActor(c, W / 2 + 90, camY0 + camH + 26, 'ike', 'left', 1.2);
+        // 見出しと士気
+        c.fillStyle = '#ffd43b'; c.font = 'bold 22px "Hiragino Mincho ProN",serif';
+        c.fillText('戦トーク ― 小牧・長久手の戦い', W / 2, 44);
+        c.fillStyle = '#cdd9ff'; c.font = '14px "Hiragino Sans",sans-serif';
+        var stars = ''; for (var m = 0; m < DIALOGUE.sen_quiz.length; m++) stars += m < morale ? '★' : '☆';
+        c.fillText('士気 ' + stars, W / 2, 70);
+        c.textAlign = 'left';
+        if (phase === 'talk') { if (Dialog.active) Dialog.render(c); }
+        else if (phase === 'quiz' && DIALOGUE.sen_quiz[seg]) {
+          // 合いの手クイズ
+          const q = DIALOGUE.sen_quiz[seg];
+          c.fillStyle = 'rgba(6,10,22,0.55)'; c.fillRect(0, 80, W, H - 80);
+          c.fillStyle = 'rgba(8,16,40,0.95)'; roundRect(c, 24, 96, W - 48, 58, 10); c.fill();
+          c.strokeStyle = '#cdd9ff'; c.lineWidth = 2; roundRect(c, 26, 98, W - 52, 54, 8); c.stroke(); c.lineWidth = 1;
+          c.fillStyle = '#ffd43b'; c.font = 'bold 13px "Hiragino Sans",sans-serif'; c.fillText('合いの手クイズ', 38, 116);
+          c.fillStyle = '#f1f3f5'; c.font = '16px "Hiragino Sans",sans-serif';
+          const ql = wrapText(c, q.q, W - 76);
+          let qy = 138; for (let i = 0; i < ql.length; i++) { c.fillText(ql[i], 38, qy); qy += 22; }
+          let y = 172;
+          for (let i = 0; i < q.choices.length; i++) {
+            const sel = i === qcur, isAns = i === q.answer;
+            let bg = 'rgba(255,255,255,0.06)', fgc = '#f1f3f5';
+            if (answered) {
+              if (isAns) { bg = 'rgba(55,178,77,0.30)'; fgc = '#b2f2bb'; }
+              else if (sel) { bg = 'rgba(224,49,49,0.28)'; fgc = '#ffc9c9'; }
+            } else if (sel) { bg = 'rgba(255,212,59,0.18)'; fgc = '#ffd43b'; }
+            c.fillStyle = bg; roundRect(c, 40, y, W - 80, 34, 8); c.fill();
+            if (sel && !answered) { c.strokeStyle = '#ffd43b'; c.lineWidth = 2; roundRect(c, 40, y, W - 80, 34, 8); c.stroke(); c.lineWidth = 1; }
+            c.fillStyle = fgc; c.font = '16px "Hiragino Sans",sans-serif';
+            let mark = (!answered && sel) ? '▶ ' : '　 ';
+            if (answered && isAns) mark = '○ ';
+            else if (answered && sel && !isAns) mark = '× ';
+            c.fillText(mark + q.choices[i], 56, y + 23);
+            y += 42;
+          }
+          if (answered) {
+            c.fillStyle = correct ? '#b2f2bb' : '#ffc9c9'; c.font = 'bold 17px "Hiragino Sans",sans-serif';
+            c.textAlign = 'center'; c.fillText(correct ? '正解！ 士気が あがった！' : '残念…！', W / 2, y + 16); c.textAlign = 'left';
+            c.fillStyle = 'rgba(8,16,40,0.94)'; roundRect(c, 24, y + 26, W - 48, 84, 10); c.fill();
+            c.strokeStyle = '#cdd9ff'; c.lineWidth = 2; roundRect(c, 26, y + 28, W - 52, 80, 8); c.stroke(); c.lineWidth = 1;
+            c.fillStyle = '#e9ecef'; c.font = '14px "Hiragino Sans",sans-serif';
+            const nl = wrapText(c, q.note, W - 76);
+            let ny = y + 50; for (let i = 0; i < nl.length; i++) { c.fillText(nl[i], 38, ny); ny += 20; }
+            if (tick % 56 < 34) { c.fillStyle = '#cdd9ff'; c.font = '13px "Hiragino Sans",sans-serif'; c.textAlign = 'center'; c.fillText('Z / タップで つづける ▶', W / 2, H - 14); c.textAlign = 'left'; }
+          } else {
+            c.fillStyle = '#868e96'; c.font = '12px "Hiragino Sans",sans-serif'; c.textAlign = 'center';
+            c.fillText('↑ ↓ 選択　　Z 決定', W / 2, H - 12); c.textAlign = 'left';
+          }
+        }
+        drawVignette(c);
+      },
+    };
+  }
+
+  // ===================== 六章: 落武者ステルス =====================
+  // いけを連れて、見回りの灯りに見つからないように西の森（左端）まで移動する。
+  // イージー: 2回まで見逃してもらえる / ハード: 見つかると即スタートに戻る
+  function makeStealthGame(onDone) {
+    const hard = difficulty === 'hard';
+    const SX = 452, SY = 250;
+    let px = SX, py = SY;
+    let trail = [], warnN = 0, msgT = 0, msg = '', phase = 'play', doneT = 0, safeT = 0;
+    const guards = [
+      { x: 305, y: 130, dir: 1, min: 100, max: 330, spd: hard ? 85 : 62 },
+      { x: 175, y: 320, dir: -1, min: 100, max: 330, spd: hard ? 100 : 74 },
+    ];
+    const R = hard ? 88 : 74;
+    function resetPos() { px = SX; py = SY; trail = []; }
+    return {
+      enter: function () {},
+      update: function (dt) {
+        if (msgT > 0) msgT -= dt;
+        if (safeT > 0) safeT -= dt;
+        if (phase === 'clear') {
+          doneT += dt;
+          if (doneT > 1.3 || Input.pressed('confirm')) onDone();
+          return;
+        }
+        var dx = 0, dy = 0;
+        if (Input.down('left')) dx -= 1;
+        if (Input.down('right')) dx += 1;
+        if (Input.down('up')) dy -= 1;
+        if (Input.down('down')) dy += 1;
+        px = Math.max(28, Math.min(W - 28, px + dx * 115 * dt));
+        py = Math.max(96, Math.min(H - 84, py + dy * 115 * dt));
+        trail.push({ x: px, y: py });
+        if (trail.length > 14) trail.shift();
+        for (var gi = 0; gi < guards.length; gi++) {
+          var gd = guards[gi];
+          gd.y += gd.dir * gd.spd * dt;
+          if (gd.y < gd.min) { gd.y = gd.min; gd.dir = 1; }
+          if (gd.y > gd.max) { gd.y = gd.max; gd.dir = -1; }
+          if (safeT <= 0 && phase === 'play') {
+            var ike = trail[0] || { x: px, y: py };
+            var d1 = Math.hypot(gd.x - px, gd.y - py), d2 = Math.hypot(gd.x - ike.x, gd.y - ike.y);
+            if (d1 < R || d2 < R) {
+              if (hard) { resetPos(); msg = '見つかった！ ……スタートから やり直し！'; msgT = 1.6; safeT = 1.2; }
+              else {
+                warnN++;
+                if (warnN >= 3) { resetPos(); warnN = 0; msg = '見つかった！ ……仕切り直し！'; msgT = 1.6; }
+                else { msg = 'あぶない！（あと ' + (3 - warnN) + '回 見つかると 仕切り直し）'; msgT = 1.6; }
+                safeT = 1.5;
+              }
+            }
+          }
+        }
+        if (px < 58) { phase = 'clear'; doneT = 0; }
+      },
+      render: function (c) {
+        var g = c.createLinearGradient(0, 0, 0, H);
+        g.addColorStop(0, '#101625'); g.addColorStop(0.4, '#15251a'); g.addColorStop(1, '#0e1a12');
+        c.fillStyle = g; c.fillRect(0, 0, W, H);
+        // ゴール: 左端の森
+        for (var bi = 0; bi < 6; bi++) {
+          c.fillStyle = '#153a15';
+          c.beginPath(); c.arc(26, 110 + bi * 55, 26, 0, Math.PI * 2); c.fill();
+          c.fillStyle = '#1d5c1d';
+          c.beginPath(); c.arc(20, 100 + bi * 55, 20, 0, Math.PI * 2); c.fill();
+        }
+        // 見回りの灯り（視界）
+        for (var gi2 = 0; gi2 < guards.length; gi2++) {
+          var gd2 = guards[gi2];
+          var lg = c.createRadialGradient(gd2.x, gd2.y, 0, gd2.x, gd2.y, R);
+          lg.addColorStop(0, 'rgba(255,220,130,0.28)'); lg.addColorStop(0.75, 'rgba(255,200,90,0.10)'); lg.addColorStop(1, 'rgba(0,0,0,0)');
+          c.fillStyle = lg; c.beginPath(); c.arc(gd2.x, gd2.y, R, 0, Math.PI * 2); c.fill();
+          drawActor(c, gd2.x, gd2.y, 'kancho', gd2.dir > 0 ? 'down' : 'up', 1.1, true);
+        }
+        // いけ（後を付いてくる）と オダ
+        var ike2 = trail[0] || { x: px + 26, y: py };
+        drawActor(c, ike2.x, ike2.y, 'ike', 'left', 1.1, trail.length > 2);
+        drawActor(c, px, py, 'oda', 'left', 1.1, true);
+        c.textAlign = 'center';
+        c.fillStyle = '#ffd43b'; c.font = 'bold 20px "Hiragino Mincho ProN",serif';
+        c.fillText('見つからずに、西の 森まで いけを 送りとどけろ', W / 2, 40);
+        c.fillStyle = '#adb5bd'; c.font = '12px "Hiragino Sans",sans-serif';
+        c.fillText('十字キーで 移動　　灯りの 輪に 入らないように！', W / 2, 62);
+        if (msgT > 0) { c.fillStyle = 'rgba(255,150,140,' + Math.min(1, msgT) + ')'; c.font = 'bold 16px "Hiragino Sans",sans-serif'; c.fillText(msg, W / 2, 86); }
+        if (phase === 'clear') {
+          c.fillStyle = 'rgba(255,255,255,' + Math.max(0, 0.4 - doneT * 0.3) + ')'; c.fillRect(0, 0, W, H);
+          c.fillStyle = '#c3e88d'; c.font = 'bold 30px "Hiragino Mincho ProN",serif';
+          c.fillText('森に たどり着いた……！', W / 2, 210);
         }
         drawVignette(c);
         c.textAlign = 'left';
