@@ -12,7 +12,11 @@
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
   const TILE = 32, COLS = 16, ROWS = 14;
-  const W = TILE * COLS, H = TILE * ROWS; // 512 x 448
+  const W = TILE * COLS, H = TILE * ROWS; // 512 x 448（論理座標）
+  // HD: 内部解像度を2倍で描画（文字・画像・図形がくっきり）。論理座標は 512x448 のまま、
+  // 毎フレーム setTransform(RES) でスケールする。表示サイズは CSS 側で固定
+  const RES = 2;
+  canvas.width = W * RES; canvas.height = H * RES;
 
   // ===================== Input =====================
   const held = new Set();
@@ -177,6 +181,7 @@
     civ1: { body: '#c98747', legs: '#5a4632', skin: '#ffd8a8', hair: '#4a3423', short: true },
     civ2: { body: '#5b8c5a', legs: '#33502f', skin: '#ffd8a8', hair: '#6b4a35' },
     sakamoto: { body: '#7048a8', legs: '#3d2a55', skin: '#ffd8a8', hair: '#2b2b2b', short: true },
+    naiki: { body: '#2e5e4e', legs: '#243c34', skin: '#ffd8a8', hair: '#1d1d1d', short: true },
   };
   function drawShadow(c, cx, cy, s) {
     c.fillStyle = 'rgba(0,0,0,0.25)';
@@ -468,7 +473,21 @@
   function drawActor(c, cx, cy, kind, facing, scale, moving, alpha) {
     scale = scale || 1;
     if (alpha != null && alpha < 1) { c.save(); c.globalAlpha = Math.max(0, alpha); }
-    if (kind === 'enemy') { drawGhost(c, cx, cy, scale); }
+    var sheet = HD_SPRITE[kind];
+    if (sheet) {
+      // スプライトシート描画（3列×4行）。実描画域を高さ基準で拡縮し、足元を cy+TILE/2 に接地
+      var cw = Math.floor(sheet.width / 3), chh = Math.floor(sheet.height / 4);
+      var box = HD_SPRITE_BOX[kind] || { x: 0, y: 0, w: cw, h: chh };
+      var row = { down: 0, left: 1, right: 2, up: 3 }[facing || 'down'] || 0;
+      var seq = [0, 1, 0, 2];
+      var col = moving ? seq[(tick / 7 | 0) % 4] : 0;
+      var dh = TILE * 1.35 * scale, dw = dh * (box.w / box.h);
+      var footY = cy + (TILE / 2) * scale;
+      c.fillStyle = 'rgba(0,0,0,0.22)';
+      c.beginPath(); c.ellipse(cx, footY - 2, dw * 0.34, dw * 0.12, 0, 0, Math.PI * 2); c.fill();
+      c.drawImage(sheet, col * cw + box.x, row * chh + box.y, box.w, box.h, cx - dw / 2, footY - dh, dw, dh);
+    }
+    else if (kind === 'enemy') { drawGhost(c, cx, cy, scale); }
     else { drawHumanoid(c, cx, cy, scale, PAL[kind] || PAL.oda, facing || 'down', moving); }
     if (alpha != null && alpha < 1) c.restore();
   }
@@ -507,38 +526,41 @@
     'TTTTTTTTTTTTTTTT',
   ];
   // ゾーンA: 長久手古戦場公園（40x28・カメラスクロール）
+  // 実際の地理に寄せた配置: 公園の西に県道57号（縦の大通り）、その西にイオン。
+  // 北辺にグリーンロード（横の大通り）とリニモ古戦場駅（北東）。
   // W/^=記念館外観, D=記念館入口, M=勝入塚, N=庄九郎塚, R=岩, b=茂み, P=セーブ篝火
   const ZONEA = [
     'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT..TTTT',
-    'T......................................T',
-    'T...................^^^^^^^^^^^^^......T',
-    'T...................^^^^^^^^^^^^^......T',
-    'T...................WWWWWWWWWWWWW......T',
-    'T...................WWWWWWWWWWWWW......T',
-    'T...................WWWWWDDWWWWWW......T',
-    'T........................,,............T',
-    'T........................,,............T',
-    'T..bbb...................,,............T',
-    'T..bbb...................,,.......M....T',
-    'T..bbb..R................,,............T',
-    'T........................,,....N.......T',
-    '.......................................T',
-    '.......................................T',
-    'T......................................T',
-    'T..................................~~~.T',
-    'T..................................~~~.T',
-    'T......................................T',
-    'T...........................P..........T',
-    'TIII...................................T',
-    'TI4I................................eeeT',
-    'T......................................T',
-    'T......................................T',
-    'T..................@...................T',
-    'T....T....T.............T....T.........T',
-    'T......................................T',
+    'T....rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrT',
+    'T....rrr............^^^^^^^^^^^^^..eee.T',
+    'TIII.rrr............^^^^^^^^^^^^^......T',
+    'TII4.rrr............WWWWWWWWWWWWW......T',
+    'TIII.rrr............WWWWWWWWWWWWW......T',
+    'T....rrr............WWWWWDDWWWWWW......T',
+    'T....rrr.................,,............T',
+    'T....rrr.................,,............T',
+    'T....rrr.bbb.............,,............T',
+    'T....rrr.bbb.............,,.......M....T',
+    'T....rrr.bbb.R...........,,............T',
+    'T....rrr.................,,....N.......T',
+    'rrrrrrrr...............................T',
+    'rrrrrrrr...............................T',
+    'T....rrr...............................T',
+    'T....rrr...........................~~~.T',
+    'T....rrr...........................~~~.T',
+    'T....rrr...............................T',
+    'T....rrr....................P..........T',
+    'T....rrr...............................T',
+    'T....rrr...............................T',
+    'T....rrr...............................T',
+    'T....rrr...............................T',
+    'T....rrr...........@...................T',
+    'T....rrr..T..............T....T........T',
+    'T....rrr...............................T',
     'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
   ];
-  // ゾーンB: 市街地（グリーンロード・砂子交差点・一蘭・桧ヶ根公園）
+  // ゾーンB: 市街地（グリーンロード・砂子交差点・一蘭・桧ヶ根公園・御旗山）
+  // 御旗山は実際には古戦場公園の南西 → 南東エリア（N）に配置
   const ZONEB = [
     'TTTTTTTTTTTTTTTTTTT..TTTTTTTTTTTTTTTTTTT',
     'T..................rrr.................T',
@@ -560,7 +582,7 @@
     'T..................rrr.................T',
     'T..................rrr.................T',
     'T...bTb............rrr.................T',
-    'T...b.b............rrr.................T',
+    'T...b.b............rrr........N........T',
     'T...b.a.b..........rrr.................T',
     'T...b.b............rrr.................T',
     'T...bbb............rrr.................T',
@@ -569,7 +591,8 @@
     'T..................rrr.................T',
     'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
   ];
-  // ゾーンC: 岩作・色金山（色金山＋床机石・茶室・市役所・こども塾・血の池・安昌寺・武蔵塚・御旗山）
+  // ゾーンC: 岩作・色金山（色金山＋床机石・茶室・市役所・こども塾・血の池・安昌寺・武蔵塚）
+  // 安昌寺は実際には色金山のすぐ西 → 山の西隣（J＋o）に配置。御旗山はゾーンBへ移設
   const ZONEC = [
     'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
     'T......................................T',
@@ -579,10 +602,10 @@
     'T...........TTTTTT..,..TTTTTT..........T',
     'T...........TTTTTT..,..TTTTTT..........T',
     'T...........TTTTTT..,..TTTTTT..........T',
-    'T..................,,..................T',
-    'T..................,,...x..............T',
-    'T..............JJJJJ,..................T',
-    'T..............JJJJJ,..................T',
+    'T...JJJJJ..........,,..................T',
+    'T...JJJJJ..........,,...x..............T',
+    'T...JJJJJ......JJJJJ,..................T',
+    'T.....o........JJJJJ,..................T',
     'T..............JJ1JJ,....WWWWWW........T',
     '....................,....WWWWWW........T',
     '....................,....WWWWWW........T',
@@ -592,10 +615,10 @@
     'T.......~~~~~.......,...........KKKKK..T',
     'T.......~~~~~.......,...........KKKKK..T',
     'T.......a...........,...........KK3KK..T',
-    'T..JJJJJ............,...M..............T',
-    'T..JJJJJ............,..................T',
-    'T..JJJJJ............,..........N.......T',
-    'T....o..............,..................T',
+    'T...................,...M..............T',
+    'T...................,..................T',
+    'T...................,..................T',
+    'T...................,..................T',
     'T...................,..................T',
     'T......................................T',
     'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT..TTTT',
@@ -630,6 +653,39 @@
     'T......................................T',
     'T......................................T',
     'TTTTTTTTTTTTTTTTTTT..TTTTTTTTTTTTTTTTTTT',
+  ];
+  // 岩崎城址公園（日進市・ハードクリア後の裏イベント）
+  // W/5=模擬天守（本丸・空堀kに囲まれ土橋,で渡る）, F/6=歴史記念館, ~=二の丸庭園の池,
+  // n=学芸員・内貴, s=坂元, P=セーブ篝火, 7=帰りの案内板
+  const IWASAKI = [
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'T......................................T',
+    'T..T.....T..........................T..T',
+    'T......................................T',
+    'T............kkkkkkkkkkkkk.............T',
+    'T............k...........k.............T',
+    'T............k...WWWWW...k.............T',
+    'T............k...WWWWW...k.............T',
+    'T............k...WWWWW...k.............T',
+    'T............k...WW5WW...k.............T',
+    'T............k...........k.............T',
+    'T............kkkkkk,kkkkkk.............T',
+    'T................n.,.s.................T',
+    'T..T...............,..............T....T',
+    'T..................,...................T',
+    'T..................,...................T',
+    'T.......~~~........,........FFFFFF.....T',
+    'T.......~~~........,........FFFFFF.....T',
+    'T..................,........FF6FFF.....T',
+    'T.....bb...........,...................T',
+    'T..................,......P............T',
+    'T..................,...................T',
+    'T..T...............,...........T.......T',
+    'T..................,...................T',
+    'T..................@...................T',
+    'T..................,...................T',
+    'T..................7...................T',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
   ];
   // ゾーンE: モリコロパーク（リニモでのみ来園）
   const ZONEE = [
@@ -741,9 +797,9 @@
     },
     zoneB: {
       rows: ZONEB, kind: 'outdoor', tileset: 'outdoor', playerFloor: '.',
-      solid: ['T', 'b', 'Y', '1'],
+      solid: ['T', 'b', 'Y', '1', 'N'],
       npcs: {},
-      acts: { 1: 'ramen', a: 'higane' },
+      acts: { 1: 'ramen', a: 'higane', N: 'site_mihata' },
       edges: { east: 'zoneA', north: 'zoneD' },
       encounter: null,
     },
@@ -751,7 +807,7 @@
       rows: ZONEC, kind: 'outdoor', tileset: 'outdoor', playerFloor: '.',
       solid: ['T', '~', 'M', 'N', 'R', 'J', 'W', 'K', '1', '2', '3', 'x'],
       npcs: {},
-      acts: { R: 'site_irogane', 1: 'tearoom', 2: 'cityhall', 3: 'kodomo', a: 'site_chinoike', o: 'site_ansho', M: 'site_musashi', N: 'site_mihata', x: 'shateki' },
+      acts: { R: 'site_irogane', 1: 'tearoom', 2: 'cityhall', 3: 'kodomo', a: 'site_chinoike', o: 'site_ansho', M: 'site_musashi', x: 'shateki' },
       edges: { south: 'zoneA', west: 'zoneD' },
       encounter: null,
     },
@@ -790,10 +846,17 @@
     },
     mori: {
       rows: MORIHALL, kind: 'indoor', tileset: 'museum', playerFloor: '.',
-      solid: ['#', 'D', '='],
       npcs: { s: { kind: 'sakamoto', id: 'sakamoto', floor: '.' } },
+      solid: ['#', 'D', '='],
       acts: { D: 'mori_exit', '=': 'drumcircle' },
       encounter: null,
+    },
+    iwasaki: {
+      rows: IWASAKI, kind: 'outdoor', tileset: 'outdoor', playerFloor: '.',
+      solid: ['T', '~', 'W', '5', 'F', '6', 'k', 'P', '7', 'b'],
+      npcs: { n: { kind: 'naiki', id: 'naiki', floor: '.' }, s: { kind: 'sakamoto', id: 'sakamoto_iw', floor: '.' } },
+      acts: { 5: 'tenshu', 6: 'iwasaki_kinenkan', P: 'save', 7: 'iwasaki_gate' },
+      encounter: { rate: 0.055 },
     },
   };
   // ゾーン端のシームレス接続が解放されているか（四章の現地取材クエスト以降）
@@ -908,11 +971,16 @@
         c.fillStyle = '#2a1c14'; c.fillRect(x, y + T - 4, T, 4);
       }
     } else {
-      fillSmooth(c, tc, tr, x, y, function(v) {
+      // HD-2D: 地面テクスチャがあればパターン敷き、無ければ従来のプロシージャル
+      var gpat = hdPattern(c, 'grass');
+      if (gpat) { c.fillStyle = gpat; c.fillRect(x, y, T, T); }
+      else fillSmooth(c, tc, tr, x, y, function(v) {
         var gb = 74 + v * 22 | 0, gg = 140 + v * 28 | 0;
         return 'rgb(' + gb + ',' + gg + ',' + (gb - 8) + ')';
       });
       if (ch === ',') {
+        var dpat = hdPattern(c, 'dirt');
+        if (dpat) { c.fillStyle = dpat; c.fillRect(x, y, T, T); return; }
         fillSmooth(c, tc, tr, x, y, function(v) {
           var pb = 175 + v * 20 | 0;
           return 'rgb(' + (pb + 10) + ',' + (pb - 10) + ',' + (pb - 50) + ')';
@@ -931,6 +999,7 @@
         c.beginPath(); c.arc(x + h2 * 14 + 10, y + h0 * 12 + 15, 1, 0, Math.PI * 2); c.fill();
         if (h1 > 0.7) { c.fillStyle = 'rgba(80,120,50,0.12)'; c.fillRect(x + h0 * 4, y + h2 * 6, 4, T - h2 * 8); }
       } else if (ch === '.') {
+        if (gpat) return; // テクスチャに草のディテールが含まれるため加飾しない
         c.fillStyle = 'rgba(100,190,70,0.07)'; c.fillRect(x + h1 * 10 + 2, y + h2 * 8 + 2, 10, 8);
         var wind = Math.sin(tick * 0.025 + tc * 0.8 + tr * 0.6);
         c.strokeStyle = 'rgba(30,95,20,0.35)'; c.lineWidth = 1;
@@ -984,7 +1053,9 @@
         c.fillStyle = 'rgba(10,40,10,0.2)';
         c.beginPath(); c.arc(cx, cy + 4, 10, 0, Math.PI); c.fill();
       } else if (ch === '~') {
-        fillSmooth(c, tc, tr, x, y, function(v) {
+        var wpat = hdPattern(c, 'water');
+        if (wpat) { c.fillStyle = wpat; c.fillRect(x, y, T, T); }
+        else fillSmooth(c, tc, tr, x, y, function(v) {
           return 'rgb(' + (22 + v * 8 | 0) + ',' + (84 + v * 12 | 0) + ',' + (146 + v * 16 | 0) + ')';
         });
         var wt = tick * 0.06;
@@ -1090,7 +1161,16 @@
         c.beginPath(); c.moveTo(x, y + 10); c.lineTo(x + T, y + 10); c.stroke();
         c.beginPath(); c.moveTo(x, y + 21); c.lineTo(x + T, y + 21); c.stroke();
         c.fillStyle = 'rgba(255,255,255,0.05)'; c.fillRect(x, y + 1, T, 2);
-      } else if (ch === 'D' || ch === '1' || ch === '2' || ch === '3' || ch === '4') {
+      } else if (ch === 'k') {
+        // 空堀（岩崎城）: 乾いた堀の溝。上と左に落ち影
+        fillSmooth(c, tc, tr, x, y, function (v) {
+          var kb = 52 + v * 14 | 0;
+          return 'rgb(' + (kb + 14) + ',' + (kb + 4) + ',' + (kb - 6) + ')';
+        });
+        c.fillStyle = 'rgba(0,0,0,0.30)'; c.fillRect(x, y, T, 5);
+        c.fillStyle = 'rgba(0,0,0,0.18)'; c.fillRect(x, y, 4, T);
+        c.fillStyle = 'rgba(140,120,85,0.14)'; c.fillRect(x + h0 * 16, y + 8 + h1 * 12, 7, 3);
+      } else if (ch === 'D' || ch === '1' || ch === '2' || ch === '3' || ch === '4' || ch === '5' || ch === '6') {
         // 施設の入口（屋外側・共通の扉）
         c.fillStyle = '#7a5a30'; c.fillRect(x, y, T, T);
         c.fillStyle = '#6a4a20'; c.fillRect(x + 3, y + 2, T - 6, T - 4);
@@ -1099,6 +1179,8 @@
         c.fillStyle = '#f0c850'; c.beginPath(); c.arc(x + T - 8.5, y + T / 2 - 0.5, 1, 0, Math.PI * 2); c.fill();
       } else if (ch === 'r') {
         // アスファルト道路
+        var rpat = hdPattern(c, 'road');
+        if (rpat) { c.fillStyle = rpat; c.fillRect(x, y, T, T); return; }
         fillSmooth(c, tc, tr, x, y, function(v) {
           var ab = 88 + v * 12 | 0;
           return 'rgb(' + ab + ',' + (ab + 2) + ',' + (ab + 6) + ')';
@@ -1112,8 +1194,8 @@
         c.fillStyle = '#f0ead8'; c.beginPath(); c.arc(x + T / 2, y + 11, 9, 0, Math.PI * 2); c.fill();
         c.fillStyle = '#c0392b'; c.beginPath(); c.arc(x + T / 2, y + 11, 6, 0, Math.PI * 2); c.fill();
         c.fillStyle = '#f0ead8'; c.beginPath(); c.arc(x + T / 2, y + 11, 3, 0, Math.PI * 2); c.fill();
-      } else if (ch === 'a' || ch === 'o') {
-        // 史跡の標柱（a=赤旗つき / o=寺標）
+      } else if (ch === 'a' || ch === 'o' || ch === '7') {
+        // 史跡の標柱（a=赤旗つき / o=寺標 / 7=帰り道の案内板）
         c.fillStyle = 'rgba(0,0,0,0.18)'; c.beginPath(); c.ellipse(x + T / 2, y + T - 3, 9, 3.5, 0, 0, Math.PI * 2); c.fill();
         c.fillStyle = '#8a6a40'; c.fillRect(x + T / 2 - 2, y + 6, 4, T - 10);
         c.fillStyle = '#c8b088'; c.fillRect(x + T / 2 - 5, y + 4, 10, 6);
@@ -1164,9 +1246,28 @@
   function drawFieldWorld(c, map, player, camX, camY) {
     const r0 = Math.max(0, (camY / TILE) | 0), r1 = Math.min(map.grid.length - 1, ((camY + H) / TILE | 0) + 1);
     const c0 = Math.max(0, (camX / TILE) | 0), c1 = Math.min(map.grid[0].length - 1, ((camX + W) / TILE | 0) + 1);
+    // HD建物: 読み込み済みの建物は足元タイルを草に差し替え、後段で一枚絵を重ねる
+    const blds = (HD_BLD_DEF[map.key] || []).filter(function (b) { return HD_BLD[b.key]; });
+    function inBld(col, row) {
+      for (var i = 0; i < blds.length; i++) {
+        var b = blds[i];
+        if (col >= b.c0 && col < b.c0 + b.w && row >= b.r0 && row < b.r0 + b.h) return true;
+      }
+      return false;
+    }
+    const deco = []; // HD装飾スプライト（木・茂み・岩・塚）の描画予約
     for (let r = r0; r <= r1; r++) {
       for (let col = c0; col <= c1; col++) {
-        drawTile(c, map.grid[r][col], col * TILE, r * TILE, map.tileset);
+        var ch = map.grid[r][col];
+        var dd = (map.tileset === 'outdoor') ? HD_DECO_DEF[ch] : null;
+        if (dd && HD_DECO[dd.key]) {
+          drawTile(c, '.', col * TILE, r * TILE, map.tileset);
+          deco.push({ ch: ch, col: col, row: r, def: dd });
+        } else if (blds.length && inBld(col, r)) {
+          drawTile(c, '.', col * TILE, r * TILE, map.tileset);
+        } else {
+          drawTile(c, ch, col * TILE, r * TILE, map.tileset);
+        }
       }
     }
     // Light glow pass
@@ -1182,12 +1283,42 @@
       }
     }
     c.restore();
+    // 奥行き描画: 装飾スプライト・建物一枚絵・アクターを底辺Yでソート（HD-2Dの前後関係）
+    const painter = [];
+    deco.forEach(function (d) {
+      var img = HD_DECO[d.def.key];
+      var bw = d.def.w * TILE, bh = bw * (img.height / img.width);
+      var bx = d.col * TILE + TILE / 2, by = (d.row + 1) * TILE;
+      painter.push({ y: by - 2, draw: function () {
+        c.fillStyle = 'rgba(0,0,0,0.22)';
+        c.beginPath(); c.ellipse(bx, by - 3, bw * 0.36, bw * 0.12, 0, 0, Math.PI * 2); c.fill();
+        if (d.ch === 'T' || d.ch === 'b') {
+          var sw = Math.sin(tick * 0.02 + d.col * 1.1 + d.row * 0.7) * 0.012;
+          c.save(); c.translate(bx, by); c.rotate(sw); c.drawImage(img, -bw / 2, -bh, bw, bh); c.restore();
+        } else {
+          c.drawImage(img, bx - bw / 2, by - bh, bw, bh);
+        }
+      } });
+    });
+    blds.forEach(function (b) {
+      var img = HD_BLD[b.key];
+      var bw = b.w * TILE, bx = b.c0 * TILE, bottom = (b.r0 + b.h) * TILE;
+      var bh = bw * (img.height / img.width);
+      painter.push({ y: bottom - 1, draw: function () {
+        var sg = c.createLinearGradient(0, bottom - 8, 0, bottom + 8);
+        sg.addColorStop(0, 'rgba(0,0,0,0)'); sg.addColorStop(0.5, 'rgba(0,0,0,0.20)'); sg.addColorStop(1, 'rgba(0,0,0,0)');
+        c.fillStyle = sg; c.fillRect(bx + 4, bottom - 8, bw - 8, 16);
+        c.drawImage(img, bx, bottom - bh, bw, bh);
+      } });
+    });
     // Actors（player=null ならプレイヤー非表示: カットシーン用）
-    const actors = [];
-    map.npcs.forEach(function (n) { actors.push({ x: n.col * TILE + TILE / 2, y: n.row * TILE + TILE / 2, kind: n.kind, facing: 'down' }); });
-    if (player) actors.push({ x: player.x, y: player.y, kind: player.kind, facing: player.facing, moving: player.moving });
-    actors.sort(function (a, b) { return a.y - b.y; });
-    actors.forEach(function (a) { drawActor(c, a.x, a.y, a.kind, a.facing, 1, a.moving); });
+    map.npcs.forEach(function (n) {
+      var ax = n.col * TILE + TILE / 2, ay = n.row * TILE + TILE / 2;
+      painter.push({ y: ay, draw: function () { drawActor(c, ax, ay, n.kind, 'down', 1); } });
+    });
+    if (player) painter.push({ y: player.y, draw: function () { drawActor(c, player.x, player.y, player.kind, player.facing, 1, player.moving); } });
+    painter.sort(function (a, b) { return a.y - b.y; });
+    painter.forEach(function (p) { p.draw(); });
   }
   // ワールドパス後半: ワールド座標の光だまり（カメラ translate の内側）
   function drawFieldAtmoWorld(c, map) {
@@ -1197,6 +1328,17 @@
       drawLightPool(c, 12 * TILE, 1.5 * TILE, 55, 'rgba(255,220,150,1)', 0.07);
     } else if (map.key === 'zoneA' && chapter === 'pro') {
       drawLightPool(c, 19.5 * TILE, 15 * TILE, 95, 'rgba(180,170,220,1)', 0.06);
+    }
+    // 雲影: 屋外をゆっくり流れる大きな影（HD-2Dの空気感）
+    if (map.tileset === 'outdoor') {
+      var mw = map.grid[0].length * TILE, mh = map.grid.length * TILE;
+      c.save(); c.fillStyle = 'rgba(8,12,28,0.05)';
+      for (var ci = 0; ci < 3; ci++) {
+        var cwx = ((ci * 733 + tick * (0.25 + ci * 0.07)) % (mw + 700)) - 350;
+        var cwy = ((ci * 431 + tick * 0.1) % (mh + 500)) - 250;
+        c.beginPath(); c.ellipse(cwx, cwy, 190 + ci * 40, 110 + ci * 20, 0.4, 0, Math.PI * 2); c.fill();
+      }
+      c.restore();
     }
   }
   // スクリーンパス: 画面座標のオーバーレイ（カメラ translate の外側）
@@ -1237,6 +1379,7 @@
     if (name === '館長') return 'kancho';
     if (name === '踊り子') return 'odoriko';
     if (name === '坂元') return 'sakamoto';
+    if (name === '内貴') return 'naiki';
     if (name === '通行人') return 'civ1';
     return null;
   }
@@ -1278,6 +1421,105 @@
     img.onload = function () { TITLE_LOGO_IMG = img; };
     img.src = 'assets/logo/title_logo.png';
   })();
+  // ===================== HD-2D フィールド画像（第1弾: 地面・装飾・建物）=====================
+  // assets/tiles|deco|buildings/ に画像を置くと自動で差し替わる（無ければ従来のプロシージャル描画）。
+  // 生成プロンプトは docs/asset_prompts.md を参照。
+  const HD_TEX = {};   // 地面テクスチャ（シームレス）: grass / road / dirt / water
+  const HD_DECO = {};  // 装飾スプライト（透過）: tree / bush / rock / mound / mound_s
+  const HD_BLD = {};   // 建物一枚絵（透過・下寄せ）: museum / aeon / station / ...
+  function loadHDImg(store, key, src) {
+    var img = new Image();
+    img.onload = function () { store[key] = img; };
+    img.onerror = function () {};
+    img.src = src;
+  }
+  ['grass', 'road', 'dirt', 'water'].forEach(function (k) { loadHDImg(HD_TEX, k, 'assets/tiles/' + k + '.png'); });
+  ['tree', 'bush', 'rock', 'mound', 'mound_s'].forEach(function (k) { loadHDImg(HD_DECO, k, 'assets/deco/' + k + '.png'); });
+  ['museum', 'aeon', 'station', 'ramen', 'tearoom', 'cityhall', 'kodomo', 'temple', 'bunka', 'library', 'ferris', 'iwasaki_tenshu', 'iwasaki_kinenkan'].forEach(function (k) { loadHDImg(HD_BLD, k, 'assets/buildings/' + k + '.png'); });
+  // 歩行スプライトシート（assets/sprites/<kind>_walk.png）: 3列×4行。
+  // 行=正面/左/右/後ろ、列=立ち/歩き1/歩き2。あれば drawActor が自動で使う。
+  // 生成画像はセル内の余白が大きいため、全セル共通の実描画域（不透明ピクセルの外接矩形）を
+  // 一度だけ解析して切り出す。解析できない環境（file:// 等）は全セル描画にフォールバック
+  const HD_SPRITE = {};
+  const HD_SPRITE_BOX = {};
+  function sheetContentBox(kind, img) {
+    try {
+      var oc = document.createElement('canvas');
+      oc.width = img.width; oc.height = img.height;
+      var octx = oc.getContext('2d');
+      octx.drawImage(img, 0, 0);
+      var cw = Math.floor(img.width / 3), chh = Math.floor(img.height / 4);
+      var minX = cw, minY = chh, maxX = 0, maxY = 0;
+      for (var row = 0; row < 4; row++) {
+        for (var col = 0; col < 3; col++) {
+          var d = octx.getImageData(col * cw, row * chh, cw, chh).data;
+          for (var y = 0; y < chh; y++) {
+            for (var x = 0; x < cw; x++) {
+              if (d[(y * cw + x) * 4 + 3] > 10) {
+                if (x < minX) minX = x; if (x > maxX) maxX = x;
+                if (y < minY) minY = y; if (y > maxY) maxY = y;
+              }
+            }
+          }
+        }
+      }
+      if (maxX > minX && maxY > minY) HD_SPRITE_BOX[kind] = { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
+    } catch (e) { /* 解析不可なら全セル描画のまま */ }
+  }
+  ['oda', 'ike', 'michi', 'kancho', 'odoriko', 'sakamoto', 'naiki', 'civ1', 'civ2'].forEach(function (k) {
+    var img = new Image();
+    img.onload = function () { HD_SPRITE[k] = img; sheetContentBox(k, img); };
+    img.onerror = function () {};
+    img.src = 'assets/sprites/' + k + '_walk.png';
+  });
+  // 地面テクスチャ → 敷き詰めパターン（元画像を 8×8 タイル分に縮小してリピート。元ファイルは縮小保存しない）
+  const HD_PAT = {};
+  function hdPattern(c, key) {
+    var img = HD_TEX[key];
+    if (!img) return null;
+    if (HD_PAT[key]) return HD_PAT[key];
+    var off = document.createElement('canvas');
+    var size = TILE * 8 * RES; // 内部解像度に合わせて高精細のまま保持
+    off.width = size; off.height = size;
+    off.getContext('2d').drawImage(img, 0, 0, size, size);
+    var pat = c.createPattern(off, 'repeat');
+    // 論理座標では 8タイル周期になるよう縮小（対応ブラウザのみ。非対応でも動作はする）
+    if (pat.setTransform && typeof DOMMatrix !== 'undefined') pat.setTransform(new DOMMatrix([1 / RES, 0, 0, 1 / RES, 0, 0]));
+    HD_PAT[key] = pat;
+    return pat;
+  }
+  // 装飾スプライトの描画定義（w=タイル幅の倍率。高さは画像アスペクトから算出し底辺で接地）
+  const HD_DECO_DEF = {
+    T: { key: 'tree', w: 1.55 },
+    b: { key: 'bush', w: 1.2 },
+    R: { key: 'rock', w: 1.1 },
+    M: { key: 'mound', w: 1.4 },
+    N: { key: 'mound_s', w: 1.2 },
+  };
+  // 建物一枚絵の配置（タイル矩形）。画像は横幅にフィットし、余った高さは上（屋根方向）へはみ出す
+  const HD_BLD_DEF = {
+    zoneA: [
+      { key: 'museum', c0: 20, r0: 2, w: 13, h: 5 },
+      { key: 'aeon', c0: 1, r0: 3, w: 3, h: 3 },
+      { key: 'station', c0: 35, r0: 1, w: 3, h: 2 },
+    ],
+    zoneB: [{ key: 'ramen', c0: 24, r0: 9, w: 5, h: 3 }],
+    zoneC: [
+      { key: 'temple', c0: 4, r0: 8, w: 5, h: 3 },
+      { key: 'tearoom', c0: 15, r0: 10, w: 5, h: 3 },
+      { key: 'cityhall', c0: 25, r0: 12, w: 6, h: 4 },
+      { key: 'kodomo', c0: 32, r0: 18, w: 5, h: 3 },
+    ],
+    zoneD: [
+      { key: 'bunka', c0: 12, r0: 6, w: 16, h: 7 },
+      { key: 'library', c0: 31, r0: 17, w: 7, h: 4 },
+    ],
+    zoneE: [{ key: 'ferris', c0: 32, r0: 3, w: 4, h: 4 }],
+    iwasaki: [
+      { key: 'iwasaki_tenshu', c0: 17, r0: 6, w: 5, h: 4 },
+      { key: 'iwasaki_kinenkan', c0: 28, r0: 16, w: 6, h: 3 },
+    ],
+  };
   // 顔ウィンドウ（仮：図形ポートレート。画像があればそれを描く）
   function drawPortrait(c, kind, x, y, s) {
     c.fillStyle = 'rgba(0,0,0,0.35)'; roundRect(c, x + 3, y + 3, s, s, 8); c.fill();
@@ -1481,6 +1723,7 @@
     nuno:     { name: '記念館の制服',   type: 'armor',  def: 0, desc: '長久手古戦場記念館の 制服。動きやすい。' },
     do:       { name: '胴丸',           type: 'armor',  def: 2, desc: '軽くて 丈夫な 胴の鎧。' },
     akazonae: { name: '赤備えの具足',   type: 'armor',  def: 5, desc: '真っ赤に 統一された 井伊の具足…の、写し。' },
+    ujishige: { name: '氏重の兜',       type: 'armor',  def: 8, desc: '岩崎城を 守り抜いた 十六歳の 若武者に ちなむ 兜。覚悟が 宿る。' },
   };
   const Hero = { lv: 1, exp: 0, maxhp: 30, atkBonus: 0, weapon: 'bokuto', armor: 'nuno', items: ['replica', 'do'] };
   function weaponAtk() { return (ITEMS[Hero.weapon] && ITEMS[Hero.weapon].atk) || 0; }
@@ -1560,6 +1803,7 @@
   let mgDone = {};                    // ミニゲーム初回クリア記録（報酬の重複防止）
   let kanchoLove = 0;                 // 館長の好感度（選択肢で上下）
   let kanchoBond = false;             // エピローグで絆が結ばれたか（ハードの仲間加入条件）
+  let iwasakiCleared = false;         // 岩崎城の裏ボス（内貴＆坂元）を倒したか（称号）
   let kanchoEv = {};                  // 好感度イベントの発火記録
   const visitedSites = new Set();     // 本編で現地を訪れた史跡（史跡めぐりの解放条件）
   let stationUsed = false;            // リニモ初回ネタ用（セッション内）
@@ -1573,34 +1817,68 @@
   // ===================== Save / Load (localStorage) =====================
   // v2: difficulty を追加。v1 セーブは初回読み込み時に v2 へ変換する（difficulty='easy'）。
   // storyStage は現状数値のまま。章ID化する際（P2/P3）はここに変換表を足す。
-  const SAVE_KEY = 'kassenzu_save_v2';
+  // セーブは2ファイル制（ファイル1 / ファイル2）。セーブポイントと「つづきから」でファイルを選ぶ。
+  // オートセーブは現在の記録先（saveSlot）に入る
+  const SAVE_KEY = 'kassenzu_save_v2';       // 旧: 単一セーブ時代のキー（初回起動時にファイル1へ移行）
   const SAVE_KEY_V1 = 'kassenzu_save_v1';
+  const SLOT_LAST = 'kassenzu_last_slot';
+  function slotKey(n) { return 'kassenzu_save_v2_f' + n; }
+  let saveSlot = 1;
+  (function () {
+    // 移行: 旧単一セーブ（v2→優先、無ければv1）をファイル1へコピー（ファイル1が空のときだけ）
+    try {
+      if (!localStorage.getItem(slotKey(1))) {
+        var legacy = localStorage.getItem(SAVE_KEY) || localStorage.getItem(SAVE_KEY_V1);
+        if (legacy) localStorage.setItem(slotKey(1), legacy);
+      }
+      saveSlot = parseInt(localStorage.getItem(SLOT_LAST) || '1', 10) === 2 ? 2 : 1;
+    } catch (e) {}
+  })();
+  function hasSlot(n) {
+    try { return !!localStorage.getItem(slotKey(n)); } catch (e) { return false; }
+  }
+  // ファイル選択メニューに出す進行サマリ
+  function slotLabel(n) {
+    try {
+      var d = JSON.parse(localStorage.getItem(slotKey(n)) || 'null');
+      if (!d) return '（データなし）';
+      var ch = { pro: 'プロローグ', ch1: '一章', ch2: '二章', ch3: '三章', legacy: '見回り', post: 'クリア後' }[d.chapter];
+      if (!ch) ch = (d.stageP3 >= 6) ? '六章' : ((d.stageP3 >= 4) ? '五章' : '四章');
+      return ch + '・Lv' + ((d.hero && d.hero.lv) || 1) + '・' + (d.difficulty === 'hard' ? 'ハード' : 'イージー');
+    } catch (e) { return '（データなし）'; }
+  }
+  function setSaveSlot(n) {
+    saveSlot = n === 2 ? 2 : 1;
+    try { localStorage.setItem(SLOT_LAST, String(saveSlot)); } catch (e) {}
+  }
   function saveGame() {
     try {
-      localStorage.setItem(SAVE_KEY, JSON.stringify({
+      localStorage.setItem(slotKey(saveSlot), JSON.stringify({
         v: 2, hero: Hero, difficulty: difficulty,
         tutorialDone: tutorialDone, storyStage: storyStage,
         chapter: chapter, ch1Seen: ch1Seen, ch2step: ch2step, ch3rusu: ch3rusu, zoneAMood: zoneAMood, teaBest: teaBest, stageP3: stageP3, p3v: 2,
         gold: gold, bag: bag, mgDone: mgDone, yen: 1,
-        kanchoLove: kanchoLove, kanchoBond: kanchoBond, kanchoEv: kanchoEv, visited: Array.from(visitedSites),
+        kanchoLove: kanchoLove, kanchoBond: kanchoBond, kanchoEv: kanchoEv, iwk: iwasakiCleared ? 1 : 0, visited: Array.from(visitedSites),
         zukan: Array.from(zukanSet), meikan: Array.from(meikanSet),
         tour: Array.from(tourCleared), tourReward: tourReward,
       }));
       return true;
     } catch (e) { return false; }
   }
-  function hasSave() {
-    try { return !!(localStorage.getItem(SAVE_KEY) || localStorage.getItem(SAVE_KEY_V1)); }
-    catch (e) { return false; }
-  }
-  function loadGame() {
+  function hasSave() { return hasSlot(1) || hasSlot(2); }
+  // n を渡すとそのファイルを記録先にしてロード。省略時は現在の記録先（最後に使ったファイル）
+  function loadGame(n) {
     try {
-      let d = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
-      if (!d) {
-        const d1 = JSON.parse(localStorage.getItem(SAVE_KEY_V1) || 'null');
-        if (!d1) return false;
-        d = d1; d.v = 2; d.difficulty = 'easy'; // v1 → v2 変換
+      if (n) setSaveSlot(n);
+      let d = JSON.parse(localStorage.getItem(slotKey(saveSlot)) || 'null');
+      if (!d && !n) {
+        // 記録先が空なら、もう片方のファイルを試す（タイトルの史跡めぐり等の無指定ロード用）
+        var other = saveSlot === 1 ? 2 : 1;
+        d = JSON.parse(localStorage.getItem(slotKey(other)) || 'null');
+        if (d) setSaveSlot(other);
       }
+      if (!d) return false;
+      if (!d.v) { d.difficulty = d.difficulty || 'easy'; } // v1 相当の変換
       if (d.hero) { Hero.lv = d.hero.lv; Hero.exp = d.hero.exp; Hero.maxhp = d.hero.maxhp; Hero.atkBonus = d.hero.atkBonus; Hero.weapon = d.hero.weapon; Hero.armor = d.hero.armor; Hero.items = d.hero.items || []; }
       difficulty = (d.difficulty === 'hard') ? 'hard' : 'easy';
       tutorialDone = !!d.tutorialDone; storyStage = d.storyStage || 0;
@@ -1622,6 +1900,7 @@
       mgDone = d.mgDone || {};
       kanchoLove = d.kanchoLove || 0;
       kanchoBond = !!d.kanchoBond;
+      iwasakiCleared = !!d.iwk;
       kanchoEv = d.kanchoEv || {};
       visitedSites.clear();
       (d.visited || []).forEach(function (x) { visitedSites.add(x); });
@@ -1719,7 +1998,15 @@
       if (id === 'byobu') Dialog.start(DIALOGUE.byobu);
       else if (id === 'katchu') Dialog.start(DIALOGUE.katchu);
       else if (id === 'katana') Dialog.start(DIALOGUE.katana);
-      else if (id === 'save') { const ok = saveGame(); Dialog.start(ok ? DIALOGUE.save_ok : DIALOGUE.save_fail); }
+      else if (id === 'save') {
+        // ファイルを指定して保存（以後のオートセーブも選んだファイルに入る）
+        Choice.start('どのファイルに 保存する？', ['ファイル１　' + slotLabel(1), 'ファイル２　' + slotLabel(2), 'やめる'], function (pick) {
+          if (pick === 2) return;
+          setSaveSlot(pick + 1);
+          const ok = saveGame();
+          Dialog.start(ok ? DIALOGUE.save_ok : DIALOGUE.save_fail);
+        });
+      }
       else if (id === 'shokuro') { unlockZukan('shokuro'); Dialog.start(DIALOGUE.ch1_shokuro, function () { ch1Seen.shokuro = true; checkCh1Done(); }); }
       else if (id === 'rock') Dialog.start(DIALOGUE.ch1_rock);
       else if (id === 'museum_enter') {
@@ -1730,7 +2017,9 @@
         startTransition(function () { setScene(makeField('zoneA', { col: 25, row: 7 }, null)); });
       }
       else if (id === 'aeon') {
-        Dialog.start(DIALOGUE.aeon_welcome, function () {
+        // いけと出会う前（プロローグ・一章）は、いけに言及しないセリフにする
+        var aeonLines = (chapter === 'pro' || chapter === 'ch1') ? DIALOGUE.aeon_first : DIALOGUE.aeon_welcome;
+        Dialog.start(aeonLines, function () {
           setScene(makeShop(function () { startTransition(function () { setScene(makeField(mapKey, { x: player.x, y: player.y }, null)); }); }));
         });
       }
@@ -1739,7 +2028,7 @@
         stationUsed = true;
         Dialog.start(stLines, function () {
           startTransition(function () {
-            if (mapKey === 'zoneE') setScene(makeField('zoneA', { col: 34, row: 21 }, null));
+            if (mapKey === 'zoneE') setScene(makeField('zoneA', { col: 34, row: 2 }, null));
             else setScene(makeField('zoneE', { col: 6, row: 20 }, null));
           });
         });
@@ -1797,7 +2086,8 @@
       }
       else if (id === 'tearoom') {
         if (gold >= 500) {
-          gold -= 500; saveGame();
+          // 500円はここでは保存しない（ハードで失敗＝ゲームオーバー時に、他ミニゲーム同様セーブ地点まで巻き戻すため。成功時は結果画面の saveGame で確定する）
+          gold -= 500;
           setScene(makeTeaRoom(function () { startTransition(function () { setScene(makeField('zoneC', { col: 17, row: 13 }, null)); }); }));
         } else Dialog.start([{ name: 'オダ', text: '（抹茶体験は 500円。……いまは 持ち合わせが 足りない）' }]);
       }
@@ -1815,7 +2105,65 @@
       else if (id === 'bunka_down') startTransition(function () { setScene(makeField('bunka1', { col: 2, row: 2 }, null)); });
       else if (id === 'mori_in') startTransition(function () { setScene(makeField('mori', null, null)); });
       else if (id === 'mori_exit') startTransition(function () { setScene(makeField('bunka1', { col: 13, row: 2 }, null)); });
-      else if (id === 'sakamoto') Dialog.start(DIALOGUE.sakamoto_talk);
+      else if (id === 'sakamoto') {
+        // ハードクリア後: 岩崎城への誘い（裏イベント）
+        if (difficulty === 'hard' && chapter === 'post' && !iwasakiCleared) {
+          Dialog.start(DIALOGUE.iwasaki_invite, function () {
+            Choice.start('岩崎城へ 行く？（推奨レベル20）', ['行く', 'また今度'], function (pick) {
+              if (pick === 0) startTransition(function () { setScene(makeField('iwasaki', null, null)); });
+            });
+          });
+        } else if (difficulty === 'hard' && chapter === 'post' && iwasakiCleared) {
+          Dialog.start(DIALOGUE.iwasaki_sakamoto_after, function () {
+            Choice.start('また 岩崎城へ 行く？', ['行く', 'また今度'], function (pick) {
+              if (pick === 0) startTransition(function () { setScene(makeField('iwasaki', null, null)); });
+            });
+          });
+        } else Dialog.start(DIALOGUE.sakamoto_talk);
+      }
+      else if (id === 'naiki') {
+        if (iwasakiCleared) { Dialog.start(DIALOGUE.naiki_after); return; }
+        // 裏ボス: 内貴＆坂元のタッグ（2体同時・クイズゲート・推奨Lv20）
+        Dialog.start(DIALOGUE.naiki_intro, function () {
+          startBattle({
+            gated: false,
+            quizGate: DIALOGUE.iwasaki_quiz,
+            enemies: [
+              {
+                name: '学芸員・内貴', kind: 'naiki', hp: 110, atkLo: 9, atkHi: 13,
+                atkLabel: DIALOGUE.battle_iwasaki.naikiAtk,
+                aoe: { label: DIALOGUE.battle_iwasaki.naikiAoe, mul: 0.6, chance: 0.22 },
+                appearMsg: DIALOGUE.battle_iwasaki.appearMsg, winMsg: DIALOGUE.battle_iwasaki.winMsg,
+                loseMsg: DIALOGUE.battle_iwasaki.loseMsg, fleeMsg: DIALOGUE.battle_iwasaki.fleeMsg,
+                expReward: [60, 80], goldReward: [2000, 2500],
+              },
+              {
+                name: '劇作家・坂元', kind: 'sakamoto', hp: 90, atkLo: 8, atkHi: 12,
+                atkLabel: DIALOGUE.battle_iwasaki.sakaAtk,
+                aoe: { label: DIALOGUE.battle_iwasaki.sakaAoe, mul: 0.55, chance: 0.18 },
+                expReward: [50, 70], goldReward: [1500, 2000],
+              },
+            ],
+            onWin: function () {
+              iwasakiCleared = true;
+              if (Hero.items.indexOf('ujishige') < 0 && Hero.armor !== 'ujishige') Hero.items.push('ujishige');
+              saveGame();
+              startTransition(function () {
+                setScene(activeField);
+                Dialog.start(DIALOGUE.iwasaki_win, function () { saveGame(); });
+              });
+            },
+          });
+        });
+      }
+      else if (id === 'sakamoto_iw') Dialog.start(iwasakiCleared ? DIALOGUE.iwasaki_saka_field_after : DIALOGUE.iwasaki_saka_field);
+      else if (id === 'tenshu') Dialog.start(DIALOGUE.tenshu_view);
+      else if (id === 'iwasaki_kinenkan') Dialog.start(DIALOGUE.iwasaki_kinenkan_talk);
+      else if (id === 'iwasaki_gate') {
+        Choice.start('長久手へ 帰る？', ['帰る', 'まだ 見て回る'], function (pick) {
+          if (pick === 0) startTransition(function () { setScene(makeField('bunka1', null, null)); });
+        });
+      }
       else if (id === 'expo1') Dialog.start(DIALOGUE.expo1_talk);
       else if (id === 'expo2') Dialog.start(DIALOGUE.expo2_talk);
       else if (id === 'expo3') { unlockZukan('moricoro'); Dialog.start(DIALOGUE.expo3_talk); }
@@ -1882,15 +2230,22 @@
           Dialog.start(DIALOGUE.ch5_tenka, function () { storyStage = 5; unlockMeikan('nobunaga'); });
         } else {
           Dialog.start(DIALOGUE.ch6_farewell, function () {
+            // ハード: 第1形態撃破で「炎の舞」第2形態へ（背景の山が燃える・2回行動・特殊技）。
+            // 敗北するとゲームオーバー（タイトルへ）。イージーは従来どおり勝敗不問でエピローグ
+            var isHard = difficulty === 'hard';
+            var toEpi = function () { startTransition(function () { setScene(makeEpilogue()); }); };
             startBattle({
               gated: false,
               enemy: {
                 name: '踊り子', hp: 50, kind: 'odoriko',
                 atkLabel: DIALOGUE.battle.odoriko.atkLabel, appearMsg: DIALOGUE.battle.odoriko.appearMsg,
                 winMsg: DIALOGUE.battle.odoriko.winMsg,
+                phase2: isHard ? { name: '踊り子 ―炎の舞―', hp: 280, atkLo: 10, atkHi: 15 } : null,
               },
-              onWin: function () { startTransition(function () { setScene(makeEpilogue()); }); },
-              onLose: function () { startTransition(function () { setScene(makeEpilogue()); }); },
+              onWin: toEpi,
+              onLose: isHard
+                ? function () { startTransition(function () { setScene(makeTitle()); }); }
+                : toEpi,
             });
           });
         }
@@ -1912,7 +2267,7 @@
       if (mapKey !== 'zoneA') return;
       if (ch2step === 0) {
         // いけ、茂みから登場（オダも広場西側へ歩み寄る）
-        var ike = ikeActor(4 * TILE + TILE / 2, 10 * TILE + TILE / 2, 'right');
+        var ike = ikeActor(10 * TILE + TILE / 2, 10 * TILE + TILE / 2, 'right');
         sceneActors.push(ike);
         walkTo(player, 14 * TILE, 12 * TILE + TILE / 2, 132, function () {
         player.facing = 'left';
@@ -1997,7 +2352,7 @@
     function startCh3Michi() {
       hidePlayer = true;
       camFocus = { x: 20 * TILE, y: 13 * TILE };
-      var michi = { x: 4 * TILE + TILE / 2, y: 11 * TILE + TILE / 2, kind: 'michi', facing: 'right', id: 'michi' };
+      var michi = { x: 10 * TILE + TILE / 2, y: 11 * TILE + TILE / 2, kind: 'michi', facing: 'right', id: 'michi' };
       sceneActors.push(michi);
       walkTo(michi, 24 * TILE, 14 * TILE + TILE / 2, 70, function () {
         Dialog.start(DIALOGUE.ch3_michi, function () {
@@ -2089,7 +2444,7 @@
             Dialog.start(DIALOGUE.ch6_mirai, function () {
               var mi = findActor('michi');
               if (mi) {
-                walkTo(mi, 4 * TILE, 11 * TILE, 150, function () {
+                walkTo(mi, 10 * TILE, 11 * TILE, 150, function () {
                   var mi2 = findActor('michi'); if (mi2) mi2.fading = true;
                   stageP3 = 6; saveGame(); runP3();
                 });
@@ -2108,7 +2463,7 @@
         Dialog.start(DIALOGUE.ch6_ochimusha, function () {
           var ik = findActor('ike');
           function proceed() { stageP3 = 8; saveGame(); runP3(); }
-          if (ik) walkTo(ik, 4 * TILE, 10 * TILE, 90, function () { var ik2 = findActor('ike'); if (ik2) ik2.fading = true; proceed(); });
+          if (ik) walkTo(ik, 10 * TILE, 10 * TILE, 90, function () { var ik2 = findActor('ike'); if (ik2) ik2.fading = true; proceed(); });
           else proceed();
         });
       } else if (stageP3 === 8) {
@@ -2134,6 +2489,10 @@
             }
           });
         });
+      } else if (stageP3 === 9 && difficulty === 'hard' && !kanchoEv.p9hint) {
+        // ハードのみ: 稼ぎ場解放と「鍛えてから挑め」のヒント（一度だけ）
+        kanchoEv.p9hint = true; saveGame();
+        Dialog.start(DIALOGUE.hard_patrol_hint);
       }
       // stageP3 === 9 は自由行動（見回り）。踊り子に話しかけると update() がラストバトルを起動する
     }
@@ -2186,6 +2545,9 @@
         } else if ((mapKey === 'bunka1' || mapKey === 'bunka2' || mapKey === 'mori') && !enteredFlavor.has(mapKey)) {
           enteredFlavor.add(mapKey);
           Dialog.start(mapKey === 'bunka1' ? DIALOGUE.bunka_galleria : (mapKey === 'bunka2' ? DIALOGUE.bunka_2f : DIALOGUE.bunka_mori));
+        } else if (mapKey === 'iwasaki' && !enteredFlavor.has('iwasaki')) {
+          enteredFlavor.add('iwasaki');
+          Dialog.start(iwasakiCleared ? DIALOGUE.iwasaki_arrive_again : DIALOGUE.iwasaki_arrive);
         } else if (intro) {
           Dialog.start(intro);
           intro = null;
@@ -2247,14 +2609,38 @@
             }
           }
         }
-        if ((dx !== 0 || dy !== 0) && tutorialDone && map.def.encounter && encCooldown <= 0) {
+        // ハードの稼ぎ場: ラスボス前の見回り（stageP3=9）とクリア後は、街の各ゾーンでも夜行のもののけが出る
+        const patrolEnc = !map.def.encounter && difficulty === 'hard'
+          && (mapKey === 'zoneA' || mapKey === 'zoneB' || mapKey === 'zoneC' || mapKey === 'zoneD')
+          && ((chapter === 'main2' && stageP3 === 9) || chapter === 'post') ? { rate: 0.05 } : null;
+        const encDef = map.def.encounter || patrolEnc;
+        if ((dx !== 0 || dy !== 0) && tutorialDone && encDef && encCooldown <= 0) {
           stepAcc += sp;
           if (stepAcc > 40) {
             stepAcc = 0;
             const tc = Math.floor(player.x / TILE), tr = Math.floor(player.y / TILE);
             const t = map.grid[tr] && map.grid[tr][tc];
-            const encRate = map.def.encounter.rate * DIFF[difficulty].encRate;
-            if ((t === '.' || t === ',') && Math.random() < encRate) { encCooldown = 3.5; startTransition(function () { startBattle({ gated: false }); }); return; }
+            const encRate = encDef.rate * DIFF[difficulty].encRate;
+            if ((t === '.' || t === ',') && Math.random() < encRate) {
+              encCooldown = 3.5;
+              startTransition(function () {
+                if (mapKey === 'iwasaki') {
+                  // 岩崎城: 強めの落武者。6割で2体同時（Lv20に向けた鍛錬用）
+                  var iwA = { name: '岩崎の 落武者', hp: 30, atkLo: 7, atkHi: 11, expReward: [22, 30], goldReward: [130, 190] };
+                  var iwB = { name: '岩崎の 物見', hp: 24, atkLo: 6, atkHi: 9, expReward: [16, 22], goldReward: [90, 140] };
+                  startBattle(Math.random() < 0.6 ? { gated: false, enemies: [iwA, iwB] } : { gated: false, enemy: iwA });
+                } else if (patrolEnc) {
+                  // 夜行のもののけは経験値・報酬が多め（第2形態に向けたレベル上げ用）。4割で2体
+                  var pe = { name: '夜行の もののけ', hp: 36, atkLo: 6, atkHi: 10, expReward: [16, 22], goldReward: [180, 260] };
+                  var pe2 = { name: '夜行の 影', hp: 28, atkLo: 5, atkHi: 8, expReward: [12, 16], goldReward: [120, 180] };
+                  startBattle(Math.random() < 0.4 ? { gated: false, enemies: [pe, pe2] } : { gated: false, enemy: pe });
+                } else {
+                  // 草原: Lv5以降は たまに物見のもののけが加勢して2体になる
+                  startBattle((Hero.lv >= 5 && Math.random() < 0.3) ? { gated: false, enemies: [{}, { name: '物見の もののけ', hp: 16, atkLo: 2, atkHi: 5 }] } : { gated: false });
+                }
+              });
+              return;
+            }
           }
         }
         if (mapKey === 'zoneA' && chapter === 'pro' && !proTriggered) {
@@ -2301,7 +2687,7 @@
             }
             if (nearW) {
               var waitLines = (nearW.id === 'ike' ? DIALOGUE.ch4_wait_ike : DIALOGUE.ch4_wait_michi)
-                .concat([{ name: '', text: '（現地取材: ' + junbiCount() + ' / 5 史跡を 踏破。色金山・御旗山・血の池・武蔵塚・安昌寺は 北の 岩作エリアに）' }]);
+                .concat([{ name: '', text: '（現地取材: ' + junbiCount() + ' / 5 史跡を 踏破。色金山・血の池・武蔵塚・安昌寺は 北の 岩作エリアに。御旗山は 西の 市街地の 南に）' }]);
               Dialog.start(waitLines);
               return;
             }
@@ -2317,15 +2703,21 @@
               player.facing = 'up'; player.moving = false;
               Dialog.start(DIALOGUE.epi_odoriko, function () {
                 partyMembers.length = 0;
+                // ハード: 第1形態撃破で「炎の舞」第2形態へ（山が燃える・2回行動・特殊技）。
+                // 敗北するとゲームオーバー（タイトルへ）。イージーは従来どおり勝敗不問でエピローグ
+                var isHard = difficulty === 'hard';
                 startBattle({
                   gated: false,
                   enemy: {
                     name: '踊り子', hp: 60, kind: 'odoriko',
                     atkLabel: DIALOGUE.battle.odoriko.atkLabel, appearMsg: DIALOGUE.battle.odoriko.appearMsg,
                     winMsg: DIALOGUE.battle.odoriko.winMsg,
+                    phase2: isHard ? { name: '踊り子 ―炎の舞―', hp: 280, atkLo: 10, atkHi: 15 } : null,
                   },
                   onWin: function () { finishGame(); },
-                  onLose: function () { finishGame(); },
+                  onLose: isHard
+                    ? function () { startTransition(function () { setScene(makeTitle()); }); }
+                    : function () { finishGame(); },
                 });
               });
               function finishGame() {
@@ -2358,7 +2750,8 @@
         drawFieldWorld(c, map, hidePlayer ? null : player, cam.x, cam.y);
         for (let i = 0; i < sceneActors.length; i++) {
           const a = sceneActors[i];
-          if (a.kind === 'odoriko' && ODORIKO_BATTLE_IMG) {
+          // 踊り子: 舞いの演出中は一枚絵。それ以外は歩行シート（odoriko_walk.png）があればちびドットで描く
+          if (a.kind === 'odoriko' && ODORIKO_BATTLE_IMG && (a.dancing || !HD_SPRITE.odoriko)) {
             var oh = TILE * 3, ow = oh * (ODORIKO_BATTLE_IMG.width / ODORIKO_BATTLE_IMG.height);
             c.save(); c.globalAlpha = a.alpha != null ? a.alpha : 1;
             if (a.dancing) {
@@ -2403,21 +2796,28 @@
   function startBattle(opts) {
     opts = opts || {};
     const gated = !!opts.gated;
-    const e = opts.enemy || {};
     const dm = DIFF[difficulty];
-    const hp = Math.max(1, Math.round((e.hp || 22) * dm.enemyHp));
-    const enemy = {
-      name: e.name || '落武者のもののけ', hp: hp, maxhp: hp, broken: false, weakKnown: !gated, shake: 0,
-      kind: e.kind || 'enemy', spar: !!opts.spar, forcelose: !!e.forcelose,
-      atkLabel: e.atkLabel || DIALOGUE.battle.random.atkLabel, winMsg: e.winMsg || DIALOGUE.battle.random.winMsg,
-      loseMsg: e.loseMsg || null, appearMsg: e.appearMsg || null,
-      atkMul: dm.enemyAtk,
-      // イベント戦用: roundLimit=Nラウンドで endMsg を表示して終了（勝ち扱い）。
-      // noKO=味方はHP1で耐える。hideHp=敵HPバー非表示。fleeMsg=にげる時の専用セリフ。
-      roundLimit: e.roundLimit || 0, noKO: !!e.noKO, endMsg: e.endMsg || null,
-      hideHp: !!e.hideHp, fleeMsg: e.fleeMsg || null,
-      atkLo: e.atkLo || 3, atkHi: e.atkHi || 6,
-    };
+    // 複数敵対応: opts.enemies=[{...},{...}] で2体以上、従来の opts.enemy も1体として動く
+    const defs = (opts.enemies && opts.enemies.length) ? opts.enemies : [opts.enemy || {}];
+    const enemies = defs.map(function (e) {
+      const hp = Math.max(1, Math.round((e.hp || 22) * dm.enemyHp));
+      return {
+        name: e.name || '落武者のもののけ', hp: hp, maxhp: hp, broken: false, weakKnown: !gated, shake: 0,
+        kind: e.kind || 'enemy', spar: !!opts.spar, forcelose: !!e.forcelose,
+        atkLabel: e.atkLabel || DIALOGUE.battle.random.atkLabel, winMsg: e.winMsg || DIALOGUE.battle.random.winMsg,
+        loseMsg: e.loseMsg || null, appearMsg: e.appearMsg || null,
+        atkMul: dm.enemyAtk,
+        // イベント戦用: roundLimit=Nラウンドで endMsg を表示して終了（勝ち扱い）。
+        // noKO=味方はHP1で耐える。hideHp=敵HPバー非表示。fleeMsg=にげる時の専用セリフ。
+        roundLimit: e.roundLimit || 0, noKO: !!e.noKO, endMsg: e.endMsg || null,
+        hideHp: !!e.hideHp, fleeMsg: e.fleeMsg || null,
+        atkLo: e.atkLo || 3, atkHi: e.atkHi || 6,
+        // 拡張: acts=1ターンの行動回数, specials=踊り子の特殊技, aoe={label,mul,chance}=汎用全体技,
+        // phase2=撃破時に第2形態へ移行（ハードのラスボス用）, expReward/goldReward=[lo,hi]で報酬上書き
+        acts: e.acts || 1, specials: !!e.specials, aoe: e.aoe || null, phase2: e.phase2 || null,
+        expReward: e.expReward || null, goldReward: e.goldReward || null,
+      };
+    });
     const allies = [{
       id: 'oda', name: 'オダ', kind: 'oda', isOda: true,
       hp: Hero.maxhp, maxhp: Hero.maxhp, lv: Hero.lv, miyaLv: miyaLvFromLv(Hero.lv),
@@ -2426,12 +2826,14 @@
     partyMembers.forEach(function (m) {
       allies.push({ id: m.id, name: m.name, kind: m.kind, isOda: false, hp: m.maxhp, maxhp: m.maxhp, atkLo: m.atkLo, atkHi: m.atkHi, aDef: m.aDef || 0 });
     });
-    setScene(makeBattle(enemy, allies, gated,
+    setScene(makeBattle(enemies, allies, gated,
       opts.onWin || function () { startTransition(function () { setScene(activeField); }); },
-      opts.onLose || function () { startTransition(function () { setScene(makeTitle()); }); }));
+      opts.onLose || function () { startTransition(function () { setScene(makeTitle()); }); },
+      opts.quizGate || null));
   }
-  function makeBattle(enemy, allies, gated, onWin, onLose) {
+  function makeBattle(enemies, allies, gated, onWin, onLose, quizGate) {
     const player = allies[0]; // オダ（forcelose/spar/みやぶる はオダ基準）
+    const enemy = enemies[0]; // 主敵（spar/forcelose/roundLimit/phase2/背景演出は主敵基準）
     function commandsFor(a) {
       if (!a.isOda) return ['たたかう', 'にげる'];
       return bagCount() > 0 ? ['たたかう', 'みやぶる', 'どうぐ', 'にげる'] : ['たたかう', 'みやぶる', 'にげる'];
@@ -2445,16 +2847,25 @@
     let endKind = null;
     let shake = 0, flash = 0;
     const popups = [];
+    // 複数敵: 対象選択とクイズゲートの状態
+    let targetCursor = 0, pendingCmd = null;
+    let quiz = null, quizSel = 0, quizAnswered = false, quizCorrect = false, lastQuizIdx = -1;
 
+    function aliveEnemies() { return enemies.filter(function (e) { return e.hp > 0; }); }
+    // 敵の表示位置（1体=中央 / 2体=左右）。死亡後も元の位置を保つ
+    function enemyX(e) {
+      if (enemies.length === 1) return W / 2;
+      return enemies.indexOf(e) === 0 ? W / 2 - 118 : W / 2 + 118;
+    }
     function showMsg(t, fn) { mode = 'msg'; msg = t; after = fn || null; }
     function openMenu() { mode = 'menu'; msg = ''; commands = commandsFor(allies[turnIdx]); if (cursor >= commands.length) cursor = 0; }
     function addPopup(text, x, y, color) { popups.push({ text: text, x: x, y: y, life: 1.0, color: color }); }
-    function hitEnemy(dmg, crit) {
-      enemy.hp -= dmg; if (enemy.hp < 0) enemy.hp = 0;
-      enemy.shake = crit ? 0.5 : 0.3;
+    function hitEnemy(e, dmg, crit) {
+      e.hp -= dmg; if (e.hp < 0) e.hp = 0;
+      e.shake = crit ? 0.5 : 0.3;
       flash = crit ? 0.5 : 0.28;
       if (crit) shake = 7;
-      addPopup((crit ? '会心 ' : '') + dmg, W / 2, 150, crit ? '#ffd43b' : '#fff');
+      addPopup((crit ? '会心 ' : '') + dmg, enemyX(e), 150, crit ? '#ffd43b' : '#fff');
     }
     function hitAlly(a, dmg) {
       a.hp -= dmg; if (a.hp < 0) a.hp = 0;
@@ -2473,7 +2884,7 @@
     }
     // 味方の手番を進める。全員行動したら敵の手番へ。
     function nextTurn() {
-      if (enemy.hp <= 0) { winSequence(); return; }
+      if (aliveEnemies().length === 0) { winSequence(); return; }
       turnIdx++;
       while (turnIdx < allies.length && allies[turnIdx].hp <= 0) turnIdx++;
       if (turnIdx >= allies.length) { turnIdx = 0; enemyTurn(); }
@@ -2483,12 +2894,54 @@
       turnIdx = 0;
       while (turnIdx < allies.length && allies[turnIdx].hp <= 0) turnIdx++;
       if (turnIdx >= allies.length) turnIdx = 0;
+      // クイズゲート: 毎ラウンド冒頭に出題。正解しないと全員行動できない（裏ボス戦用）
+      if (quizGate && quizGate.length && aliveEnemies().length > 0) { startQuiz(); return; }
       openMenu();
     }
+    function startQuiz() {
+      // ランダム出題（直前と同じ問題は連続しない）
+      var qi = rnd(0, quizGate.length - 1);
+      if (quizGate.length > 1 && qi === lastQuizIdx) qi = (qi + 1) % quizGate.length;
+      lastQuizIdx = qi;
+      quiz = quizGate[qi];
+      quizSel = 0; quizAnswered = false; quizCorrect = false;
+      mode = 'quiz'; msg = '';
+    }
+    // ハードのラスボス: 第1形態を倒すと第2形態へ。山が燃える背景にフェードし、いけ・みちが駆けつける
+    function startPhase2() {
+      const p2 = enemy.phase2; enemy.phase2 = null;
+      const B2 = DIALOGUE.battle_odoriko2;
+      enemy.firePhase = true; // update() が fireT を 0→1 へフェード（燃える山の背景）
+      const seq = [B2.intro1, B2.intro2, B2.joinIke, B2.joinMichi];
+      const joins = [
+        { id: 'ike', name: 'いけ', kind: 'ike', maxhp: 34, atkLo: 9, atkHi: 14, aDef: 1 },
+        { id: 'michi', name: 'みち', kind: 'michi', maxhp: 36, atkLo: 8, atkHi: 12, aDef: 1 },
+      ];
+      if (kanchoBond) { joins.push({ id: 'kancho', name: '館長', kind: 'kancho', maxhp: 30, atkLo: 6, atkHi: 10, aDef: 1 }); seq.push(B2.joinKancho); }
+      joins.forEach(function (m) {
+        allies.push({ id: m.id, name: m.name, kind: m.kind, isOda: false, hp: m.maxhp, maxhp: m.maxhp, atkLo: m.atkLo, atkHi: m.atkHi, aDef: m.aDef });
+      });
+      seq.push(B2.intro3);
+      enemy.name = p2.name; enemy.hp = p2.hp; enemy.maxhp = p2.hp;
+      enemy.atkLo = p2.atkLo; enemy.atkHi = p2.atkHi;
+      enemy.acts = 2; enemy.specials = true;
+      enemy.atkLabel = B2.atkLabel; enemy.winMsg = B2.winMsg;
+      enemy.fleeMsg = B2.fleeMsg; enemy.loseMsg = B2.loseMsg;
+      enemy.expReward = [40, 60]; enemy.goldReward = [2500, 3000];
+      enemy.broken = false; enemy.shake = 0.6;
+      let i = 0;
+      function step() { if (i < seq.length) showMsg(seq[i++], step); else startRound(); }
+      step();
+    }
     function winSequence() {
+      if (enemy.phase2) { startPhase2(); return; }
       if (gated) { tutorialDone = true; storyStage = 1; }
-      const reward = rnd(5, 8);
-      const goldGain = rnd(80, 150);
+      // 報酬は敵ごとに算出して合算（2体なら2体分）
+      let reward = 0, goldGain = 0;
+      enemies.forEach(function (en) {
+        reward += en.expReward ? rnd(en.expReward[0], en.expReward[1]) : rnd(5, 8);
+        goldGain += en.goldReward ? rnd(en.goldReward[0], en.goldReward[1]) : rnd(80, 150);
+      });
       Hero.exp += reward;
       gold += goldGain;
       const seq = [enemy.winMsg, '経験値を ' + reward + '、' + goldGain + '円を 手に入れた！'];
@@ -2508,23 +2961,77 @@
       step();
     }
     function enemyTurn() {
-      if (enemy.hp <= 0) { winSequence(); return; }
+      if (aliveEnemies().length === 0) { winSequence(); return; }
       if (enemy.forcelose) {
         var fdmg = rnd(14, 18); hitAlly(player, fdmg);
         showMsg(enemy.atkLabel + '！\nオダは ' + fdmg + 'の ダメージ！', function () { loseCheck(startRound); });
         return;
       }
-      // 対象は生存メンバーからランダム
-      const alive = aliveAllies();
-      const target = alive[rnd(0, alive.length - 1)] || player;
       rounds++;
+      if (player.atkDownT > 0) player.atkDownT--; // 幻惑の舞の残りターンを消化
       // イベント戦: 規定ラウンドで幕引き（勝ち扱い）
-      const afterAtk = (enemy.roundLimit && rounds >= enemy.roundLimit)
+      const finish = (enemy.roundLimit && rounds >= enemy.roundLimit)
         ? function () { showMsg(enemy.endMsg || '……戦いは、ふいに 終わった。', function () { mode = 'end'; endKind = 'win'; msg = '（Z / タップで つづける）'; }); }
         : function () { loseCheck(startRound); };
-      if (Math.random() < 0.22) { showMsg(enemy.atkLabel + '！\n' + target.name + 'は ひらりと身をかわした！', afterAtk); return; }
-      const dmg = Math.max(1, Math.round(rnd(enemy.atkLo, enemy.atkHi) * (enemy.atkMul || 1)) - target.aDef); hitAlly(target, dmg);
-      showMsg(enemy.atkLabel + '！ ' + target.name + 'は ' + dmg + 'のダメージ！', function () { loseCheck(afterAtk); });
+      // 生存している敵が順に行動（acts=2 なら1体で2回）。各行動後に全滅判定を挟む
+      const queue = [];
+      aliveEnemies().forEach(function (en) { for (var k = 0; k < (en.acts || 1); k++) queue.push(en); });
+      let qi = 0;
+      function nextAct() {
+        if (qi >= queue.length) { finish(); return; }
+        const en = queue[qi++];
+        if (en.hp <= 0) { nextAct(); return; } // 行動前に倒された敵はスキップ
+        doOneAct(en, function () { loseCheck(nextAct); });
+      }
+      function doOneAct(en, done) {
+        const alive = aliveAllies();
+        const target = alive[rnd(0, alive.length - 1)] || player;
+        // 汎用の全体技（aoe={label,mul,chance}。裏ボス等で使用）
+        if (en.aoe && Math.random() < (en.aoe.chance || 0.2)) {
+          const parts0 = [];
+          for (var aj = 0; aj < alive.length; aj++) {
+            var ab = alive[aj];
+            var d0 = Math.max(1, Math.round(rnd(en.atkLo, en.atkHi) * (en.atkMul || 1) * (en.aoe.mul || 0.62)) - ab.aDef);
+            ab.hp -= d0; if (ab.hp < 0) ab.hp = 0;
+            if (enemy.noKO && ab.hp <= 0) ab.hp = 1;
+            parts0.push(ab.name + 'に' + d0);
+          }
+          shake = 6; flash = 0.32;
+          showMsg(en.name + 'の' + en.aoe.label + '！\n' + parts0.join('、') + ' の ダメージ！', done);
+          return;
+        }
+        if (en.specials) {
+          const roll = Math.random();
+          if (roll < 0.18) { // 乱れ舞: 全体攻撃
+            const parts = [];
+            for (var ai = 0; ai < alive.length; ai++) {
+              var aa = alive[ai];
+              var d = Math.max(1, Math.round(rnd(en.atkLo, en.atkHi) * (en.atkMul || 1) * 0.62) - aa.aDef);
+              aa.hp -= d; if (aa.hp < 0) aa.hp = 0;
+              if (enemy.noKO && aa.hp <= 0) aa.hp = 1; // イベント戦: 倒れない（hitAlly と同じ扱い）
+              parts.push(aa.name + 'に' + d);
+            }
+            shake = 6; flash = 0.32;
+            showMsg(en.name + 'の【乱れ舞】！ 炎の輪が 全員を 薙ぎはらう！\n' + parts.join('、') + ' の ダメージ！', done);
+            return;
+          }
+          if (roll < 0.30 && !(player.atkDownT > 0)) { // 幻惑の舞: 攻撃力デバフ
+            player.atkDownT = 2;
+            showMsg(en.name + 'の【幻惑の舞】！ 妖しい 舞に 目が くらむ…！\nみんなの こうげきの力が 下がった！（2ターン）', done);
+            return;
+          }
+          if (roll < 0.42) { // 緋の舞: 強力な単体攻撃
+            const d2 = Math.max(1, Math.round(rnd(en.atkLo, en.atkHi) * (en.atkMul || 1) * 1.55) - target.aDef);
+            hitAlly(target, d2);
+            showMsg(en.name + 'の【緋の舞】！ 燃える袖が ' + target.name + 'を 薙ぐ！\n' + d2 + 'の 大ダメージ！', done);
+            return;
+          }
+        }
+        if (Math.random() < (en.specials ? 0.12 : 0.22)) { showMsg(en.atkLabel + '！\n' + target.name + 'は ひらりと身をかわした！', done); return; }
+        const dmg = Math.max(1, Math.round(rnd(en.atkLo, en.atkHi) * (en.atkMul || 1)) - target.aDef); hitAlly(target, dmg);
+        showMsg(en.atkLabel + '！ ' + target.name + 'は ' + dmg + 'のダメージ！', done);
+      }
+      nextAct();
     }
     function miyaTier(lv) {
       const r = Math.random();
@@ -2533,36 +3040,45 @@
       if (r < 0.82) return 0; return 1;
     }
     function actorTurn(cmdIdx) {
-      const actor = allies[turnIdx];
       const cmd = commands[cmdIdx];
+      // 対象が必要なコマンドで敵が2体以上生きていれば対象選択モードへ
+      if ((cmd === 'たたかう' || cmd === 'みやぶる') && aliveEnemies().length > 1) {
+        pendingCmd = cmd; targetCursor = 0; mode = 'target';
+        return;
+      }
+      execCmd(cmd, aliveEnemies()[0] || enemy);
+    }
+    function execCmd(cmd, tgt) {
+      const actor = allies[turnIdx];
       if (cmd === 'たたかう') {
         if (enemy.forcelose) { showMsg(actor.name + 'の こうげき！\nしかし いけは 軽く 受け流した！', nextTurn); return; }
-        if (!enemy.weakKnown && actor.isOda) { showMsg('オダのこうげき！\nしかし手ごたえがない…！ まず「みやぶる」で 弱点を さがそう。', nextTurn); return; }
+        if (!tgt.weakKnown && actor.isOda) { showMsg('オダのこうげき！\nしかし手ごたえがない…！ まず「みやぶる」で 弱点を さがそう。', nextTurn); return; }
         if (Math.random() < 0.16) { showMsg(actor.name + 'のこうげき！\nしかし攻撃は 空を切った…！', nextTurn); return; }
         let dmg = actor.isOda ? (rnd(5, 8) + actor.atkBonus + actor.wAtk) : rnd(actor.atkLo || 4, actor.atkHi || 7);
-        if (enemy.broken) dmg += 3;
+        if (player.atkDownT > 0) dmg = Math.max(1, Math.floor(dmg * 0.65)); // 幻惑の舞
+        if (tgt.broken) dmg += 3;
         const crit = Math.random() < 0.18;
-        if (crit) { dmg = Math.floor(dmg * 1.8); hitEnemy(dmg, true); showMsg(actor.name + 'のこうげき！ 急所に当たった！\n' + dmg + 'の大ダメージ！', nextTurn); }
-        else { hitEnemy(dmg, false); showMsg(actor.name + 'のこうげき！ ' + dmg + 'のダメージ！', nextTurn); }
+        if (crit) { dmg = Math.floor(dmg * 1.8); hitEnemy(tgt, dmg, true); showMsg(actor.name + 'のこうげき！ 急所に当たった！\n' + dmg + 'の大ダメージ！', nextTurn); }
+        else { hitEnemy(tgt, dmg, false); showMsg(actor.name + 'のこうげき！ ' + dmg + 'のダメージ！', nextTurn); }
       } else if (cmd === 'みやぶる') {
         if (enemy.forcelose) { showMsg('オダは 相手を みやぶろうとした！\nしかし いけは まるで 隙を 見せない…！', nextTurn); return; }
-        enemy.broken = true; enemy.weakKnown = true;
+        tgt.broken = true; tgt.weakKnown = true;
         const tier = miyaTier(player.miyaLv);
-        if (enemy.kind === 'enemy') {
+        if (tgt.kind === 'enemy') {
           if (tier === 0) {
             showMsg('オダは敵をみやぶった！\n「この子…戦で散った兵の無念か…」\n弱点が見えた！（守りが下がった）', nextTurn);
           } else if (tier === 1) {
-            const d = 5; hitEnemy(d, false); showMsg('オダの観察眼が冴えた！【みやぶる＋】\n「落武者は“塚”に心を残してる…」\n心の隙を突いた！ ' + d + 'のダメージ！', nextTurn);
+            const d = 5; hitEnemy(tgt, d, false); showMsg('オダの観察眼が冴えた！【みやぶる＋】\n「落武者は“塚”に心を残してる…」\n心の隙を突いた！ ' + d + 'のダメージ！', nextTurn);
           } else {
-            const d = 9; hitEnemy(d, false); showMsg('オダは心眼を開いた！【みやぶる・極】\n「無念は ちゃんと残ってる。もう休んで」\n落武者の心がやわらいだ！ ' + d + 'のダメージ！', nextTurn);
+            const d = 9; hitEnemy(tgt, d, false); showMsg('オダは心眼を開いた！【みやぶる・極】\n「無念は ちゃんと残ってる。もう休んで」\n落武者の心がやわらいだ！ ' + d + 'のダメージ！', nextTurn);
           }
         } else {
           if (tier === 0) {
             showMsg('オダは 相手を みやぶった！\n構えの 隙が 見えた！（守りが下がった）', nextTurn);
           } else if (tier === 1) {
-            const d = 5; hitEnemy(d, false); showMsg('オダの 観察眼が 冴えた！【みやぶる＋】\n隙を 突いた！ ' + d + 'のダメージ！', nextTurn);
+            const d = 5; hitEnemy(tgt, d, false); showMsg('オダの 観察眼が 冴えた！【みやぶる＋】\n隙を 突いた！ ' + d + 'のダメージ！', nextTurn);
           } else {
-            const d = 9; hitEnemy(d, false); showMsg('オダは 心眼を 開いた！【みやぶる・極】\n完全に 見切った！ ' + d + 'のダメージ！', nextTurn);
+            const d = 9; hitEnemy(tgt, d, false); showMsg('オダは 心眼を 開いた！【みやぶる・極】\n完全に 見切った！ ' + d + 'のダメージ！', nextTurn);
           }
         }
       } else if (cmd === 'どうぐ') {
@@ -2589,25 +3105,98 @@
       update: function (dt) {
         updateParts(dt);
         spawnBattleParts();
+        // 第2形態: 燃える山の背景へ約3秒かけてクロスフェード＋火の粉
+        if (enemy.firePhase && (enemy.fireT || 0) < 1) enemy.fireT = Math.min(1, (enemy.fireT || 0) + dt / 3);
+        if ((enemy.fireT || 0) > 0.25 && tick % 7 === 0) {
+          emitP(Math.random() * W, 196 + Math.random() * 10, (Math.random() - 0.5) * 16, -22 - Math.random() * 34, 1.5, 'rgba(255,150,60,0.75)', 1.8, -8);
+        }
         if (shake > 0) { shake -= dt * 30; if (shake < 0) shake = 0; }
         if (flash > 0) { flash -= dt * 1.6; if (flash < 0) flash = 0; }
-        if (enemy.shake > 0) { enemy.shake -= dt; if (enemy.shake < 0) enemy.shake = 0; }
+        enemies.forEach(function (en) { if (en.shake > 0) { en.shake -= dt; if (en.shake < 0) en.shake = 0; } });
         for (let i = popups.length - 1; i >= 0; i--) { const p = popups[i]; p.y -= dt * 38; p.life -= dt * 1.1; if (p.life <= 0) popups.splice(i, 1); }
         if (mode === 'menu') {
           if (Input.pressed('up')) cursor = (cursor + commands.length - 1) % commands.length;
           if (Input.pressed('down')) cursor = (cursor + 1) % commands.length;
           if (Input.pressed('confirm')) actorTurn(cursor);
+        } else if (mode === 'target') {
+          // 対象選択（複数敵）: 上下で選び、Zで決定、Xで戻る
+          const alive = aliveEnemies();
+          if (Input.pressed('up')) targetCursor = (targetCursor + alive.length - 1) % alive.length;
+          if (Input.pressed('down')) targetCursor = (targetCursor + 1) % alive.length;
+          if (Input.pressed('cancel')) { mode = 'menu'; pendingCmd = null; }
+          else if (Input.pressed('confirm')) {
+            const tgt = alive[targetCursor] || alive[0];
+            const cmd = pendingCmd; pendingCmd = null;
+            execCmd(cmd, tgt);
+          }
+        } else if (mode === 'quiz') {
+          // クイズゲート: 正解で行動可能、不正解でこのターンは全員行動不可
+          if (!quizAnswered) {
+            if (Input.pressed('up')) quizSel = (quizSel + quiz.choices.length - 1) % quiz.choices.length;
+            if (Input.pressed('down')) quizSel = (quizSel + 1) % quiz.choices.length;
+            if (Input.pressed('confirm')) { quizAnswered = true; quizCorrect = (quizSel === quiz.answer); }
+          } else if (Input.pressed('confirm')) {
+            const q = quiz; quiz = null;
+            if (quizCorrect) openMenu();
+            else showMsg('内貴「おしい！ 正解は「' + q.choices[q.answer] + '」です！」\n一同は 講釈に 圧倒されて 動けない…！', function () { enemyTurn(); });
+          }
         } else if (mode === 'msg') {
           if (Input.pressed('confirm')) { const fn = after; after = null; if (fn) fn(); }
         } else if (mode === 'end') {
           if (Input.pressed('confirm')) { if (endKind === 'win') onWin(); else onLose(); }
         }
       },
-      render: function (c) { drawBattle(c, enemy, allies, turnIdx, commands, cursor, mode, msg, shake, flash, popups); drawParts(c); },
+      render: function (c) {
+        drawBattle(c, enemies, allies, turnIdx, commands, cursor, mode, msg, shake, flash, popups, targetCursor, aliveEnemies());
+        drawParts(c);
+        if (mode === 'quiz' && quiz) drawBattleQuiz(c, quiz, quizSel, quizAnswered, quizCorrect);
+      },
     };
   }
-  function drawBattle(c, enemy, allies, turnIdx, commands, cursor, mode, msg, shake, flash, popups) {
+  // クイズゲートの出題パネル（裏ボス戦: 正解しないと行動できない）
+  function drawBattleQuiz(c, q, sel, answered, correct) {
+    c.save();
+    c.fillStyle = 'rgba(4,8,18,0.9)'; c.fillRect(0, 212, W, H - 212);
+    c.strokeStyle = '#ffd43b'; c.lineWidth = 2; roundRect(c, 14, 218, W - 28, 44, 8); c.stroke(); c.lineWidth = 1;
+    c.textAlign = 'left';
+    c.fillStyle = '#ffd43b'; c.font = 'bold 12px "Hiragino Sans",sans-serif';
+    c.fillText('内貴の歴史クイズ！（正解しないと 行動できない）', 24, 236);
+    c.fillStyle = '#f1f3f5'; c.font = '13px "Hiragino Sans",sans-serif';
+    const ql = wrapText(c, q.q, W - 60);
+    let qy = 254; for (let i = 0; i < ql.length && i < 1; i++) { c.fillText(ql[i], 24, qy); }
+    let y = 284;
+    for (let i = 0; i < q.choices.length; i++) {
+      const isSel = i === sel, isAns = i === q.answer;
+      let fg = '#e9ecef';
+      if (answered) { if (isAns) fg = '#b2f2bb'; else if (isSel) fg = '#ffc9c9'; }
+      else if (isSel) fg = '#ffd43b';
+      c.fillStyle = fg; c.font = (isSel && !answered ? 'bold ' : '') + '14px "Hiragino Sans",sans-serif';
+      let mark = (!answered && isSel) ? '▶ ' : '　 ';
+      if (answered && isAns) mark = '○ ';
+      else if (answered && isSel && !isAns) mark = '× ';
+      c.fillText(mark + q.choices[i], 30, y);
+      y += 22;
+    }
+    if (answered) {
+      c.fillStyle = correct ? '#b2f2bb' : '#ffc9c9'; c.font = 'bold 14px "Hiragino Sans",sans-serif';
+      c.fillText(correct ? '正解！ みんな 動ける！' : '不正解…！', 30, y + 4);
+      if (q.note) {
+        c.fillStyle = '#ced4da'; c.font = '11px "Hiragino Sans",sans-serif';
+        const nl = wrapText(c, q.note, W - 70);
+        let ny = y + 22; for (let i = 0; i < nl.length && i < 2; i++) { c.fillText(nl[i], 30, ny); ny += 15; }
+      }
+      if (tick % 56 < 34) { c.fillStyle = '#cdd9ff'; c.font = '11px "Hiragino Sans",sans-serif'; c.textAlign = 'center'; c.fillText('Z / タップで つづける ▶', W / 2, H - 8); c.textAlign = 'left'; }
+    } else {
+      c.fillStyle = '#868e96'; c.font = '11px "Hiragino Sans",sans-serif'; c.textAlign = 'center';
+      c.fillText('↑ ↓ 選択　　Z 決定', W / 2, H - 8); c.textAlign = 'left';
+    }
+    c.restore();
+  }
+  function drawBattle(c, enemies, allies, turnIdx, commands, cursor, mode, msg, shake, flash, popups, targetCursor, aliveList) {
     const player = allies[0];
+    const enemy = enemies[0]; // 主敵（背景演出・イベント戦フラグは主敵基準）
+    const nEn = enemies.length;
+    function enemyDrawX(i) { return nEn === 1 ? W / 2 : (i === 0 ? W / 2 - 118 : W / 2 + 118); }
     var g = c.createLinearGradient(0, 0, 0, H);
     g.addColorStop(0, '#100818'); g.addColorStop(0.35, '#1a0f22'); g.addColorStop(0.7, '#150e1c'); g.addColorStop(1, '#0c0a14');
     c.fillStyle = g; c.fillRect(0, 0, W, H);
@@ -2626,6 +3215,18 @@
         c.fillRect(stx2 - 1.5, sty2, 4, 1); c.fillRect(stx2, sty2 - 1.5, 1, 4);
       }
     }
+    // 月（満月＋暈。第2形態の炎の空では自然に赤に沈む）
+    var mnx = W - 84, mny = 52;
+    c.save(); c.globalCompositeOperation = 'lighter';
+    var mng = c.createRadialGradient(mnx, mny, 0, mnx, mny, 44);
+    mng.addColorStop(0, 'rgba(220,228,255,0.22)'); mng.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = mng; c.beginPath(); c.arc(mnx, mny, 44, 0, Math.PI * 2); c.fill();
+    c.restore();
+    c.fillStyle = '#e6ebf8'; c.beginPath(); c.arc(mnx, mny, 13, 0, Math.PI * 2); c.fill();
+    c.fillStyle = 'rgba(170,182,210,0.55)';
+    c.beginPath(); c.arc(mnx - 4, mny - 3, 3, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.arc(mnx + 4, mny + 4, 2, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.arc(mnx + 2, mny - 5, 1.5, 0, Math.PI * 2); c.fill();
     // Distant hills silhouette
     c.fillStyle = '#0e1520';
     c.beginPath(); c.moveTo(0, 180);
@@ -2635,15 +3236,59 @@
     c.beginPath(); c.moveTo(0, 188);
     c.quadraticCurveTo(120, 172, 256, 182); c.quadraticCurveTo(380, 170, W, 185);
     c.lineTo(W, 200); c.lineTo(0, 200); c.closePath(); c.fill();
+    // 第2形態: 燃え盛る山なみ（原作上演の山焼け演出）。fireT でクロスフェード
+    var ft = enemy.fireT || 0;
+    if (ft > 0) {
+      c.save(); c.globalAlpha = ft;
+      // 赤黒い空
+      var fsky = c.createLinearGradient(0, 0, 0, 200);
+      fsky.addColorStop(0, '#160303'); fsky.addColorStop(0.55, '#471006'); fsky.addColorStop(1, '#7d2408');
+      c.fillStyle = fsky; c.fillRect(0, 0, W, 200);
+      // 舞い散る火の粉（空側・点滅）
+      for (var ei = 0; ei < 24; ei++) {
+        var ex2 = (ei * 374761 + 59) % W, ey2 = (ei * 668265 + 31) % 165;
+        var tw = 0.25 + 0.55 * Math.abs(Math.sin(tick * 0.07 + ei * 1.3));
+        c.fillStyle = 'rgba(255,170,80,' + tw + ')';
+        c.fillRect(ex2, ey2, 1.6, 1.6);
+      }
+      // 黒い山なみ＋稜線の炎
+      c.fillStyle = '#1c0703';
+      c.beginPath(); c.moveTo(0, 180);
+      c.quadraticCurveTo(80, 155, 160, 172); c.quadraticCurveTo(260, 150, 360, 168);
+      c.quadraticCurveTo(440, 155, W, 175); c.lineTo(W, 200); c.lineTo(0, 200); c.closePath(); c.fill();
+      for (var fi = 0; fi < 15; fi++) {
+        var fx = fi * 35 + ((fi * 53) % 19);
+        var fy = 168 + ((fi * 29) % 12);
+        var fh = 9 + Math.abs(Math.sin(tick * 0.11 + fi * 1.7)) * 15;
+        c.fillStyle = 'rgba(255,120,30,0.55)';
+        c.beginPath(); c.moveTo(fx - 6, fy); c.quadraticCurveTo(fx + (Math.sin(tick * 0.09 + fi) * 3), fy - fh, fx + 6, fy); c.closePath(); c.fill();
+        c.fillStyle = 'rgba(255,220,120,0.5)';
+        c.beginPath(); c.moveTo(fx - 3, fy); c.quadraticCurveTo(fx, fy - fh * 0.55, fx + 3, fy); c.closePath(); c.fill();
+      }
+      // 地平の照り返し
+      c.globalCompositeOperation = 'lighter';
+      var fglow = c.createRadialGradient(W / 2, 196, 0, W / 2, 196, 250);
+      fglow.addColorStop(0, 'rgba(255,90,20,0.20)'); fglow.addColorStop(1, 'rgba(0,0,0,0)');
+      c.fillStyle = fglow; c.beginPath(); c.arc(W / 2, 196, 250, 0, Math.PI * 2); c.fill();
+      c.restore();
+    }
     c.save();
     var sx = shake > 0 ? (Math.random() * 2 - 1) * shake : 0;
     var sy = shake > 0 ? (Math.random() * 2 - 1) * shake : 0;
     c.translate(sx, sy);
-    // Ground layers
-    c.fillStyle = '#1a2810';
-    c.beginPath(); c.moveTo(0, 195); c.quadraticCurveTo(W / 2, 186, W, 193); c.lineTo(W, 250); c.lineTo(0, 250); c.closePath(); c.fill();
-    c.fillStyle = '#223814';
-    c.beginPath(); c.moveTo(0, 202); c.quadraticCurveTo(W / 2, 194, W, 200); c.lineTo(W, 250); c.lineTo(0, 250); c.closePath(); c.fill();
+    // Ground layers（草テクスチャがあれば下地に敷いて夜色を重ねる）
+    var bgp = hdPattern(c, 'grass');
+    if (bgp) {
+      c.fillStyle = bgp;
+      c.beginPath(); c.moveTo(0, 195); c.quadraticCurveTo(W / 2, 186, W, 193); c.lineTo(W, 250); c.lineTo(0, 250); c.closePath(); c.fill();
+      c.fillStyle = 'rgba(10,22,8,0.58)';
+      c.beginPath(); c.moveTo(0, 195); c.quadraticCurveTo(W / 2, 186, W, 193); c.lineTo(W, 250); c.lineTo(0, 250); c.closePath(); c.fill();
+    } else {
+      c.fillStyle = '#1a2810';
+      c.beginPath(); c.moveTo(0, 195); c.quadraticCurveTo(W / 2, 186, W, 193); c.lineTo(W, 250); c.lineTo(0, 250); c.closePath(); c.fill();
+      c.fillStyle = '#223814';
+      c.beginPath(); c.moveTo(0, 202); c.quadraticCurveTo(W / 2, 194, W, 200); c.lineTo(W, 250); c.lineTo(0, 250); c.closePath(); c.fill();
+    }
     c.fillStyle = 'rgba(50,80,30,0.25)';
     c.beginPath(); c.moveTo(0, 210); c.quadraticCurveTo(W / 2, 203, W, 208); c.lineTo(W, 250); c.lineTo(0, 250); c.closePath(); c.fill();
     // Stage spotlight
@@ -2658,21 +3303,34 @@
     ebl.addColorStop(0, 'rgba(80,40,120,0.08)'); ebl.addColorStop(1, 'rgba(0,0,0,0)');
     c.fillStyle = ebl; c.beginPath(); c.arc(W / 2, 130, 60, 0, Math.PI * 2); c.fill();
     c.restore();
-    var ex = (enemy.shake && enemy.shake > 0) ? (Math.random() * 2 - 1) * 6 : 0;
-    var battleImg = (enemy.kind === 'odoriko' && ODORIKO_BATTLE_IMG) ? ODORIKO_BATTLE_IMG
-                  : ((enemy.kind || 'enemy') === 'enemy' && ENEMY_BATTLE_IMG) ? ENEMY_BATTLE_IMG
-                  : null;
-    if (battleImg) {
-      var eih = 220, eiw = eih * (battleImg.width / battleImg.height);
-      var eFloat = Math.sin(tick * 0.05) * 4;
-      var eix = W / 2 - eiw / 2 + ex, eiy = 25 + eFloat;
-      var auraColor = enemy.kind === 'odoriko' ? 'rgba(100,60,140,' : 'rgba(60,20,100,';
-      var aura = c.createRadialGradient(W / 2 + ex, eiy + eih * 0.45, 0, W / 2 + ex, eiy + eih * 0.45, eih * 0.6);
-      aura.addColorStop(0, auraColor + '0.25)'); aura.addColorStop(0.6, auraColor + '0.1)'); aura.addColorStop(1, 'rgba(0,0,0,0)');
-      c.fillStyle = aura; c.beginPath(); c.arc(W / 2 + ex, eiy + eih * 0.45, eih * 0.6, 0, Math.PI * 2); c.fill();
-      c.drawImage(battleImg, eix, eiy, eiw, eih);
-    } else {
-      drawActor(c, W / 2 + ex, 150, enemy.kind || 'enemy', 'down', 2.4);
+    // 敵の描画（1体=中央大 / 2体=左右にやや小さく）
+    for (var eni = 0; eni < nEn; eni++) {
+      var en = enemies[eni];
+      if (en.hp <= 0 && nEn > 1) continue; // 倒した敵は消える
+      var ecx = enemyDrawX(eni);
+      var ex = (en.shake && en.shake > 0) ? (Math.random() * 2 - 1) * 6 : 0;
+      var battleImg = (en.kind === 'odoriko' && ODORIKO_BATTLE_IMG) ? ODORIKO_BATTLE_IMG
+                    : ((en.kind || 'enemy') === 'enemy' && ENEMY_BATTLE_IMG) ? ENEMY_BATTLE_IMG
+                    : null;
+      if (battleImg) {
+        var eih = nEn === 1 ? 220 : 168, eiw = eih * (battleImg.width / battleImg.height);
+        var eFloat = Math.sin(tick * 0.05 + eni * 1.4) * 4;
+        var eix = ecx - eiw / 2 + ex, eiy = (nEn === 1 ? 25 : 60) + eFloat;
+        var auraColor = en.kind === 'odoriko' ? ((en.fireT || 0) > 0.3 ? 'rgba(220,80,20,' : 'rgba(100,60,140,') : 'rgba(60,20,100,';
+        var aura = c.createRadialGradient(ecx + ex, eiy + eih * 0.45, 0, ecx + ex, eiy + eih * 0.45, eih * 0.6);
+        aura.addColorStop(0, auraColor + '0.25)'); aura.addColorStop(0.6, auraColor + '0.1)'); aura.addColorStop(1, 'rgba(0,0,0,0)');
+        c.fillStyle = aura; c.beginPath(); c.arc(ecx + ex, eiy + eih * 0.45, eih * 0.6, 0, Math.PI * 2); c.fill();
+        c.drawImage(battleImg, eix, eiy, eiw, eih);
+      } else {
+        drawActor(c, ecx + ex, nEn === 1 ? 150 : 158, en.kind || 'enemy', 'down', nEn === 1 ? 2.4 : 2.0);
+      }
+      // 対象選択中: 選択カーソル（▼）を頭上に表示
+      if (mode === 'target' && aliveList && aliveList[targetCursor] === en && tick % 40 < 26) {
+        c.textAlign = 'center';
+        c.fillStyle = '#ffd43b'; c.font = 'bold 20px sans-serif';
+        c.fillText('▼', ecx, nEn === 1 ? 34 : 66);
+        c.textAlign = 'left';
+      }
     }
     c.restore();
     // Ground fog
@@ -2689,10 +3347,23 @@
       c.globalAlpha = 1;
     }
     c.textAlign = 'center';
-    c.fillStyle = '#f1f3f5'; c.font = 'bold 18px "Hiragino Sans",sans-serif';
-    c.fillText(enemy.name, W / 2, 208);
-    if (!enemy.forcelose && !enemy.hideHp) drawHPBar(c, W / 2 - 80, 216, 160, enemy.hp, enemy.maxhp, '#e8590c');
+    for (var enj = 0; enj < nEn; enj++) {
+      var en2 = enemies[enj];
+      if (en2.hp <= 0 && nEn > 1) continue;
+      var ncx = enemyDrawX(enj);
+      var hl = (mode === 'target' && aliveList && aliveList[targetCursor] === en2);
+      c.fillStyle = hl ? '#ffd43b' : '#f1f3f5'; c.font = 'bold ' + (nEn === 1 ? 18 : 15) + 'px "Hiragino Sans",sans-serif';
+      c.fillText(en2.name, ncx, nEn === 1 ? 208 : 206);
+      if (!en2.forcelose && !en2.hideHp) drawHPBar(c, ncx - (nEn === 1 ? 80 : 62), nEn === 1 ? 216 : 212, nEn === 1 ? 160 : 124, en2.hp, en2.maxhp, '#e8590c');
+    }
     c.textAlign = 'left';
+    if (player.atkDownT > 0) {
+      // 敵HPバー（中央）と重ならないよう右寄せ・短縮表記
+      c.textAlign = 'right';
+      c.fillStyle = '#ff8787'; c.font = 'bold 11px "Hiragino Sans",sans-serif';
+      c.fillText('▼攻ダウン あと' + player.atkDownT + 'ターン', W - 22, allies.length === 1 ? 282 : (allies.length >= 4 ? 224 : 236));
+      c.textAlign = 'left';
+    }
     if (allies.length === 1) {
       // 1人（従来レイアウト）
       c.fillStyle = '#cdd9ff'; c.font = '15px "Hiragino Sans",sans-serif';
@@ -2726,6 +3397,18 @@
         if (commands[i] === 'みやぶる') label += ' Lv' + player.miyaLv;
         c.fillText((i === cursor ? '▶ ' : '　 ') + label, cx + 16, cy + 32 + i * 30);
       }
+    } else if (mode === 'target') {
+      // 対象選択メニュー（複数敵）
+      drawTextbox(c, '', 'どちらを ねらう？', false, true);
+      const tl = aliveList || [];
+      const tx = W - 196, ty = 286, tw2 = 184, th2 = 24 + tl.length * 30;
+      c.fillStyle = 'rgba(8,16,40,0.97)'; roundRect(c, tx, ty, tw2, th2, 10); c.fill();
+      c.strokeStyle = '#ffd43b'; c.lineWidth = 2; roundRect(c, tx + 2, ty + 2, tw2 - 4, th2 - 4, 8); c.stroke(); c.lineWidth = 1;
+      c.font = '17px "Hiragino Sans",sans-serif';
+      for (let i = 0; i < tl.length; i++) {
+        c.fillStyle = i === targetCursor ? '#ffd43b' : '#f1f3f5';
+        c.fillText((i === targetCursor ? '▶ ' : '　 ') + tl[i].name, tx + 14, ty + 32 + i * 30);
+      }
     } else {
       drawTextbox(c, '', msg, mode === 'msg' || mode === 'end', true);
     }
@@ -2735,12 +3418,37 @@
   // ===================== ミニゲームA: いずみのかみかねさだ（早口言葉） =====================
   // オダ（プレイヤー）が挑戦。ゲージのマーカーが金色ゾーンにある時にZで一音ずつ言う。
   // 失敗するとオダが噛む（イージー: 何度でも同じ音から / ハード: 3ミスで最初から）
+  // ===================== ゲームオーバー（ハード: ミニゲーム失敗） =====================
+  // ハードモードでは全ミニゲームが「失敗＝ゲームオーバー→タイトルへ」。
+  // 本編必須のミニゲームは直前にオートセーブ済みなので「つづきから」でやり直せる。
+  function makeGameOver(reason) {
+    let t = 0;
+    return {
+      enter: function () {},
+      update: function (dt) {
+        t += dt;
+        if (t > 0.9 && (Input.pressed('confirm') || Input.pressed('cancel'))) setScene(makeTitle(true));
+      },
+      render: function (c) {
+        // 赤字の「ゲームオーバー」のみ表示（Z / タップでタイトルへ）
+        c.fillStyle = '#000000'; c.fillRect(0, 0, W, H);
+        var a = Math.min(1, t / 0.8);
+        c.textAlign = 'center';
+        c.fillStyle = 'rgba(214,69,55,' + a + ')'; c.font = 'bold 42px "Hiragino Mincho ProN",serif';
+        c.fillText('ゲームオーバー', W / 2, H / 2 + 14);
+        c.textAlign = 'left';
+      },
+    };
+  }
+
   function makeHayakuchiGame(onDone) {
     const KANA = ['い', 'ず', 'み', 'の', 'か', 'み', 'か', 'ね', 'さ', 'だ'];
     const hard = difficulty === 'hard';
     const zoneW = hard ? 0.13 : 0.24;   // 金色ゾーンの幅（0..1）
     const spd = hard ? 0.085 : 0.055;   // マーカーの速さ
+    const LIMIT = 20;                    // ハード: 制限時間（秒）
     let idx = 0, misses = 0, t = 0, msg = '', msgT = 0, doneT = 0, phase = 'play';
+    let timeLeft = LIMIT;
     return {
       enter: function () {},
       update: function (dt) {
@@ -2749,6 +3457,10 @@
           doneT += dt;
           if (doneT > 1.2 || Input.pressed('confirm')) onDone();
           return;
+        }
+        if (hard) {
+          timeLeft -= dt;
+          if (timeLeft <= 0) { setScene(makeGameOver('時間切れ…！ 「いずみのかみかねさだ」を 言い切れなかった。')); return; }
         }
         if (Input.pressed('confirm')) {
           const pos = (Math.sin(tick * spd) + 1) / 2;
@@ -2773,6 +3485,10 @@
         c.fillText('『い・ず・み・の・か・み・か・ね・さ・だ』', W / 2, 66);
         c.fillStyle = '#adb5bd'; c.font = '13px "Hiragino Sans",sans-serif';
         c.fillText('マーカーが 金色ゾーンに 入った瞬間に Z / タップ！　一音ずつ 言い切ろう', W / 2, 94);
+        if (hard) {
+          c.fillStyle = '#ff8787'; c.font = 'bold 13px "Hiragino Sans",sans-serif';
+          c.fillText('【ハード】制限時間 ' + LIMIT + '秒！ 時間切れで ゲームオーバー', W / 2, 116);
+        }
         // かな表示
         var kw = 40, kx0 = W / 2 - (KANA.length * kw) / 2 + kw / 2;
         for (let i = 0; i < KANA.length; i++) {
@@ -2795,7 +3511,7 @@
         c.strokeStyle = 'rgba(200,220,255,0.4)'; roundRect(c, bx, by, bw, bh, 8); c.stroke();
         // 進捗・メッセージ
         c.fillStyle = '#cdd9ff'; c.font = '14px "Hiragino Sans",sans-serif';
-        c.fillText((idx) + ' / ' + KANA.length + (hard ? '　　ミス ' + misses + '/3' : ''), W / 2, 306);
+        c.fillText((idx) + ' / ' + KANA.length + (hard ? '　　ミス ' + misses + '/3　　のこり ' + Math.max(0, Math.ceil(timeLeft)) + '秒' : ''), W / 2, 306);
         if (msgT > 0) {
           c.fillStyle = 'rgba(255,140,140,' + Math.min(1, msgT) + ')'; c.font = 'bold 15px "Hiragino Sans",sans-serif';
           c.fillText(msg, W / 2, 340);
@@ -2835,7 +3551,8 @@
           emitP(odaX - 10, 300, -40 - Math.random() * 30, -10 - Math.random() * 20, 0.5, 'rgba(220,210,190,0.8)', 2.5, 60);
         }
         if (odaX + 26 >= ikeX) { phase = 'catch'; doneT = 0; }
-        if (ikeX > W - 30) { // 逃げられた → 仕切り直し
+        if (ikeX > W - 30) { // 逃げられた → イージーは仕切り直し / ハードはゲームオーバー
+          if (hard) { setScene(makeGameOver('いけに 逃げられて しまった…。夜の 街に 見失った。')); return; }
           ikeX = 250; odaX = 60; failMsgT = 1.6;
         }
       },
@@ -2856,6 +3573,10 @@
         c.fillText('追いかけろ！！', W / 2, 70);
         c.fillStyle = '#adb5bd'; c.font = '13px "Hiragino Sans",sans-serif';
         c.fillText('Z / タップ 連打で ダッシュ！　いけを 逃がすな！', W / 2, 96);
+        if (hard) {
+          c.fillStyle = '#ff8787'; c.font = 'bold 13px "Hiragino Sans",sans-serif';
+          c.fillText('【ハード】逃げられたら ゲームオーバー！', W / 2, 118);
+        }
         // 二人（横向き走り）
         drawActor(c, ikeX, 300, 'ike', 'right', 1.3, true);
         drawActor(c, odaX, 302, 'oda', 'right', 1.3, true);
@@ -3024,7 +3745,7 @@
             var ike = trail[0] || { x: px, y: py };
             var d1 = Math.hypot(gd.x - px, gd.y - py), d2 = Math.hypot(gd.x - ike.x, gd.y - ike.y);
             if (d1 < R || d2 < R) {
-              if (hard) { resetPos(); msg = '見つかった！ ……スタートから やり直し！'; msgT = 1.6; safeT = 1.2; }
+              if (hard) { setScene(makeGameOver('見回りに 見つかった…！ いけを 森まで 送りとどけられなかった。')); return; }
               else {
                 warnN++;
                 if (warnN >= 3) { resetPos(); warnN = 0; msg = '見つかった！ ……仕切り直し！'; msgT = 1.6; }
@@ -3064,6 +3785,10 @@
         c.fillText('見つからずに、西の 森まで いけを 送りとどけろ', W / 2, 40);
         c.fillStyle = '#adb5bd'; c.font = '12px "Hiragino Sans",sans-serif';
         c.fillText('十字キーで 移動　　灯りの 輪に 入らないように！', W / 2, 62);
+        if (hard && msgT <= 0) {
+          c.fillStyle = '#ff8787'; c.font = 'bold 13px "Hiragino Sans",sans-serif';
+          c.fillText('【ハード】一度でも 見つかったら ゲームオーバー！', W / 2, 84);
+        }
         if (msgT > 0) { c.fillStyle = 'rgba(255,150,140,' + Math.min(1, msgT) + ')'; c.font = 'bold 16px "Hiragino Sans",sans-serif'; c.fillText(msg, W / 2, 86); }
         if (phase === 'clear') {
           c.fillStyle = 'rgba(255,255,255,' + Math.max(0, 0.4 - doneT * 0.3) + ')'; c.fillRect(0, 0, W, H);
@@ -3102,7 +3827,10 @@
         if (ph < lastPhase) {
           judged = false;
           beats++;
-          if (beats > TOTAL) { phase = 'result'; doneT = 0; }
+          if (beats > TOTAL) {
+            if (hard && hits < 9) { setScene(makeGameOver('リズムが 合わなかった…。（的中 ' + hits + '/' + TOTAL + '・9以上で 成功）')); return; }
+            phase = 'result'; doneT = 0;
+          }
         }
         lastPhase = ph;
         if (Input.pressed('confirm') && !judged && beats >= 1 && phase === 'play') {
@@ -3123,6 +3851,10 @@
         c.fillText('ドラムサークル', W / 2, 46);
         c.fillStyle = '#d8c8a8'; c.font = '13px "Hiragino Sans",sans-serif';
         c.fillText('輪が いちばん 小さくなった 瞬間に Z / タップ！', W / 2, 72);
+        if (hard) {
+          c.fillStyle = '#ff8787'; c.font = 'bold 13px "Hiragino Sans",sans-serif';
+          c.fillText('【ハード】的中9未満で ゲームオーバー！', W / 2, 94);
+        }
         var ph = tick % PERIOD, ratio = ph / PERIOD;
         c.fillStyle = '#5a3a20'; c.beginPath(); c.arc(W / 2, 250, 70, 0, Math.PI * 2); c.fill();
         c.fillStyle = flashT > 0 ? '#ffe9b0' : '#e8d8b8';
@@ -3177,10 +3909,14 @@
           }
           return;
         }
+        function finish() {
+          if (hard && hits < 3) { setScene(makeGameOver('命中 ' + hits + '/5…。的の 半分も 撃ち抜けなかった。')); return true; }
+          phase = 'result'; doneT = 0; return false;
+        }
         if (target && target.alive) {
           target.x += target.vx * dt;
           if (target.x < -30 || target.x > W + 30) {
-            if (round >= 5) { phase = 'result'; doneT = 0; } else newTarget();
+            if (round >= 5) { if (finish()) return; } else newTarget();
           }
         }
         if (Input.pressed('confirm') && reloadT <= 0 && phase === 'play') {
@@ -3189,7 +3925,7 @@
           if (target && target.alive && Math.abs(target.x - W / 2) < 26) {
             target.alive = false; hits++;
             emitP(target.x, target.y, 0, -40, 0.6, '#ffd43b', 4, 80);
-            if (round >= 5) { phase = 'result'; doneT = 0; } else newTarget();
+            if (round >= 5) { if (finish()) return; } else newTarget();
           }
         }
       },
@@ -3202,6 +3938,10 @@
         c.fillText('種子島 射的', W / 2, 44);
         c.fillStyle = '#adb5bd'; c.font = '13px "Hiragino Sans",sans-serif';
         c.fillText('的が 中央の 線に 重なった 瞬間に Z！（装填時間に 注意）', W / 2, 70);
+        if (hard) {
+          c.fillStyle = '#ff8787'; c.font = 'bold 13px "Hiragino Sans",sans-serif';
+          c.fillText('【ハード】命中3未満で ゲームオーバー！', W / 2, 92);
+        }
         c.strokeStyle = 'rgba(255,212,59,0.5)'; c.lineWidth = 2;
         c.beginPath(); c.moveTo(W / 2, 100); c.lineTo(W / 2, 300); c.stroke(); c.lineWidth = 1;
         if (target && target.alive) {
@@ -3241,9 +3981,10 @@
     ];
     const ANSWER = ['う', 'る', 'う', 'づ', 'き'];
     const POOL = ['る', 'こ', 'う', 'づ', 'よ', 'き', 'み', 'ま'];
+    const hard = difficulty === 'hard';
     let mode = 'books';
     let cur = 0, reading = -1, readSet = {};
-    let picked = 0, missT = 0, doneT = 0;
+    let picked = 0, missT = 0, doneT = 0, misses = 0;
     return {
       enter: function () {},
       update: function (dt) {
@@ -3278,7 +4019,11 @@
           if (POOL[cur] === ANSWER[picked]) {
             picked++;
             if (picked >= ANSWER.length) { mode = 'result'; doneT = 0; }
-          } else { picked = 0; missT = 1.2; }
+          } else {
+            misses++;
+            if (hard && misses >= 3) { setScene(makeGameOver('謎が 解けなかった…。（おてつき 3回）')); return; }
+            picked = 0; missT = 1.2;
+          }
         }
       },
       render: function (c) {
@@ -3338,7 +4083,8 @@
             c.fillStyle = selP ? '#ffd43b' : '#e8dcc0'; c.font = 'bold 24px "Hiragino Mincho ProN",serif';
             c.fillText(POOL[p2], gx0 + p2 * gw2, 243);
           }
-          if (missT > 0) { c.fillStyle = 'rgba(255,140,140,' + Math.min(1, missT) + ')'; c.font = 'bold 15px "Hiragino Sans",sans-serif'; c.fillText('ちがう みたい…。はじめから！', W / 2, 300); }
+          if (missT > 0) { c.fillStyle = 'rgba(255,140,140,' + Math.min(1, missT) + ')'; c.font = 'bold 15px "Hiragino Sans",sans-serif'; c.fillText('ちがう みたい…。はじめから！' + (hard ? '（あと ' + (3 - misses) + '回で ゲームオーバー）' : ''), W / 2, 300); }
+          if (hard) { c.fillStyle = '#ff8787'; c.font = 'bold 13px "Hiragino Sans",sans-serif'; c.fillText('【ハード】おてつき3回で ゲームオーバー！（現在 ' + misses + '/3）', W / 2, 330); }
           c.fillStyle = '#8a7a60'; c.font = '12px "Hiragino Sans",sans-serif';
           c.fillText('← → 選択　Z 決定　X 本に もどる', W / 2, H - 16);
         } else {
@@ -3378,7 +4124,10 @@
           if (Input.pressed('confirm')) { answered = true; correct = (qcur === q.answer); if (correct) score++; }
         } else if (Input.pressed('confirm')) {
           idx++;
-          if (idx >= QUIZ.length) { phase = 'result'; doneT = 0; return; }
+          if (idx >= QUIZ.length) {
+            if (difficulty === 'hard' && score < 3) { setScene(makeGameOver('長久手検定、不合格…。（正解 ' + score + '/' + QUIZ.length + '・3問以上で 合格）')); return; }
+            phase = 'result'; doneT = 0; return;
+          }
           qcur = 0; answered = false;
         }
       },
@@ -3397,7 +4146,7 @@
           drawVignette(c); c.textAlign = 'left'; return;
         }
         c.fillStyle = '#8fa8c8'; c.font = '13px "Hiragino Sans",sans-serif';
-        c.fillText('第 ' + (idx + 1) + ' 問 / 全 ' + QUIZ.length + ' 問　　正解 ' + score, W / 2, 70);
+        c.fillText('第 ' + (idx + 1) + ' 問 / 全 ' + QUIZ.length + ' 問　　正解 ' + score + (difficulty === 'hard' ? '　　【ハード】3問未満で ゲームオーバー' : ''), W / 2, 70);
         const q = QUIZ[idx];
         c.fillStyle = 'rgba(8,16,40,0.9)'; roundRect(c, 24, 88, W - 48, 58, 10); c.fill();
         c.strokeStyle = '#cdd9ff'; c.lineWidth = 2; roundRect(c, 26, 90, W - 52, 54, 8); c.stroke(); c.lineWidth = 1;
@@ -3455,7 +4204,7 @@
     })();
     let phase = 'memo';
     let memoT = hard ? 3.2 : 5.0;
-    let cur = 0, picked = 0, missT = 0, doneT = 0, success = false;
+    let cur = 0, picked = 0, missT = 0, doneT = 0, success = false, mistakes = 0;
     return {
       enter: function () {},
       update: function (dt) {
@@ -3481,6 +4230,8 @@
             picked++;
             if (picked >= recipe.length) { phase = 'result'; success = true; doneT = 0; }
           } else {
+            mistakes++;
+            if (hard && mistakes >= 2) { setScene(makeGameOver('レシピを まちがえた…。兵糧丸は 失敗作に なってしまった。')); return; }
             picked = 0; missT = 1.2; phase = 'memo'; memoT = hard ? 2.4 : 4.0;
           }
         }
@@ -3517,7 +4268,7 @@
           }
           if (missT > 0) { c.fillStyle = 'rgba(255,140,140,' + Math.min(1, missT) + ')'; c.font = 'bold 15px "Hiragino Sans",sans-serif'; c.fillText('順番が ちがう！ もう一度 レシピを 見よう', W / 2, 280); }
           c.fillStyle = '#b8a480'; c.font = '12px "Hiragino Sans",sans-serif';
-          c.fillText('← → 選択　　Z 決定', W / 2, H - 16);
+          c.fillText('← → 選択　　Z 決定' + (hard ? '　　【ハード】ミス2回で ゲームオーバー（' + mistakes + '/2）' : ''), W / 2, H - 16);
         } else {
           c.fillStyle = 'rgba(0,0,0,0.5)'; c.fillRect(0, 0, W, H);
           c.fillStyle = '#ffd43b'; c.font = 'bold 28px "Hiragino Mincho ProN",serif';
@@ -3560,6 +4311,7 @@
   function makeTitle(fadeIn) {
     const opts = hasSave() ? ['はじめから', 'つづきから', '史跡めぐり'] : ['はじめから', '史跡めぐり'];
     let cur = 0;
+    let fileSel = null; // ファイル選択サブメニュー { mode: 'load'|'new', cur }
     var titleFade = fadeIn ? 1.0 : 0;
     return {
       enter: function () {},
@@ -3568,17 +4320,33 @@
         updateParts(dt);
         if (tick % 40 === 0) emitP(rnd(0, W), -5, 6 + Math.random() * 10, 12 + Math.random() * 8, 8, 'rgba(255,200,210,0.45)', 2 + Math.random() * 1.5, 1.5);
         if (tick % 25 === 0) emitP(rnd(30, W - 30), rnd(60, H - 60), (Math.random() - 0.5) * 3, -1 + Math.random(), 6, 'rgba(255,220,100,0.35)', 1 + Math.random(), 0);
+        if (fileSel) {
+          // ファイル選択（つづきから=ロード / はじめから=記録先）
+          if (Input.pressed('up')) fileSel.cur = (fileSel.cur + 2) % 3;
+          if (Input.pressed('down')) fileSel.cur = (fileSel.cur + 1) % 3;
+          if (Input.pressed('cancel')) { fileSel = null; return; }
+          if (Input.pressed('confirm')) {
+            if (fileSel.cur === 2) { fileSel = null; return; }
+            var n = fileSel.cur + 1;
+            if (fileSel.mode === 'load') {
+              if (!hasSlot(n)) return; // 空ファイルはロードできない
+              if (loadGame(n)) startTransition(function () {
+                // 章進行に応じた復帰先（legacy=旧フローのフィールド、それ以外は古戦場公園）
+                setScene(makeField(chapter === 'legacy' ? 'field' : 'zoneA', null, null));
+              });
+            } else {
+              setSaveSlot(n);
+              setScene(makeDifficultySelect());
+            }
+          }
+          return;
+        }
         if (Input.pressed('up')) cur = (cur + opts.length - 1) % opts.length;
         if (Input.pressed('down')) cur = (cur + 1) % opts.length;
         if (Input.pressed('confirm')) {
-          if (opts[cur] === 'つづきから') {
-            if (loadGame()) startTransition(function () {
-              // 章進行に応じた復帰先（legacy=旧フローのフィールド、それ以外は古戦場公園）
-              setScene(makeField(chapter === 'legacy' ? 'field' : 'zoneA', null, null));
-            });
-          }
+          if (opts[cur] === 'つづきから') fileSel = { mode: 'load', cur: hasSlot(1) ? 0 : 1 };
           else if (opts[cur] === '史跡めぐり') { if (hasSave()) loadGame(); setScene(makeSiteTour()); }
-          else setScene(makeDifficultySelect());
+          else fileSel = { mode: 'new', cur: hasSlot(1) && !hasSlot(2) ? 1 : 0 };
         }
       },
       render: function (c) {
@@ -3683,6 +4451,23 @@
         // Ground fog
         drawFogBand(c, H - 100, 80, 'rgba(140,160,180,0.03)');
         // Menu items
+        if (fileSel) {
+          // ファイル選択サブメニュー
+          c.fillStyle = '#cdd9ff'; c.font = 'bold 15px "Hiragino Sans",sans-serif';
+          c.fillText(fileSel.mode === 'load' ? 'つづきから ― ファイルを えらぶ' : 'はじめから ― 記録する ファイルを えらぶ', W / 2, 332);
+          var frows = ['ファイル１　' + slotLabel(1), 'ファイル２　' + slotLabel(2), 'もどる'];
+          for (let i = 0; i < 3; i++) {
+            var fy = 366 + i * 34;
+            var dim = fileSel.mode === 'load' && i < 2 && !hasSlot(i + 1);
+            c.fillStyle = i === fileSel.cur ? '#ffd43b' : (dim ? '#4a5568' : '#8899bb');
+            c.font = (i === fileSel.cur ? 'bold ' : '') + '17px "Hiragino Sans",sans-serif';
+            c.fillText((i === fileSel.cur ? '▶ ' : '　') + frows[i], W / 2, fy);
+          }
+          if (fileSel.mode === 'new' && hasSlot(fileSel.cur + 1) && fileSel.cur < 2) {
+            c.fillStyle = '#ff9d9d'; c.font = '12px "Hiragino Sans",sans-serif';
+            c.fillText('※このファイルの データは 上書きされます', W / 2, 366 + 3 * 34);
+          }
+        } else {
         for (let i = 0; i < opts.length; i++) {
           var my = 364 + i * 36;
           if (i === cur) {
@@ -3695,6 +4480,7 @@
           c.fillStyle = i === cur ? '#ffd43b' : '#8899bb';
           c.font = (i === cur ? 'bold ' : '') + '21px "Hiragino Sans",sans-serif';
           c.fillText((i === cur ? '▶ ' : '　') + opts[i], W / 2, my);
+        }
         }
         // Vignette
         drawVignette(c);
@@ -3894,9 +4680,12 @@
         '難易度　　' + DIFF[difficulty].label,
         '所持金　　' + gold + ' 円',
         'どうぐ　　おにぎり×' + bag.onigiri + '　長久手茶×' + bag.cha + '　兵糧丸×' + bag.hyorogan,
+        '記録先　　ファイル' + saveSlot,
       ];
+      if (iwasakiCleared) lines.push('称号　　　両市公認・歴史の語り部');
       let y = cy + 32;
-      for (let i = 0; i < lines.length; i++) { c.fillText(lines[i], cx + 22, y); y += 32; }
+      const lstep = Math.min(32, ((H - cy - 44) / lines.length) | 0); // 行数が増えても枠に収める
+      for (let i = 0; i < lines.length; i++) { c.fillText(lines[i], cx + 22, y); y += lstep; }
     } else if (tab === 1) {
       const slots = [['武器', Hero.weapon], ['防具', Hero.armor]];
       c.font = '17px "Hiragino Sans",sans-serif';
@@ -4059,8 +4848,9 @@
         if (Input.pressed('left')) pressWhisk('L');
         if (Input.pressed('right')) pressWhisk('R');
         if (timeLeft <= 0) {
-          phase = 'result';
           rank = foam >= 75 ? 'A' : (foam >= 45 ? 'B' : 'C');
+          if (hard && rank === 'C') { setScene(makeGameOver('泡が 立たなかった…。（泡45以上で 成功）お点前は 一日にして ならず。')); return; }
+          phase = 'result';
           if ('CBA'.indexOf(rank) > 'CBA'.indexOf(teaBest)) teaBest = rank;
           unlockZukan('chashitsu'); saveGame();
           Dialog.start(rank === 'A' ? DIALOGUE.tea_rank_a : (rank === 'B' ? DIALOGUE.tea_rank_b : DIALOGUE.tea_rank_c), function () { onReturn(rank); });
@@ -4121,6 +4911,10 @@
           c.fillText('← → 交互に シャカシャカ！', W / 2, 152);
           c.fillStyle = '#e8dcc8'; c.font = '12px "Hiragino Sans",sans-serif';
           c.fillText('ちょうどいい リズムで。はやすぎると こぼれるよ', W / 2, 172);
+          if (hard) {
+            c.fillStyle = '#ff8787'; c.font = 'bold 12px "Hiragino Sans",sans-serif';
+            c.fillText('【ハード】泡45未満で ゲームオーバー！', W / 2, 190);
+          }
           // 泡ゲージ
           var gx2 = 76, gw2 = W - 152, gy2 = 396;
           c.fillStyle = 'rgba(0,0,0,0.5)'; roundRect(c, gx2, gy2, gw2, 20, 7); c.fill();
@@ -4377,7 +5171,7 @@
             return;
           }
           if (teaAvail && cur === SITES.length) {
-            if (gold >= 500) { gold -= 500; saveGame(); setScene(makeTeaRoom(function () { setScene(makeSiteTour()); })); }
+            if (gold >= 500) { gold -= 500; setScene(makeTeaRoom(function () { setScene(makeSiteTour()); })); }
             else Dialog.start([{ name: 'オダ', text: '（抹茶体験は 500円。……いまは 持ち合わせが 足りない）' }]);
             return;
           }
@@ -4547,6 +5341,7 @@
     const dt = Math.min(0.05, (now - last) / 1000); last = now; tick++;
     if (!trans.active && scene && scene.update) scene.update(dt);
     updateTransition(dt);
+    ctx.setTransform(RES, 0, 0, RES, 0, 0); // HD解像度スケール（論理座標にリセット）
     ctx.clearRect(0, 0, W, H);
     ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
     if (scene && scene.render) scene.render(ctx);
@@ -4554,6 +5349,17 @@
     Input.clearEdges();
     requestAnimationFrame(frame);
   }
-  setScene(makeSplash());
+  // テスターモード（test.html）: kassenzu_dev_start があれば、セーブを読んで指定シーンから直接開始する。
+  // キーは一回で消費するため、通常プレイには影響しない
+  var devStart = null;
+  try {
+    devStart = JSON.parse(localStorage.getItem('kassenzu_dev_start') || 'null');
+    if (devStart) localStorage.removeItem('kassenzu_dev_start');
+  } catch (e) { devStart = null; }
+  if (devStart && hasSave() && loadGame()) {
+    var dvMap = devStart.map || (chapter === 'legacy' ? 'field' : 'zoneA');
+    var dvSpawn = (devStart.col != null) ? { col: devStart.col, row: devStart.row } : null;
+    setScene(makeField(dvMap, dvSpawn, null));
+  } else setScene(makeSplash());
   requestAnimationFrame(frame);
 })();

@@ -73,7 +73,7 @@ main{max-width:900px;margin:0 auto;padding:20px}
 <main id="main"></main>
 <div class="toast" id="toast"></div>
 
-<script src="dialogue.js?v=20260704p6"></script>
+<script src="dialogue.js?v=20260704p16"></script>
 <script>
 (function () {
   'use strict';
@@ -95,7 +95,8 @@ main{max-width:900px;margin:0 auto;padding:20px}
     { title: 'エンディング', keys: ['ending'] },
     { title: '戦闘メッセージ', keys: ['battle'] },
     { title: '史跡めぐり・茶室', keys: ['tour_complete', 'sites', 'tea_intro', 'tea_rank_c', 'tea_rank_b', 'tea_rank_a', 'tour_battle_intro'] },
-    { title: '長久手の街（おまけ）', keys: ['omake_locked', 'omake_unlock', 'station_first', 'station_ride', 'aeon_welcome', 'ramen_event', 'cityhall_talk', 'kodomo_talk', 'library_talk', 'higane_event', 'higane_done', 'expo1_talk', 'expo2_talk', 'expo3_talk', 'wheel_talk', 'sakamoto_talk', 'bunka_galleria', 'bunka_2f', 'bunka_mori', 'kentei_intro', 'kentei_quiz', 'hyorogan_intro', 'lib_intro', 'drum_intro', 'epi_bond', 'post_pray', 'post_kanehira', 'post_kancho_join', 'post_boss_intro', 'post_win'] },
+    { title: '長久手の街（おまけ）', keys: ['omake_locked', 'omake_unlock', 'station_first', 'station_ride', 'aeon_welcome', 'aeon_first', 'ramen_event', 'cityhall_talk', 'kodomo_talk', 'library_talk', 'higane_event', 'higane_done', 'expo1_talk', 'expo2_talk', 'expo3_talk', 'wheel_talk', 'sakamoto_talk', 'bunka_galleria', 'bunka_2f', 'bunka_mori', 'kentei_intro', 'kentei_quiz', 'hyorogan_intro', 'lib_intro', 'drum_intro', 'epi_bond', 'post_pray', 'post_kanehira', 'post_kancho_join', 'post_boss_intro', 'post_win', 'hard_patrol_hint'] },
+    { title: '岩崎城（裏イベント）', keys: ['iwasaki_invite', 'iwasaki_arrive', 'iwasaki_arrive_again', 'naiki_intro', 'iwasaki_quiz', 'iwasaki_win', 'naiki_after', 'iwasaki_sakamoto_after', 'iwasaki_saka_field', 'iwasaki_saka_field_after', 'tenshu_view', 'iwasaki_kinenkan_talk'] },
   ];
 
   var SCENE_LABELS = {
@@ -127,13 +128,18 @@ main{max-width:900px;margin:0 auto;padding:20px}
     tour_battle_intro: '史跡：もののけ出現',
     omake_locked: '街：まだ行けない', omake_unlock: '街：解放アナウンス',
     station_first: 'リニモ：初回', station_ride: 'リニモ：乗車',
-    aeon_welcome: 'イオン：入店', ramen_event: '一蘭：下見',
+    aeon_welcome: 'イオン：入店', aeon_first: 'イオン：入店（いけと出会う前）', ramen_event: '一蘭：下見',
     cityhall_talk: '市役所', kodomo_talk: '平成こども塾', library_talk: '中央図書館',
     higane_event: '桧ヶ根公園：赤備え入手', higane_done: '桧ヶ根公園：再訪',
     expo1_talk: 'モリコロ：万博の話', expo2_talk: 'モリコロ：マンモス', expo3_talk: 'モリコロ：記念公園',
     wheel_talk: '観覧車', sakamoto_talk: '坂元さん（文化の家）',
     bunka_galleria: '文化の家：ガレリア', bunka_2f: '文化の家：2階', bunka_mori: '文化の家：森のホール',
     kentei_intro: '長久手検定：受付', kentei_quiz: '長久手検定：問題', hyorogan_intro: '兵糧丸づくり：導入', lib_intro: '図書館謎解き：導入', drum_intro: 'ドラムサークル：導入',
+    hard_patrol_hint: 'ハード：見回り中の鍛錬ヒント',
+    iwasaki_invite: '岩崎城：坂元の誘い', iwasaki_arrive: '岩崎城：到着', iwasaki_arrive_again: '岩崎城：再訪',
+    naiki_intro: '岩崎城：内貴さん登場〜裏ボス戦', iwasaki_quiz: '岩崎城：クイズゲート出題', iwasaki_win: '岩崎城：勝利（兜と称号）', naiki_after: '岩崎城：クリア後の内貴さん',
+    iwasaki_sakamoto_after: '岩崎城：クリア後の坂元さん（文化の家）', iwasaki_saka_field: '岩崎城：現地の坂元さん', iwasaki_saka_field_after: '岩崎城：現地の坂元さん（クリア後）',
+    tenshu_view: '岩崎城：模擬天守', iwasaki_kinenkan_talk: '岩崎城：歴史記念館',
     epi_bond: '館長の絆（好感度2以上）', post_pray: 'ポストゲーム：祈り', post_kanehira: '大包平入手', post_kancho_join: '館長参戦（ハード）', post_boss_intro: '大ボス出現', post_win: '大ボス撃破',
   };
 

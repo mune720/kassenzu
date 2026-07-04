@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>合戦ズ ― テスターモード</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 20px 14px 60px; background: #10131f; color: #e6e9f2;
+         font-family: "Hiragino Sans", "Yu Gothic", sans-serif; }
+  .wrap { max-width: 860px; margin: 0 auto; }
+  h1 { font-size: 20px; color: #ffd43b; margin: 0 0 4px; }
+  .sub { color: #8a93a8; font-size: 12px; margin-bottom: 14px; }
+  .warn { background: #2a1f10; border: 1px solid #6b5220; border-radius: 8px;
+          padding: 10px 12px; font-size: 12px; color: #ffce73; margin-bottom: 14px; line-height: 1.7; }
+  .bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 18px; }
+  button { cursor: pointer; border: none; border-radius: 8px; font-family: inherit; }
+  .btn-restore { background: #2b3a5a; color: #cdd9ff; padding: 8px 14px; font-size: 13px; }
+  .btn-restore:disabled { opacity: 0.4; cursor: default; }
+  #bkstate { font-size: 11px; color: #8a93a8; }
+  h2 { font-size: 14px; color: #9db4e8; border-left: 3px solid #3a4f7a; padding-left: 8px; margin: 22px 0 8px; }
+  .scenes { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; }
+  .scene { background: #1a2032; border: 1px solid #2b3550; border-radius: 8px; padding: 10px 12px;
+           text-align: left; color: #e6e9f2; font-size: 13px; line-height: 1.5; }
+  .scene:hover { border-color: #ffd43b; }
+  .scene.sel { border-color: #ffd43b; background: #2a2c22; }
+  .scene b { display: block; font-size: 13.5px; }
+  .scene span { color: #8a93a8; font-size: 11px; }
+  #form { position: sticky; bottom: 0; background: #151a29; border: 1px solid #2b3550;
+          border-radius: 10px; padding: 12px 14px; margin-top: 22px; }
+  #form .title { font-size: 13px; color: #ffd43b; margin-bottom: 8px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px 12px; }
+  label { font-size: 11px; color: #9aa3b8; display: block; }
+  input[type="number"], select { width: 100%; margin-top: 3px; padding: 5px 6px; border-radius: 6px;
+     border: 1px solid #2b3550; background: #10131f; color: #e6e9f2; font-size: 13px; }
+  .chk { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #c9d2e6; margin-top: 14px; }
+  .btn-start { background: #ffd43b; color: #1a1408; font-weight: bold; padding: 10px 22px;
+               font-size: 15px; margin-top: 12px; width: 100%; }
+  .btn-start:disabled { opacity: 0.35; cursor: default; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>合戦ズ テスターモード</h1>
+  <div class="sub">シーンを選んでパラメータを調整し、「このシーンから開始」でゲームに飛びます。</div>
+  <div class="warn">
+    ⚠ 開始するとブラウザのセーブデータを上書きします。最初の1回だけ元のセーブを自動退避します。
+    テストが終わったら「元のセーブに戻す」で復元してください。
+  </div>
+  <div class="bar">
+    <button class="btn-restore" id="btnRestore">元のセーブに戻す</button>
+    <span id="bkstate"></span>
+  </div>
+
+  <div id="sceneList"></div>
+
+  <div id="form">
+    <div class="title" id="selTitle">シーンを選んでください</div>
+    <div class="grid">
+      <label>難易度
+        <select id="pDiff"><option value="easy">イージー</option><option value="hard">ハード</option></select>
+      </label>
+      <label>レベル（1〜40）
+        <input type="number" id="pLv" min="1" max="40" value="1">
+      </label>
+      <label>所持金（円）
+        <input type="number" id="pGold" min="0" step="100" value="1000">
+      </label>
+      <label>武器
+        <select id="pWeapon">
+          <option value="bokuto">木刀</option>
+          <option value="replica">刀（レプリカ）</option>
+          <option value="kanehira">大包平</option>
+        </select>
+      </label>
+      <label>防具
+        <select id="pArmor">
+          <option value="nuno">記念館の制服</option>
+          <option value="do">胴丸</option>
+          <option value="akazonae">赤備えの具足</option>
+          <option value="ujishige">氏重の兜</option>
+        </select>
+      </label>
+      <label>おにぎり
+        <input type="number" id="pOnigiri" min="0" max="20" value="0">
+      </label>
+      <label>長久手茶
+        <input type="number" id="pCha" min="0" max="20" value="0">
+      </label>
+      <label>兵糧丸
+        <input type="number" id="pHyorogan" min="0" max="20" value="0">
+      </label>
+      <label>館長 好感度（0〜3）
+        <input type="number" id="pLove" min="0" max="3" value="0">
+      </label>
+    </div>
+    <label class="chk"><input type="checkbox" id="pBond"> 館長と絆あり（ハードのポストゲーム・第2形態で参戦）</label>
+    <label class="chk"><input type="checkbox" id="pTour"> 現地取材済み（5史跡を踏破した状態）</label>
+    <label class="chk"><input type="checkbox" id="pIwk"> 岩崎城クリア済み（称号あり）</label>
+    <button class="btn-start" id="btnStart" disabled>このシーンから開始 ▶</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  var F1 = 'kassenzu_save_v2_f1';
+  var F2 = 'kassenzu_save_v2_f2';
+  var LS = 'kassenzu_last_slot';
+  var BK = 'kassenzu_save_backup';
+  var DEV = 'kassenzu_dev_start';
+  var SITES5 = ['irogane', 'mihata', 'chinoike', 'musashi', 'ansho'];
+
+  // シーン定義: p=セーブの上書き値, start=開始マップ/座標(null=タイトル起動), form=フォーム初期値
+  var GROUPS = [
+    { title: '序盤（プロローグ〜二章）', scenes: [
+      { name: 'プロローグ：夕暮れの出会い', desc: '芝生広場・踊り子の舞から', p: { chapter: 'pro', zoneAMood: 'dusk' }, form: { lv: 1 }, start: { map: 'zoneA' } },
+      { name: '一章：見回り', desc: '勝入塚・庄九郎塚・記念館を調べる', p: { chapter: 'ch1' }, form: { lv: 1 }, start: { map: 'zoneA' } },
+      { name: '二章①：いけ登場', desc: '茂みから いけが現れる〜早口言葉', p: { chapter: 'ch2', ch2step: 0 }, form: { lv: 2 }, start: { map: 'zoneA' } },
+      { name: '二章②：早口言葉（リトライ）', desc: 'ミニゲーム直前から', p: { chapter: 'ch2', ch2step: 1 }, form: { lv: 2 }, start: { map: 'zoneA' } },
+      { name: '二章③：追いかけっこ', desc: '連打ミニゲームから', p: { chapter: 'ch2', ch2step: 3 }, form: { lv: 2 }, start: { map: 'zoneA' } },
+      { name: '二章④：腕試し（いけ戦）', desc: '「待てー！」〜型稽古', p: { chapter: 'ch2', ch2step: 4 }, form: { lv: 2 }, start: { map: 'zoneA' } },
+    ]},
+    { title: '中盤（三章〜四章）', scenes: [
+      { name: '三章①：記念館・館長不在', desc: '記念館内で館長を探す（好感度選択肢）', p: { chapter: 'ch3', ch3rusu: false }, form: { lv: 3 }, start: { map: 'museum', col: 7, row: 12 } },
+      { name: '三章②：みち再会', desc: '暗闇のターミネーターオダ演出', p: { chapter: 'ch3', ch3rusu: true }, form: { lv: 3 }, start: { map: 'zoneA' } },
+      { name: '四章①：取材依頼', desc: '「関ヶ原の話なんてしません」〜取材へ', p: { chapter: 'main2', stageP3: 0, tutorialDone: true, storyStage: 1 }, form: { lv: 4 }, start: { map: 'zoneA' } },
+      { name: '現地取材クエスト（街解放）', desc: '5史跡めぐり・館長の後ろ姿・一蘭', p: { chapter: 'main2', stageP3: 1, tutorialDone: true, storyStage: 1 }, form: { lv: 4, gold: 3000, love: 1 }, start: { map: 'zoneA' } },
+      { name: '四章②：戦トーク', desc: '陣幕の語り＋合いの手クイズ', p: { chapter: 'main2', stageP3: 2, tutorialDone: true, storyStage: 1, tour: true }, form: { lv: 4 }, start: { map: 'zoneA' } },
+      { name: '四章③：もののけ共闘', desc: 'いけ・みちと3人パーティ戦', p: { chapter: 'main2', stageP3: 3, tutorialDone: true, storyStage: 2, tour: true }, form: { lv: 5 }, start: { map: 'zoneA' } },
+    ]},
+    { title: '終盤（五章〜エンディング）', scenes: [
+      { name: '五章①：対峙（みち戦）', desc: '人間無骨のイベント戦', p: { chapter: 'main2', stageP3: 4, tutorialDone: true, storyStage: 3, tour: true }, form: { lv: 5 }, start: { map: 'zoneA' } },
+      { name: '五章②：天下問答〜みち別れ', desc: '長台詞シーンの確認に', p: { chapter: 'main2', stageP3: 5, tutorialDone: true, storyStage: 4, tour: true }, form: { lv: 5 }, start: { map: 'zoneA' } },
+      { name: '六章①：ステルス', desc: '見回りの灯りを避けて森へ', p: { chapter: 'main2', stageP3: 6, tutorialDone: true, storyStage: 5, tour: true }, form: { lv: 6 }, start: { map: 'zoneA' } },
+      { name: '六章②：落武者〜いけ別れ', desc: 'ステルス後の会話から', p: { chapter: 'main2', stageP3: 7, tutorialDone: true, storyStage: 5, tour: true }, form: { lv: 6 }, start: { map: 'zoneA', col: 8, row: 12 } },
+      { name: 'エピローグ：館長', desc: '絆イベント（好感度2以上で発生）', p: { chapter: 'main2', stageP3: 8, tutorialDone: true, storyStage: 5, tour: true }, form: { lv: 6, love: 2 }, start: { map: 'zoneA', col: 25, row: 13 } },
+      { name: 'ラストバトル前（見回り）', desc: '踊り子に話しかけると開戦。ハードは第2形態＋稼ぎ場', p: { chapter: 'main2', stageP3: 9, tutorialDone: true, storyStage: 5, tour: true, kanchoEv: { p9hint: true } }, form: { lv: 7, diff: 'hard', bond: true, onigiri: 3, cha: 2 }, start: { map: 'zoneA' } },
+    ]},
+    { title: 'クリア後', scenes: [
+      { name: 'ポストゲーム：勝入塚の祈り', desc: '大包平入手〜大ボス再戦（ハード＋絆で館長参戦）', p: { chapter: 'post', tutorialDone: true, storyStage: 5, tour: true }, form: { lv: 8, diff: 'hard', bond: true, gold: 5000, onigiri: 3 }, start: { map: 'zoneA', col: 33, row: 12 } },
+      { name: '岩崎城：坂元さんの誘い', desc: '森のホールで坂元さんに話しかける', p: { chapter: 'post', tutorialDone: true, storyStage: 5, tour: true }, form: { lv: 20, diff: 'hard', gold: 9000, weapon: 'kanehira', armor: 'akazonae', onigiri: 5, cha: 3 }, start: { map: 'mori' } },
+      { name: '岩崎城：現地から', desc: '天守前の内貴さん＝裏ボス（2体戦＋クイズ）', p: { chapter: 'post', tutorialDone: true, storyStage: 5, tour: true }, form: { lv: 20, diff: 'hard', gold: 9000, weapon: 'kanehira', armor: 'akazonae', onigiri: 5, cha: 3 }, start: { map: 'iwasaki' } },
+    ]},
+    { title: '施設・ミニゲーム（自由行動：取材クエスト中の状態）', scenes: [
+      { name: 'イオン前', desc: '買い物・時系列セリフの確認', p: { chapter: 'main2', stageP3: 1, tutorialDone: true, storyStage: 1 }, form: { lv: 5, gold: 5000 }, start: { map: 'zoneA', col: 4, row: 4 } },
+      { name: '一蘭 砂子交差点店前', desc: 'ラーメン・お土産の選択肢', p: { chapter: 'main2', stageP3: 1, tutorialDone: true, storyStage: 1 }, form: { lv: 5, gold: 5000 }, start: { map: 'zoneB', col: 25, row: 12 } },
+      { name: '茶室前（抹茶体験）', desc: '500円・茶筅リズムゲーム', p: { chapter: 'main2', stageP3: 1, tutorialDone: true, storyStage: 1 }, form: { lv: 5, gold: 5000 }, start: { map: 'zoneC', col: 17, row: 13 } },
+      { name: '市役所前（長久手検定）', desc: '5問クイズ・賞金', p: { chapter: 'main2', stageP3: 1, tutorialDone: true, storyStage: 1 }, form: { lv: 5, gold: 5000 }, start: { map: 'zoneC', col: 28, row: 16 } },
+      { name: 'こども塾前（兵糧丸づくり）', desc: 'レシピ記憶ゲーム', p: { chapter: 'main2', stageP3: 1, tutorialDone: true, storyStage: 1 }, form: { lv: 5, gold: 5000 }, start: { map: 'zoneC', col: 34, row: 21 } },
+      { name: '射的（色金山）', desc: '種子島射的', p: { chapter: 'main2', stageP3: 1, tutorialDone: true, storyStage: 1 }, form: { lv: 5, gold: 5000 }, start: { map: 'zoneC', col: 24, row: 10 } },
+      { name: '文化の家・図書館（ゾーンD）', desc: 'ドラムサークル・謎解き・坂元さん', p: { chapter: 'main2', stageP3: 1, tutorialDone: true, storyStage: 1 }, form: { lv: 5, gold: 5000 }, start: { map: 'zoneD', col: 19, row: 13 } },
+      { name: 'モリコロパーク', desc: '観覧車・万博の話', p: { chapter: 'main2', stageP3: 1, tutorialDone: true, storyStage: 1 }, form: { lv: 5, gold: 5000 }, start: { map: 'zoneE', col: 6, row: 20 } },
+      { name: 'タイトル画面から', desc: '史跡めぐり・カメラ撮影・現地認証の検証に', p: { chapter: 'main2', stageP3: 9, tutorialDone: true, storyStage: 5, tour: true, visited: true }, form: { lv: 7, gold: 3000 }, start: null },
+    ]},
+  ];
+
+  var selected = null;
+
+  function bkState() {
+    var el = document.getElementById('bkstate');
+    var btn = document.getElementById('btnRestore');
+    if (localStorage.getItem(BK)) { el.textContent = '退避済みのセーブがあります'; btn.disabled = false; }
+    else { el.textContent = '退避データなし（最初の開始時に自動退避されます）'; btn.disabled = true; }
+  }
+
+  function fillForm(sc) {
+    var f = sc.form || {};
+    document.getElementById('pDiff').value = f.diff || 'easy';
+    document.getElementById('pLv').value = f.lv || 1;
+    document.getElementById('pGold').value = (f.gold != null) ? f.gold : 1000;
+    document.getElementById('pWeapon').value = f.weapon || 'bokuto';
+    document.getElementById('pArmor').value = f.armor || 'nuno';
+    document.getElementById('pOnigiri').value = f.onigiri || 0;
+    document.getElementById('pCha').value = f.cha || 0;
+    document.getElementById('pHyorogan').value = f.hyorogan || 0;
+    document.getElementById('pLove').value = (f.love != null) ? f.love : 0;
+    document.getElementById('pBond').checked = !!f.bond;
+    document.getElementById('pTour').checked = !!(sc.p.tour);
+    document.getElementById('pIwk').checked = false;
+  }
+
+  function buildSave(sc) {
+    var p = sc.p;
+    var lv = Math.max(1, Math.min(40, parseInt(document.getElementById('pLv').value, 10) || 1));
+    var tour = document.getElementById('pTour').checked;
+    var visited = tour || p.visited;
+    return {
+      v: 2,
+      hero: {
+        lv: lv, exp: 0,
+        maxhp: 30 + (lv - 1) * 5, hp: 30 + (lv - 1) * 5,
+        atkBonus: lv - 1,
+        weapon: document.getElementById('pWeapon').value,
+        armor: document.getElementById('pArmor').value,
+        items: [],
+      },
+      difficulty: document.getElementById('pDiff').value,
+      tutorialDone: !!p.tutorialDone,
+      storyStage: p.storyStage || 0,
+      chapter: p.chapter,
+      ch1Seen: (p.chapter === 'ch1' || p.chapter === 'pro') ? { mound: false, shokuro: false, museum: false } : { mound: true, shokuro: true, museum: true },
+      ch2step: p.ch2step || 0,
+      ch3rusu: !!p.ch3rusu,
+      zoneAMood: p.zoneAMood || (p.chapter === 'pro' ? 'dusk' : 'weird'),
+      teaBest: '', stageP3: p.stageP3 || 0, p3v: 2,
+      gold: Math.max(0, parseInt(document.getElementById('pGold').value, 10) || 0),
+      bag: {
+        onigiri: parseInt(document.getElementById('pOnigiri').value, 10) || 0,
+        cha: parseInt(document.getElementById('pCha').value, 10) || 0,
+        hyorogan: parseInt(document.getElementById('pHyorogan').value, 10) || 0,
+      },
+      mgDone: {}, yen: 1,
+      kanchoLove: parseInt(document.getElementById('pLove').value, 10) || 0,
+      kanchoBond: document.getElementById('pBond').checked,
+      kanchoEv: p.kanchoEv || {},
+      iwk: document.getElementById('pIwk').checked ? 1 : 0,
+      visited: visited ? SITES5.slice() : [],
+      zukan: [], meikan: [],
+      tour: tour ? SITES5.slice() : [],
+      tourReward: false,
+    };
+  }
+
+  function renderScenes() {
+    var root = document.getElementById('sceneList');
+    GROUPS.forEach(function (g) {
+      var h = document.createElement('h2');
+      h.textContent = g.title;
+      root.appendChild(h);
+      var grid = document.createElement('div');
+      grid.className = 'scenes';
+      root.appendChild(grid);
+      g.scenes.forEach(function (sc) {
+        var b = document.createElement('button');
+        b.className = 'scene';
+        var t = document.createElement('b');
+        t.textContent = sc.name;
+        var d = document.createElement('span');
+        d.textContent = sc.desc;
+        b.appendChild(t);
+        b.appendChild(d);
+        b.onclick = function () {
+          document.querySelectorAll('.scene.sel').forEach(function (e) { e.classList.remove('sel'); });
+          b.classList.add('sel');
+          selected = sc;
+          document.getElementById('selTitle').textContent = '選択中: ' + sc.name;
+          document.getElementById('btnStart').disabled = false;
+          fillForm(sc);
+        };
+        grid.appendChild(b);
+      });
+    });
+  }
+
+  document.getElementById('btnStart').onclick = function () {
+    if (!selected) return;
+    // 最初の1回だけ現在のセーブ（両ファイル＋記録先）を退避
+    if (!localStorage.getItem(BK) && (localStorage.getItem(F1) || localStorage.getItem(F2))) {
+      localStorage.setItem(BK, JSON.stringify({
+        f1: localStorage.getItem(F1), f2: localStorage.getItem(F2), ls: localStorage.getItem(LS),
+      }));
+    }
+    // テストデータはファイル1に書き込み、記録先もファイル1にする
+    localStorage.setItem(F1, JSON.stringify(buildSave(selected)));
+    localStorage.setItem(LS, '1');
+    if (selected.start) localStorage.setItem(DEV, JSON.stringify(selected.start));
+    else localStorage.removeItem(DEV);
+    location.href = 'index.html';
+  };
+
+  document.getElementById('btnRestore').onclick = function () {
+    var raw = localStorage.getItem(BK);
+    if (!raw) return;
+    try {
+      var bk = JSON.parse(raw);
+      if (bk.f1) localStorage.setItem(F1, bk.f1); else localStorage.removeItem(F1);
+      if (bk.f2) localStorage.setItem(F2, bk.f2); else localStorage.removeItem(F2);
+      if (bk.ls) localStorage.setItem(LS, bk.ls); else localStorage.removeItem(LS);
+    } catch (e) {
+      localStorage.setItem(F1, raw); // 旧形式（単一セーブ）の退避データ
+    }
+    localStorage.removeItem(BK);
+    localStorage.removeItem(DEV);
+    bkState();
+    alert('元のセーブに戻しました。');
+  };
+
+  renderScenes();
+  bkState();
+})();
+</script>
+</body>
+</html>
