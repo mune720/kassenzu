@@ -1,9 +1,25 @@
 /* ============================================================
  * 合戦ズ ― 歴史空想RPG
- * 長久手市文化の家『合戦ズ』(作: 麻原奈未) を原作にした短編RPG。
+ * 長久手市文化の家『合戦ズ』(作: 麻原奈未) を原作にしたRPG。
  * Vanilla JS / 依存ゼロ / ビルド不要 / file:// でも動く。
- * このファイルがそのまま本編エンジンの土台になる構成。
- * 原作: 長久手市文化の家『合戦ズ』(作: 麻原奈未)
+ *
+ * 読み込み順: dialogue.js（セリフ）→ maps.js（マップデータ）→ 本ファイル
+ *
+ * ―― 目次（「===== 名前 =====」バナーで検索）――
+ *   Canvas / Input / Utils / Particles / Atmosphere  … 基盤
+ *   Actor sprites        … キャラのコード描画（PAL・drawHumanoid）
+ *   Maps                 … parseMap（データ本体は maps.js）
+ *   Tile rendering       … drawTile・drawFieldWorld（奥行きソート）・雲影
+ *   UI / HD-2D フィールド画像 … 一枚絵ローダー・地面パターン・歩行シート
+ *   Dialogue / Choice / Transition / Scene manager（gotoField）
+ *   Hero progression / 通貨・消耗品 / 難易度 / パーティ / 章進行
+ *   Save / Load          … 2ファイル制（slotKey・saveSlot・移行）
+ *   Field scene          … makeField（移動・イベント・エンカウント・runAction）
+ *   Battle scene         … startBattle（複数敵）・makeBattle（クイズゲート・第2形態）・drawBattle
+ *   ミニゲーム群          … 早口言葉〜兵糧丸・ゲームオーバー
+ *   Splash / Title（ファイル選択）/ 難易度選択 / Epilogue / Menu / ショップ
+ *   茶室 / 現地写真（IndexedDB・GPS）/ 史跡めぐり / Ending
+ *   起動                 … テスター用 kassenzu_dev_start フック → Splash
  * ========================================================== */
 (function () {
   'use strict';
@@ -493,372 +509,7 @@
   }
 
   // ===================== Maps =====================
-  const MUSEUM = [
-    '################',
-    '#..B...B...B...#',
-    '#..............#',
-    '#....K....S....#',
-    '#..............#',
-    '#..............#',
-    '#......@.......#',
-    '#..............#',
-    '#..............#',
-    '#..............#',
-    '#..............#',
-    '#..............#',
-    '#..............#',
-    '#######DD#######',
-  ];
-  const FIELD = [
-    'TTTTTTTTTTTTTTTT',
-    'T..............T',
-    'T...T....T.....T',
-    'T..............T',
-    'T......i.......T',
-    'T.....,,,......T',
-    'T....,,m,,.....T',
-    'T....,,,,,.....T',
-    'T~~..,,,,,..~~~T',
-    'T~~..,,,,,..~~~T',
-    'T....,,,,,.....T',
-    'T......@P......T',
-    'T.....M........T',
-    'TTTTTTTTTTTTTTTT',
-  ];
-  // ゾーンA: 長久手古戦場公園（40x28・カメラスクロール）
-  // 実際の地理に寄せた配置: 公園の西に県道57号（縦の大通り）、その西にイオン。
-  // 北辺にグリーンロード（横の大通り）とリニモ古戦場駅（北東）。
-  // W/^=記念館外観, D=記念館入口, M=勝入塚, N=庄九郎塚, R=岩, b=茂み, P=セーブ篝火
-  const ZONEA = [
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT..TTTT',
-    'T....rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrT',
-    'T....rrr............^^^^^^^^^^^^^..eee.T',
-    'TIII.rrr............^^^^^^^^^^^^^......T',
-    'TII4.rrr............WWWWWWWWWWWWW......T',
-    'TIII.rrr............WWWWWWWWWWWWW......T',
-    'T....rrr............WWWWWDDWWWWWW......T',
-    'T....rrr.................,,............T',
-    'T....rrr.................,,............T',
-    'T....rrr.bbb.............,,............T',
-    'T....rrr.bbb.............,,.......M....T',
-    'T....rrr.bbb.R...........,,............T',
-    'T....rrr.................,,....N.......T',
-    'rrrrrrrr...............................T',
-    'rrrrrrrr...............................T',
-    'T....rrr...............................T',
-    'T....rrr...........................~~~.T',
-    'T....rrr...........................~~~.T',
-    'T....rrr...............................T',
-    'T....rrr....................P..........T',
-    'T....rrr...............................T',
-    'T....rrr...............................T',
-    'T....rrr...............................T',
-    'T....rrr...............................T',
-    'T....rrr...........@...................T',
-    'T....rrr..T..............T....T........T',
-    'T....rrr...............................T',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-  ];
-  // ゾーンB: 市街地（グリーンロード・砂子交差点・一蘭・桧ヶ根公園・御旗山）
-  // 御旗山は実際には古戦場公園の南西 → 南東エリア（N）に配置
-  const ZONEB = [
-    'TTTTTTTTTTTTTTTTTTT..TTTTTTTTTTTTTTTTTTT',
-    'T..................rrr.................T',
-    'T..................rrr.................T',
-    'T..................rrr.................T',
-    'T..................rrr.................T',
-    'T..................rrr.................T',
-    'T..................rrr.................T',
-    'T..................rrr.................T',
-    'T..................rrr.................T',
-    'T..................rrr..YYYYY..........T',
-    'T..................rrr..YYYYY..........T',
-    'T..................rrr..Y11YY..........T',
-    'T..................rrr.................T',
-    'Trrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr',
-    'Trrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr',
-    'TrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrT',
-    'T..................rrr.................T',
-    'T..................rrr.................T',
-    'T..................rrr.................T',
-    'T...bTb............rrr.................T',
-    'T...b.b............rrr........N........T',
-    'T...b.a.b..........rrr.................T',
-    'T...b.b............rrr.................T',
-    'T...bbb............rrr.................T',
-    'T..................rrr.................T',
-    'T..................rrr.................T',
-    'T..................rrr.................T',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-  ];
-  // ゾーンC: 岩作・色金山（色金山＋床机石・茶室・市役所・こども塾・血の池・安昌寺・武蔵塚）
-  // 安昌寺は実際には色金山のすぐ西 → 山の西隣（J＋o）に配置。御旗山はゾーンBへ移設
-  const ZONEC = [
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'T......................................T',
-    'T...........TTTTTTTT,TTTTTTTT..........T',
-    'T...........TTTTTTTT,TTTTTTTT..........T',
-    'T...........TTTTTT..R..TTTTTT..........T',
-    'T...........TTTTTT..,..TTTTTT..........T',
-    'T...........TTTTTT..,..TTTTTT..........T',
-    'T...........TTTTTT..,..TTTTTT..........T',
-    'T...JJJJJ..........,,..................T',
-    'T...JJJJJ..........,,...x..............T',
-    'T...JJJJJ......JJJJJ,..................T',
-    'T.....o........JJJJJ,..................T',
-    'T..............JJ1JJ,....WWWWWW........T',
-    '....................,....WWWWWW........T',
-    '....................,....WWWWWW........T',
-    'T...................,....WW2WWW........T',
-    'T...................,..................T',
-    'T.......~~~~~.......,..................T',
-    'T.......~~~~~.......,...........KKKKK..T',
-    'T.......~~~~~.......,...........KKKKK..T',
-    'T.......a...........,...........KK3KK..T',
-    'T...................,...M..............T',
-    'T...................,..................T',
-    'T...................,..................T',
-    'T...................,..................T',
-    'T...................,..................T',
-    'T......................................T',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT..TTTT',
-  ];
-  // ゾーンD: 文化の家周辺（文化の家・中央図書館）
-  const ZONED = [
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'T......................................T',
-    'T......................................T',
-    'T......................................T',
-    'T......................................T',
-    'T......................................T',
-    'T...........^^^^^^^^^^^^^^^^...........T',
-    'T...........^^^^^^^^^^^^^^^^...........T',
-    'T...........^^^^^^^^^^^^^^^^...........T',
-    'T...........FFFFFFFFFFFFFFFF...........T',
-    'T...........FFFFFFFFFFFFFFFF...........T',
-    'T...........FFFFFFFFFFFFFFFF...........T',
-    'T...........FFFFFFF11FFFFFFF...........T',
-    'T.......................................',
-    'T.......................................',
-    'T......................................T',
-    'T......................................T',
-    'T.............................LLLLLLL..T',
-    'T.............................LLLLLLL..T',
-    'T.............................LLLLLLL..T',
-    'T.............................LLL2LLL..T',
-    'T......................................T',
-    'T......................................T',
-    'T......................................T',
-    'T......................................T',
-    'T......................................T',
-    'T......................................T',
-    'TTTTTTTTTTTTTTTTTTT..TTTTTTTTTTTTTTTTTTT',
-  ];
-  // 岩崎城址公園（日進市・ハードクリア後の裏イベント）
-  // W/5=模擬天守（本丸・空堀kに囲まれ土橋,で渡る）, F/6=歴史記念館, ~=二の丸庭園の池,
-  // n=学芸員・内貴, s=坂元, P=セーブ篝火, 7=帰りの案内板
-  const IWASAKI = [
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'T......................................T',
-    'T..T.....T..........................T..T',
-    'T......................................T',
-    'T............kkkkkkkkkkkkk.............T',
-    'T............k...........k.............T',
-    'T............k...WWWWW...k.............T',
-    'T............k...WWWWW...k.............T',
-    'T............k...WWWWW...k.............T',
-    'T............k...WW5WW...k.............T',
-    'T............k...........k.............T',
-    'T............kkkkkk,kkkkkk.............T',
-    'T................n.,.s.................T',
-    'T..T...............,..............T....T',
-    'T..................,...................T',
-    'T..................,...................T',
-    'T.......~~~........,........FFFFFF.....T',
-    'T.......~~~........,........FFFFFF.....T',
-    'T..................,........FF6FFF.....T',
-    'T.....bb...........,...................T',
-    'T..................,......P............T',
-    'T..................,...................T',
-    'T..T...............,...........T.......T',
-    'T..................,...................T',
-    'T..................@...................T',
-    'T..................,...................T',
-    'T..................7...................T',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-  ];
-  // ゾーンE: モリコロパーク（リニモでのみ来園）
-  const ZONEE = [
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'T......................................T',
-    'T......................................T',
-    'T...............................OOOO...T',
-    'T...............................OOOO...T',
-    'T...............................OOOO...T',
-    'T...............................OOOO...T',
-    'T......................................T',
-    'T......................................T',
-    'T.........p............................T',
-    'T...........................q..........T',
-    'T......................................T',
-    'T.............~~~~~~~~~~~..............T',
-    'T.............~~~~~~~~~~~..............T',
-    'T.............~~~~~~~~~~~..............T',
-    'T.............~~~~~~~~~~~..............T',
-    'T.............~~~~~~~~~~~..............T',
-    'T.............~~~~~~~~~~~..............T',
-    'T......................................T',
-    'T......................................T',
-    'T.eee..................................T',
-    'T...................u..................T',
-    'T......................................T',
-    'T......................................T',
-    'T......................................T',
-    'T....T....T.............T....T.........T',
-    'T......................................T',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-  ];
-  // 文化の家・屋内（1階ガレリア / 2階 / 森のホール）
-  const BUNKA1 = [
-    '################',
-    '#U............V#',
-    '#..............#',
-    '#..............#',
-    '#..............#',
-    '#..............#',
-    '#......@.......#',
-    '#..............#',
-    '#..............#',
-    '#..............#',
-    '#..............#',
-    '#..............#',
-    '#..............#',
-    '#######DD#######',
-  ];
-  const BUNKA2 = [
-    '################',
-    '#U.............#',
-    '#..............#',
-    '#..............#',
-    '#..............#',
-    '#..............#',
-    '#......@.......#',
-    '#..............#',
-    '#..............#',
-    '#..............#',
-    '#..............#',
-    '#..............#',
-    '#..............#',
-    '################',
-  ];
-  const MORIHALL = [
-    '################',
-    '#==============#',
-    '#==============#',
-    '#..............#',
-    '#.......s......#',
-    '#..............#',
-    '#......@.......#',
-    '#..............#',
-    '#..............#',
-    '#..............#',
-    '#..............#',
-    '#..............#',
-    '#..............#',
-    '#######DD#######',
-  ];
-  // マップレジストリ。新マップは rows＋この定義を追加するだけで動く。
-  //  kind: outdoor はカメラスクロール対象（画面より大きい場合）、indoor は固定画面
-  //  tileset: drawTile の描画スタイル（museum / outdoor。将来 mall / library 等を追加）
-  //  solid: 通行不可文字、npcs: NPC文字→{kind,id,floor}、acts: アクション文字→ID
-  //  encounter: { rate } でエンカウント有効（null なら無効）
-  const MAP_DEFS = {
-    museum: {
-      rows: MUSEUM, kind: 'indoor', tileset: 'museum', playerFloor: '.',
-      solid: ['#', 'B', 'K', 'S', 'D'],
-      npcs: {},
-      acts: { B: 'byobu', K: 'katchu', S: 'katana', D: 'museum_exit', P: 'save' },
-      encounter: null,
-    },
-    field: {
-      rows: FIELD, kind: 'outdoor', tileset: 'outdoor', playerFloor: ',',
-      solid: ['T', '~', 'M', 'P'],
-      npcs: { i: { kind: 'ike', id: 'ike', floor: '.' }, m: { kind: 'michi', id: 'michi', floor: ',' } },
-      acts: { M: 'mound', P: 'save' },
-      encounter: { rate: 0.07 },
-    },
-    zoneA: {
-      rows: ZONEA, kind: 'outdoor', tileset: 'outdoor', playerFloor: '.',
-      solid: ['T', '~', 'M', 'N', 'R', 'b', 'W', '^', 'D', 'P', 'I', '4', 'e'],
-      npcs: {},
-      acts: { M: 'mound', N: 'shokuro', R: 'rock', D: 'museum_enter', P: 'save', 4: 'aeon', e: 'station' },
-      edges: { west: 'zoneB', north: 'zoneC' },
-      encounter: null,
-    },
-    zoneB: {
-      rows: ZONEB, kind: 'outdoor', tileset: 'outdoor', playerFloor: '.',
-      solid: ['T', 'b', 'Y', '1', 'N'],
-      npcs: {},
-      acts: { 1: 'ramen', a: 'higane', N: 'site_mihata' },
-      edges: { east: 'zoneA', north: 'zoneD' },
-      encounter: null,
-    },
-    zoneC: {
-      rows: ZONEC, kind: 'outdoor', tileset: 'outdoor', playerFloor: '.',
-      solid: ['T', '~', 'M', 'N', 'R', 'J', 'W', 'K', '1', '2', '3', 'x'],
-      npcs: {},
-      acts: { R: 'site_irogane', 1: 'tearoom', 2: 'cityhall', 3: 'kodomo', a: 'site_chinoike', o: 'site_ansho', M: 'site_musashi', x: 'shateki' },
-      edges: { south: 'zoneA', west: 'zoneD' },
-      encounter: null,
-    },
-    zoneD: {
-      rows: ZONED, kind: 'outdoor', tileset: 'outdoor', playerFloor: '.',
-      solid: ['T', 'F', '^', 'L', '1', '2'],
-      npcs: {},
-      acts: { 1: 'bunka_in', 2: 'library' },
-      edges: { east: 'zoneC', south: 'zoneB' },
-      encounter: null,
-    },
-    zoneE: {
-      rows: ZONEE, kind: 'outdoor', tileset: 'outdoor', playerFloor: '.',
-      solid: ['T', '~', 'O', 'e'],
-      npcs: {
-        p: { kind: 'civ1', id: 'expo1', floor: '.' },
-        q: { kind: 'civ2', id: 'expo2', floor: '.' },
-        u: { kind: 'civ1', id: 'expo3', floor: '.' },
-      },
-      acts: { e: 'station', O: 'wheel' },
-      encounter: null,
-    },
-    bunka1: {
-      rows: BUNKA1, kind: 'indoor', tileset: 'museum', playerFloor: '.',
-      solid: ['#', 'D', 'U', 'V'],
-      npcs: {},
-      acts: { D: 'bunka_exit', U: 'bunka_up', V: 'mori_in' },
-      encounter: null,
-    },
-    bunka2: {
-      rows: BUNKA2, kind: 'indoor', tileset: 'museum', playerFloor: '.',
-      solid: ['#', 'U'],
-      npcs: {},
-      acts: { U: 'bunka_down' },
-      encounter: null,
-    },
-    mori: {
-      rows: MORIHALL, kind: 'indoor', tileset: 'museum', playerFloor: '.',
-      npcs: { s: { kind: 'sakamoto', id: 'sakamoto', floor: '.' } },
-      solid: ['#', 'D', '='],
-      acts: { D: 'mori_exit', '=': 'drumcircle' },
-      encounter: null,
-    },
-    iwasaki: {
-      rows: IWASAKI, kind: 'outdoor', tileset: 'outdoor', playerFloor: '.',
-      solid: ['T', '~', 'W', '5', 'F', '6', 'k', 'P', '7', 'b'],
-      npcs: { n: { kind: 'naiki', id: 'naiki', floor: '.' }, s: { kind: 'sakamoto', id: 'sakamoto_iw', floor: '.' } },
-      acts: { 5: 'tenshu', 6: 'iwasaki_kinenkan', P: 'save', 7: 'iwasaki_gate' },
-      encounter: { rate: 0.055 },
-    },
-  };
+  // マップデータ（行列・MAP_DEFS）は maps.js に分離した
   // ゾーン端のシームレス接続が解放されているか（四章の現地取材クエスト以降）
   function omakeUnlocked() {
     return (chapter === 'main2' && stageP3 >= 1) || chapter === 'post';
@@ -1393,34 +1044,21 @@
     FACE_IMG[kind] = img;
     return img;
   }
+  // 一枚絵ローダー（読み込み成功時だけコールバックに渡す。失敗時は null のまま＝フォールバック描画）
+  function loadImg(src, cb) {
+    var img = new Image();
+    img.onload = function () { cb(img); };
+    img.onerror = function () {};
+    img.src = src;
+  }
   var ENEMY_BATTLE_IMG = null;
-  (function () {
-    var img = new Image();
-    img.onerror = function () { ENEMY_BATTLE_IMG = null; };
-    img.onload = function () { ENEMY_BATTLE_IMG = img; };
-    img.src = 'assets/enemy/ochimusha_mononoke_battle_512.png';
-  })();
+  loadImg('assets/enemy/ochimusha_mononoke_battle_512.png', function (i) { ENEMY_BATTLE_IMG = i; });
   var ODORIKO_BATTLE_IMG = null;
-  (function () {
-    var img = new Image();
-    img.onerror = function () { ODORIKO_BATTLE_IMG = null; };
-    img.onload = function () { ODORIKO_BATTLE_IMG = img; };
-    img.src = 'assets/enemy/odoriko_battle.png';
-  })();
+  loadImg('assets/enemy/odoriko_battle.png', function (i) { ODORIKO_BATTLE_IMG = i; });
   var LOGO_IMG = null;
-  (function () {
-    var img = new Image();
-    img.onerror = function () { LOGO_IMG = null; };
-    img.onload = function () { LOGO_IMG = img; };
-    img.src = 'assets/logo/bunkalogo.png';
-  })();
+  loadImg('assets/logo/bunkalogo.png', function (i) { LOGO_IMG = i; });
   var TITLE_LOGO_IMG = null;
-  (function () {
-    var img = new Image();
-    img.onerror = function () { TITLE_LOGO_IMG = null; };
-    img.onload = function () { TITLE_LOGO_IMG = img; };
-    img.src = 'assets/logo/title_logo.png';
-  })();
+  loadImg('assets/logo/title_logo.png', function (i) { TITLE_LOGO_IMG = i; });
   // ===================== HD-2D フィールド画像（第1弾: 地面・装飾・建物）=====================
   // assets/tiles|deco|buildings/ に画像を置くと自動で差し替わる（無ければ従来のプロシージャル描画）。
   // 生成プロンプトは docs/asset_prompts.md を参照。
@@ -1488,38 +1126,7 @@
     HD_PAT[key] = pat;
     return pat;
   }
-  // 装飾スプライトの描画定義（w=タイル幅の倍率。高さは画像アスペクトから算出し底辺で接地）
-  const HD_DECO_DEF = {
-    T: { key: 'tree', w: 1.55 },
-    b: { key: 'bush', w: 1.2 },
-    R: { key: 'rock', w: 1.1 },
-    M: { key: 'mound', w: 1.4 },
-    N: { key: 'mound_s', w: 1.2 },
-  };
-  // 建物一枚絵の配置（タイル矩形）。画像は横幅にフィットし、余った高さは上（屋根方向）へはみ出す
-  const HD_BLD_DEF = {
-    zoneA: [
-      { key: 'museum', c0: 20, r0: 2, w: 13, h: 5 },
-      { key: 'aeon', c0: 1, r0: 3, w: 3, h: 3 },
-      { key: 'station', c0: 35, r0: 1, w: 3, h: 2 },
-    ],
-    zoneB: [{ key: 'ramen', c0: 24, r0: 9, w: 5, h: 3 }],
-    zoneC: [
-      { key: 'temple', c0: 4, r0: 8, w: 5, h: 3 },
-      { key: 'tearoom', c0: 15, r0: 10, w: 5, h: 3 },
-      { key: 'cityhall', c0: 25, r0: 12, w: 6, h: 4 },
-      { key: 'kodomo', c0: 32, r0: 18, w: 5, h: 3 },
-    ],
-    zoneD: [
-      { key: 'bunka', c0: 12, r0: 6, w: 16, h: 7 },
-      { key: 'library', c0: 31, r0: 17, w: 7, h: 4 },
-    ],
-    zoneE: [{ key: 'ferris', c0: 32, r0: 3, w: 4, h: 4 }],
-    iwasaki: [
-      { key: 'iwasaki_tenshu', c0: 17, r0: 6, w: 5, h: 4 },
-      { key: 'iwasaki_kinenkan', c0: 28, r0: 16, w: 6, h: 3 },
-    ],
-  };
+  // HD_DECO_DEF / HD_BLD_DEF（装飾・建物の配置データ）は maps.js に分離した
   // 顔ウィンドウ（仮：図形ポートレート。画像があればそれを描く）
   function drawPortrait(c, kind, x, y, s) {
     c.fillStyle = 'rgba(0,0,0,0.35)'; roundRect(c, x + 3, y + 3, s, s, 8); c.fill();
@@ -1714,6 +1321,10 @@
   // ===================== Scene manager =====================
   let scene = null;
   function setScene(s) { clearParts(); scene = s; if (s && s.enter) s.enter(); }
+  // フェード付きでフィールドへ移動する共通ヘルパー（spawn は {col,row} / {x,y} / null）
+  function gotoField(map, spawn) {
+    startTransition(function () { setScene(makeField(map, spawn || null, null)); });
+  }
 
   // ===================== Hero progression (persistent) =====================
   const ITEMS = {
@@ -1994,6 +1605,11 @@
       if (!id) id = map.acts[f.col + ',' + f.row] || null;
       if (id) runAction(id);
     }
+    // 「いまの立ち位置に戻ってくる」コールバック（施設・ミニゲームからの復帰用）
+    function backHere() {
+      var hx = player.x, hy = player.y;
+      return function () { gotoField(mapKey, { x: hx, y: hy }); };
+    }
     function runAction(id) {
       if (id === 'byobu') Dialog.start(DIALOGUE.byobu);
       else if (id === 'katchu') Dialog.start(DIALOGUE.katchu);
@@ -2011,16 +1627,16 @@
       else if (id === 'rock') Dialog.start(DIALOGUE.ch1_rock);
       else if (id === 'museum_enter') {
         ch1Seen.museum = true;
-        startTransition(function () { setScene(makeField('museum', { col: 7, row: 12 }, null)); });
+        gotoField('museum', { col: 7, row: 12 });
       }
       else if (id === 'museum_exit') {
-        startTransition(function () { setScene(makeField('zoneA', { col: 25, row: 7 }, null)); });
+        gotoField('zoneA', { col: 25, row: 7 });
       }
       else if (id === 'aeon') {
         // いけと出会う前（プロローグ・一章）は、いけに言及しないセリフにする
         var aeonLines = (chapter === 'pro' || chapter === 'ch1') ? DIALOGUE.aeon_first : DIALOGUE.aeon_welcome;
         Dialog.start(aeonLines, function () {
-          setScene(makeShop(function () { startTransition(function () { setScene(makeField(mapKey, { x: player.x, y: player.y }, null)); }); }));
+          setScene(makeShop(function () { gotoField(mapKey, { x: player.x, y: player.y }); }));
         });
       }
       else if (id === 'station') {
@@ -2051,29 +1667,29 @@
         else Dialog.start([{ name: 'オダ', text: '（一杯 950円…。いまは 持ち合わせが 足りない。もののけ退治で 稼いでこよう）' }]);
       }
       else if (id === 'cityhall') {
-        var chBack = (function () { var hx = player.x, hy = player.y; return function () { startTransition(function () { setScene(makeField(mapKey, { x: hx, y: hy }, null)); }); }; })();
+        var chBack = backHere();
         Dialog.start(DIALOGUE.cityhall_talk, function () {
           Dialog.start(DIALOGUE.kentei_intro, function () { setScene(makeKentei(chBack)); });
         });
       }
       else if (id === 'kodomo') {
-        var kdBack = (function () { var hx = player.x, hy = player.y; return function () { startTransition(function () { setScene(makeField(mapKey, { x: hx, y: hy }, null)); }); }; })();
+        var kdBack = backHere();
         Dialog.start(DIALOGUE.kodomo_talk, function () {
           Dialog.start(DIALOGUE.hyorogan_intro, function () { setScene(makeHyorogan(kdBack)); });
         });
       }
       else if (id === 'library') {
-        var lbBack = (function () { var hx = player.x, hy = player.y; return function () { startTransition(function () { setScene(makeField(mapKey, { x: hx, y: hy }, null)); }); }; })();
+        var lbBack = backHere();
         Dialog.start(DIALOGUE.library_talk, function () {
           Dialog.start(DIALOGUE.lib_intro, function () { setScene(makeLibPuzzle(lbBack)); });
         });
       }
       else if (id === 'shateki') {
-        var stBack = (function () { var hx = player.x, hy = player.y; return function () { startTransition(function () { setScene(makeField(mapKey, { x: hx, y: hy }, null)); }); }; })();
+        var stBack = backHere();
         setScene(makeShateki(stBack));
       }
       else if (id === 'drumcircle') {
-        var dcBack = (function () { var hx = player.x, hy = player.y; return function () { startTransition(function () { setScene(makeField(mapKey, { x: hx, y: hy }, null)); }); }; })();
+        var dcBack = backHere();
         Dialog.start(DIALOGUE.drum_intro, function () { setScene(makeDrumCircle(dcBack)); });
       }
       else if (id === 'wheel') Dialog.start(DIALOGUE.wheel_talk);
@@ -2088,7 +1704,7 @@
         if (gold >= 500) {
           // 500円はここでは保存しない（ハードで失敗＝ゲームオーバー時に、他ミニゲーム同様セーブ地点まで巻き戻すため。成功時は結果画面の saveGame で確定する）
           gold -= 500;
-          setScene(makeTeaRoom(function () { startTransition(function () { setScene(makeField('zoneC', { col: 17, row: 13 }, null)); }); }));
+          setScene(makeTeaRoom(function () { gotoField('zoneC', { col: 17, row: 13 }); }));
         } else Dialog.start([{ name: 'オダ', text: '（抹茶体験は 500円。……いまは 持ち合わせが 足りない）' }]);
       }
       else if (id && id.indexOf('site_') === 0) {
@@ -2096,27 +1712,27 @@
         if (site) {
           visitedSites.add(site.id); saveGame();
           var backX = player.x, backY = player.y;
-          setScene(makeSiteVisit(site, function () { startTransition(function () { setScene(makeField(mapKey, { x: backX, y: backY }, null)); }); }));
+          setScene(makeSiteVisit(site, function () { gotoField(mapKey, { x: backX, y: backY }); }));
         }
       }
-      else if (id === 'bunka_in') { unlockZukan('bunka'); startTransition(function () { setScene(makeField('bunka1', null, null)); }); }
-      else if (id === 'bunka_exit') startTransition(function () { setScene(makeField('zoneD', { col: 19, row: 13 }, null)); });
-      else if (id === 'bunka_up') startTransition(function () { setScene(makeField('bunka2', { col: 2, row: 2 }, null)); });
-      else if (id === 'bunka_down') startTransition(function () { setScene(makeField('bunka1', { col: 2, row: 2 }, null)); });
-      else if (id === 'mori_in') startTransition(function () { setScene(makeField('mori', null, null)); });
-      else if (id === 'mori_exit') startTransition(function () { setScene(makeField('bunka1', { col: 13, row: 2 }, null)); });
+      else if (id === 'bunka_in') { unlockZukan('bunka'); gotoField('bunka1'); }
+      else if (id === 'bunka_exit') gotoField('zoneD', { col: 19, row: 13 });
+      else if (id === 'bunka_up') gotoField('bunka2', { col: 2, row: 2 });
+      else if (id === 'bunka_down') gotoField('bunka1', { col: 2, row: 2 });
+      else if (id === 'mori_in') gotoField('mori');
+      else if (id === 'mori_exit') gotoField('bunka1', { col: 13, row: 2 });
       else if (id === 'sakamoto') {
         // ハードクリア後: 岩崎城への誘い（裏イベント）
         if (difficulty === 'hard' && chapter === 'post' && !iwasakiCleared) {
           Dialog.start(DIALOGUE.iwasaki_invite, function () {
             Choice.start('岩崎城へ 行く？（推奨レベル20）', ['行く', 'また今度'], function (pick) {
-              if (pick === 0) startTransition(function () { setScene(makeField('iwasaki', null, null)); });
+              if (pick === 0) gotoField('iwasaki');
             });
           });
         } else if (difficulty === 'hard' && chapter === 'post' && iwasakiCleared) {
           Dialog.start(DIALOGUE.iwasaki_sakamoto_after, function () {
             Choice.start('また 岩崎城へ 行く？', ['行く', 'また今度'], function (pick) {
-              if (pick === 0) startTransition(function () { setScene(makeField('iwasaki', null, null)); });
+              if (pick === 0) gotoField('iwasaki');
             });
           });
         } else Dialog.start(DIALOGUE.sakamoto_talk);
@@ -2161,7 +1777,7 @@
       else if (id === 'iwasaki_kinenkan') Dialog.start(DIALOGUE.iwasaki_kinenkan_talk);
       else if (id === 'iwasaki_gate') {
         Choice.start('長久手へ 帰る？', ['帰る', 'まだ 見て回る'], function (pick) {
-          if (pick === 0) startTransition(function () { setScene(makeField('bunka1', null, null)); });
+          if (pick === 0) gotoField('bunka1');
         });
       }
       else if (id === 'expo1') Dialog.start(DIALOGUE.expo1_talk);
@@ -2195,9 +1811,9 @@
                       partyMembers.length = 0;
                       gold += 5000; saveGame();
                       Dialog.start(DIALOGUE.post_win);
-                      startTransition(function () { setScene(makeField('zoneA', { col: 33, row: 12 }, null)); });
+                      gotoField('zoneA', { col: 33, row: 12 });
                     },
-                    onLose: function () { partyMembers.length = 0; startTransition(function () { setScene(makeField('zoneA', { col: 33, row: 12 }, null)); }); },
+                    onLose: function () { partyMembers.length = 0; gotoField('zoneA', { col: 33, row: 12 }); },
                   });
                 });
               }
@@ -2280,7 +1896,7 @@
                   Dialog.start(DIALOGUE.ch2_hayakuchi_intro, function () {
                     setScene(makeHayakuchiGame(function () {
                       ch2step = 2; saveGame();
-                      startTransition(function () { setScene(makeField('zoneA', { x: 13 * TILE, y: 12 * TILE + TILE / 2 }, null)); });
+                      gotoField('zoneA', { x: 13 * TILE, y: 12 * TILE + TILE / 2 });
                     }));
                   });
                 });
@@ -2294,7 +1910,7 @@
         Dialog.start(DIALOGUE.ch2_hayakuchi_intro, function () {
           setScene(makeHayakuchiGame(function () {
             ch2step = 2; saveGame();
-            startTransition(function () { setScene(makeField('zoneA', { x: 13 * TILE, y: 12 * TILE + TILE / 2 }, null)); });
+            gotoField('zoneA', { x: 13 * TILE, y: 12 * TILE + TILE / 2 });
           }));
         });
       } else if (ch2step === 2) {
@@ -2311,7 +1927,7 @@
                 walkTo(ike3, 30 * TILE, 14 * TILE, 260, function () {
                   setScene(makeChaseGame(function () {
                     ch2step = 4; saveGame();
-                    startTransition(function () { setScene(makeField('zoneA', { col: 24, row: 14 }, null)); });
+                    gotoField('zoneA', { col: 24, row: 14 });
                   }));
                 });
               });
@@ -2322,7 +1938,7 @@
         // 走り出し直前でセーブ復帰 → 追いかけっこから
         setScene(makeChaseGame(function () {
           ch2step = 4; saveGame();
-          startTransition(function () { setScene(makeField('zoneA', { col: 24, row: 14 }, null)); });
+          gotoField('zoneA', { col: 24, row: 14 });
         }));
       } else if (ch2step === 4) {
         // 待てー！ → 長久手市の使い宣言 → 腕試し（素手の型稽古）
@@ -2335,8 +1951,8 @@
             startBattle({
               gated: false, spar: true,
               enemy: { name: '池田輝政', hp: 24, kind: 'ike', atkLabel: DIALOGUE.battle.ike_spar.atkLabel, winMsg: DIALOGUE.battle.ike_spar.winMsg, forcelose: true },
-              onWin: function () { startTransition(function () { setScene(makeField('zoneA', { col: 24, row: 14 }, null)); }); },
-              onLose: function () { startTransition(function () { setScene(makeField('zoneA', { col: 24, row: 14 }, null)); }); },
+              onWin: function () { gotoField('zoneA', { col: 24, row: 14 }); },
+              onLose: function () { gotoField('zoneA', { col: 24, row: 14 }); },
             });
           });
         });
@@ -2390,7 +2006,7 @@
       }
     }
     function backToZoneA(col, row) {
-      return function () { startTransition(function () { setScene(makeField('zoneA', { col: col, row: row }, null)); }); };
+      return function () { gotoField('zoneA', { col: col, row: row }); };
     }
     function runP3() {
       if (mapKey !== 'zoneA') return;
@@ -2456,7 +2072,7 @@
         Dialog.start(DIALOGUE.ch6_stealth_intro, function () {
           setScene(makeStealthGame(function () {
             stageP3 = 7; saveGame();
-            startTransition(function () { setScene(makeField('zoneA', { col: 8, row: 12 }, null)); });
+            gotoField('zoneA', { col: 8, row: 12 });
           }));
         });
       } else if (stageP3 === 7) {
@@ -2858,6 +2474,11 @@
       return enemies.indexOf(e) === 0 ? W / 2 - 118 : W / 2 + 118;
     }
     function showMsg(t, fn) { mode = 'msg'; msg = t; after = fn || null; }
+    // メッセージを順番に表示して最後に done を呼ぶ（勝利処理・第2形態導入で使用）
+    function showSeq(seq, done) {
+      let i = 0;
+      (function step() { if (i < seq.length) showMsg(seq[i++], step); else done(); })();
+    }
     function openMenu() { mode = 'menu'; msg = ''; commands = commandsFor(allies[turnIdx]); if (cursor >= commands.length) cursor = 0; }
     function addPopup(text, x, y, color) { popups.push({ text: text, x: x, y: y, life: 1.0, color: color }); }
     function hitEnemy(e, dmg, crit) {
@@ -2929,9 +2550,7 @@
       enemy.fleeMsg = B2.fleeMsg; enemy.loseMsg = B2.loseMsg;
       enemy.expReward = [40, 60]; enemy.goldReward = [2500, 3000];
       enemy.broken = false; enemy.shake = 0.6;
-      let i = 0;
-      function step() { if (i < seq.length) showMsg(seq[i++], step); else startRound(); }
-      step();
+      showSeq(seq, startRound);
     }
     function winSequence() {
       if (enemy.phase2) { startPhase2(); return; }
@@ -2953,12 +2572,7 @@
         const miyaUp = miyaLvFromLv(Hero.lv) > before;
         seq.push('オダは レベル ' + Hero.lv + ' に上がった！\n最大HP＋5　こうげき＋1' + (miyaUp ? '\nみやぶるが いちだん 冴えてきた！' : ''));
       }
-      let i = 0;
-      function step() {
-        if (i < seq.length) showMsg(seq[i++], step);
-        else { mode = 'end'; endKind = 'win'; msg = '（Z / タップで つづける）'; }
-      }
-      step();
+      showSeq(seq, function () { mode = 'end'; endKind = 'win'; msg = '（Z / タップで つづける）'; });
     }
     function enemyTurn() {
       if (aliveEnemies().length === 0) { winSequence(); return; }
