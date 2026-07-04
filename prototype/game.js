@@ -2807,7 +2807,7 @@
     const popups = [];
     // 複数敵: 対象選択とクイズゲートの状態
     let targetCursor = 0, pendingCmd = null;
-    let quiz = null, quizSel = 0, quizAnswered = false, quizCorrect = false;
+    let quiz = null, quizSel = 0, quizAnswered = false, quizCorrect = false, lastQuizIdx = -1;
 
     function aliveEnemies() { return enemies.filter(function (e) { return e.hp > 0; }); }
     // 敵の表示位置（1体=中央 / 2体=左右）。死亡後も元の位置を保つ
@@ -2857,7 +2857,11 @@
       openMenu();
     }
     function startQuiz() {
-      quiz = quizGate[rnd(0, quizGate.length - 1)];
+      // ランダム出題（直前と同じ問題は連続しない）
+      var qi = rnd(0, quizGate.length - 1);
+      if (quizGate.length > 1 && qi === lastQuizIdx) qi = (qi + 1) % quizGate.length;
+      lastQuizIdx = qi;
+      quiz = quizGate[qi];
       quizSel = 0; quizAnswered = false; quizCorrect = false;
       mode = 'quiz'; msg = '';
     }
