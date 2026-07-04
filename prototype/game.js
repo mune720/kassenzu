@@ -12,7 +12,11 @@
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
   const TILE = 32, COLS = 16, ROWS = 14;
-  const W = TILE * COLS, H = TILE * ROWS; // 512 x 448
+  const W = TILE * COLS, H = TILE * ROWS; // 512 x 448（論理座標）
+  // HD: 内部解像度を2倍で描画（文字・画像・図形がくっきり）。論理座標は 512x448 のまま、
+  // 毎フレーム setTransform(RES) でスケールする。表示サイズは CSS 側で固定
+  const RES = 2;
+  canvas.width = W * RES; canvas.height = H * RES;
 
   // ===================== Input =====================
   const held = new Set();
@@ -468,7 +472,20 @@
   function drawActor(c, cx, cy, kind, facing, scale, moving, alpha) {
     scale = scale || 1;
     if (alpha != null && alpha < 1) { c.save(); c.globalAlpha = Math.max(0, alpha); }
-    if (kind === 'enemy') { drawGhost(c, cx, cy, scale); }
+    var sheet = HD_SPRITE[kind];
+    if (sheet) {
+      // スプライトシート描画（3列×4行）。足元を cy+TILE/2 付近に接地
+      var cw = sheet.width / 3, chh = sheet.height / 4;
+      var row = { down: 0, left: 1, right: 2, up: 3 }[facing || 'down'] || 0;
+      var seq = [0, 1, 0, 2];
+      var col = moving ? seq[(tick / 7 | 0) % 4] : 0;
+      var dw = TILE * 1.15 * scale, dh = dw * (chh / cw);
+      var footY = cy + (TILE / 2) * scale;
+      c.fillStyle = 'rgba(0,0,0,0.22)';
+      c.beginPath(); c.ellipse(cx, footY - 2, dw * 0.32, dw * 0.11, 0, 0, Math.PI * 2); c.fill();
+      c.drawImage(sheet, col * cw, row * chh, cw, chh, cx - dw / 2, footY - dh, dw, dh);
+    }
+    else if (kind === 'enemy') { drawGhost(c, cx, cy, scale); }
     else { drawHumanoid(c, cx, cy, scale, PAL[kind] || PAL.oda, facing || 'down', moving); }
     if (alpha != null && alpha < 1) c.restore();
   }
@@ -1367,6 +1384,10 @@
   ['grass', 'road', 'dirt', 'water'].forEach(function (k) { loadHDImg(HD_TEX, k, 'assets/tiles/' + k + '.png'); });
   ['tree', 'bush', 'rock', 'mound', 'mound_s'].forEach(function (k) { loadHDImg(HD_DECO, k, 'assets/deco/' + k + '.png'); });
   ['museum', 'aeon', 'station', 'ramen', 'tearoom', 'cityhall', 'kodomo', 'temple', 'bunka', 'library', 'ferris'].forEach(function (k) { loadHDImg(HD_BLD, k, 'assets/buildings/' + k + '.png'); });
+  // 歩行スプライトシート（assets/sprites/<kind>_walk.png）: 3列×4行。
+  // 行=正面/左/右/後ろ、列=立ち/歩き1/歩き2。あれば drawActor が自動で使う
+  const HD_SPRITE = {};
+  ['oda', 'ike', 'michi', 'kancho', 'odoriko', 'sakamoto', 'civ1', 'civ2'].forEach(function (k) { loadHDImg(HD_SPRITE, k, 'assets/sprites/' + k + '_walk.png'); });
   // 地面テクスチャ → 敷き詰めパターン（元画像を 8×8 タイル分に縮小してリピート。元ファイルは縮小保存しない）
   const HD_PAT = {};
   function hdPattern(c, key) {
@@ -1374,11 +1395,14 @@
     if (!img) return null;
     if (HD_PAT[key]) return HD_PAT[key];
     var off = document.createElement('canvas');
-    var size = TILE * 8;
+    var size = TILE * 8 * RES; // 内部解像度に合わせて高精細のまま保持
     off.width = size; off.height = size;
     off.getContext('2d').drawImage(img, 0, 0, size, size);
-    HD_PAT[key] = c.createPattern(off, 'repeat');
-    return HD_PAT[key];
+    var pat = c.createPattern(off, 'repeat');
+    // 論理座標では 8タイル周期になるよう縮小（対応ブラウザのみ。非対応でも動作はする）
+    if (pat.setTransform && typeof DOMMatrix !== 'undefined') pat.setTransform(new DOMMatrix([1 / RES, 0, 0, 1 / RES, 0, 0]));
+    HD_PAT[key] = pat;
+    return pat;
   }
   // 装飾スプライトの描画定義（w=タイル幅の倍率。高さは画像アスペクトから算出し底辺で接地）
   const HD_DECO_DEF = {
@@ -2863,6 +2887,18 @@
         c.fillRect(stx2 - 1.5, sty2, 4, 1); c.fillRect(stx2, sty2 - 1.5, 1, 4);
       }
     }
+    // 月（満月＋暈。第2形態の炎の空では自然に赤に沈む）
+    var mnx = W - 84, mny = 52;
+    c.save(); c.globalCompositeOperation = 'lighter';
+    var mng = c.createRadialGradient(mnx, mny, 0, mnx, mny, 44);
+    mng.addColorStop(0, 'rgba(220,228,255,0.22)'); mng.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = mng; c.beginPath(); c.arc(mnx, mny, 44, 0, Math.PI * 2); c.fill();
+    c.restore();
+    c.fillStyle = '#e6ebf8'; c.beginPath(); c.arc(mnx, mny, 13, 0, Math.PI * 2); c.fill();
+    c.fillStyle = 'rgba(170,182,210,0.55)';
+    c.beginPath(); c.arc(mnx - 4, mny - 3, 3, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.arc(mnx + 4, mny + 4, 2, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.arc(mnx + 2, mny - 5, 1.5, 0, Math.PI * 2); c.fill();
     // Distant hills silhouette
     c.fillStyle = '#0e1520';
     c.beginPath(); c.moveTo(0, 180);
@@ -2912,11 +2948,19 @@
     var sx = shake > 0 ? (Math.random() * 2 - 1) * shake : 0;
     var sy = shake > 0 ? (Math.random() * 2 - 1) * shake : 0;
     c.translate(sx, sy);
-    // Ground layers
-    c.fillStyle = '#1a2810';
-    c.beginPath(); c.moveTo(0, 195); c.quadraticCurveTo(W / 2, 186, W, 193); c.lineTo(W, 250); c.lineTo(0, 250); c.closePath(); c.fill();
-    c.fillStyle = '#223814';
-    c.beginPath(); c.moveTo(0, 202); c.quadraticCurveTo(W / 2, 194, W, 200); c.lineTo(W, 250); c.lineTo(0, 250); c.closePath(); c.fill();
+    // Ground layers（草テクスチャがあれば下地に敷いて夜色を重ねる）
+    var bgp = hdPattern(c, 'grass');
+    if (bgp) {
+      c.fillStyle = bgp;
+      c.beginPath(); c.moveTo(0, 195); c.quadraticCurveTo(W / 2, 186, W, 193); c.lineTo(W, 250); c.lineTo(0, 250); c.closePath(); c.fill();
+      c.fillStyle = 'rgba(10,22,8,0.58)';
+      c.beginPath(); c.moveTo(0, 195); c.quadraticCurveTo(W / 2, 186, W, 193); c.lineTo(W, 250); c.lineTo(0, 250); c.closePath(); c.fill();
+    } else {
+      c.fillStyle = '#1a2810';
+      c.beginPath(); c.moveTo(0, 195); c.quadraticCurveTo(W / 2, 186, W, 193); c.lineTo(W, 250); c.lineTo(0, 250); c.closePath(); c.fill();
+      c.fillStyle = '#223814';
+      c.beginPath(); c.moveTo(0, 202); c.quadraticCurveTo(W / 2, 194, W, 200); c.lineTo(W, 250); c.lineTo(0, 250); c.closePath(); c.fill();
+    }
     c.fillStyle = 'rgba(50,80,30,0.25)';
     c.beginPath(); c.moveTo(0, 210); c.quadraticCurveTo(W / 2, 203, W, 208); c.lineTo(W, 250); c.lineTo(0, 250); c.closePath(); c.fill();
     // Stage spotlight
@@ -4909,6 +4953,7 @@
     const dt = Math.min(0.05, (now - last) / 1000); last = now; tick++;
     if (!trans.active && scene && scene.update) scene.update(dt);
     updateTransition(dt);
+    ctx.setTransform(RES, 0, 0, RES, 0, 0); // HD解像度スケール（論理座標にリセット）
     ctx.clearRect(0, 0, W, H);
     ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
     if (scene && scene.render) scene.render(ctx);
