@@ -912,11 +912,16 @@
         c.fillStyle = '#2a1c14'; c.fillRect(x, y + T - 4, T, 4);
       }
     } else {
-      fillSmooth(c, tc, tr, x, y, function(v) {
+      // HD-2D: 地面テクスチャがあればパターン敷き、無ければ従来のプロシージャル
+      var gpat = hdPattern(c, 'grass');
+      if (gpat) { c.fillStyle = gpat; c.fillRect(x, y, T, T); }
+      else fillSmooth(c, tc, tr, x, y, function(v) {
         var gb = 74 + v * 22 | 0, gg = 140 + v * 28 | 0;
         return 'rgb(' + gb + ',' + gg + ',' + (gb - 8) + ')';
       });
       if (ch === ',') {
+        var dpat = hdPattern(c, 'dirt');
+        if (dpat) { c.fillStyle = dpat; c.fillRect(x, y, T, T); return; }
         fillSmooth(c, tc, tr, x, y, function(v) {
           var pb = 175 + v * 20 | 0;
           return 'rgb(' + (pb + 10) + ',' + (pb - 10) + ',' + (pb - 50) + ')';
@@ -935,6 +940,7 @@
         c.beginPath(); c.arc(x + h2 * 14 + 10, y + h0 * 12 + 15, 1, 0, Math.PI * 2); c.fill();
         if (h1 > 0.7) { c.fillStyle = 'rgba(80,120,50,0.12)'; c.fillRect(x + h0 * 4, y + h2 * 6, 4, T - h2 * 8); }
       } else if (ch === '.') {
+        if (gpat) return; // テクスチャに草のディテールが含まれるため加飾しない
         c.fillStyle = 'rgba(100,190,70,0.07)'; c.fillRect(x + h1 * 10 + 2, y + h2 * 8 + 2, 10, 8);
         var wind = Math.sin(tick * 0.025 + tc * 0.8 + tr * 0.6);
         c.strokeStyle = 'rgba(30,95,20,0.35)'; c.lineWidth = 1;
@@ -988,7 +994,9 @@
         c.fillStyle = 'rgba(10,40,10,0.2)';
         c.beginPath(); c.arc(cx, cy + 4, 10, 0, Math.PI); c.fill();
       } else if (ch === '~') {
-        fillSmooth(c, tc, tr, x, y, function(v) {
+        var wpat = hdPattern(c, 'water');
+        if (wpat) { c.fillStyle = wpat; c.fillRect(x, y, T, T); }
+        else fillSmooth(c, tc, tr, x, y, function(v) {
           return 'rgb(' + (22 + v * 8 | 0) + ',' + (84 + v * 12 | 0) + ',' + (146 + v * 16 | 0) + ')';
         });
         var wt = tick * 0.06;
@@ -1103,6 +1111,8 @@
         c.fillStyle = '#f0c850'; c.beginPath(); c.arc(x + T - 8.5, y + T / 2 - 0.5, 1, 0, Math.PI * 2); c.fill();
       } else if (ch === 'r') {
         // アスファルト道路
+        var rpat = hdPattern(c, 'road');
+        if (rpat) { c.fillStyle = rpat; c.fillRect(x, y, T, T); return; }
         fillSmooth(c, tc, tr, x, y, function(v) {
           var ab = 88 + v * 12 | 0;
           return 'rgb(' + ab + ',' + (ab + 2) + ',' + (ab + 6) + ')';
@@ -1168,9 +1178,28 @@
   function drawFieldWorld(c, map, player, camX, camY) {
     const r0 = Math.max(0, (camY / TILE) | 0), r1 = Math.min(map.grid.length - 1, ((camY + H) / TILE | 0) + 1);
     const c0 = Math.max(0, (camX / TILE) | 0), c1 = Math.min(map.grid[0].length - 1, ((camX + W) / TILE | 0) + 1);
+    // HD建物: 読み込み済みの建物は足元タイルを草に差し替え、後段で一枚絵を重ねる
+    const blds = (HD_BLD_DEF[map.key] || []).filter(function (b) { return HD_BLD[b.key]; });
+    function inBld(col, row) {
+      for (var i = 0; i < blds.length; i++) {
+        var b = blds[i];
+        if (col >= b.c0 && col < b.c0 + b.w && row >= b.r0 && row < b.r0 + b.h) return true;
+      }
+      return false;
+    }
+    const deco = []; // HD装飾スプライト（木・茂み・岩・塚）の描画予約
     for (let r = r0; r <= r1; r++) {
       for (let col = c0; col <= c1; col++) {
-        drawTile(c, map.grid[r][col], col * TILE, r * TILE, map.tileset);
+        var ch = map.grid[r][col];
+        var dd = (map.tileset === 'outdoor') ? HD_DECO_DEF[ch] : null;
+        if (dd && HD_DECO[dd.key]) {
+          drawTile(c, '.', col * TILE, r * TILE, map.tileset);
+          deco.push({ ch: ch, col: col, row: r, def: dd });
+        } else if (blds.length && inBld(col, r)) {
+          drawTile(c, '.', col * TILE, r * TILE, map.tileset);
+        } else {
+          drawTile(c, ch, col * TILE, r * TILE, map.tileset);
+        }
       }
     }
     // Light glow pass
@@ -1186,12 +1215,42 @@
       }
     }
     c.restore();
+    // 奥行き描画: 装飾スプライト・建物一枚絵・アクターを底辺Yでソート（HD-2Dの前後関係）
+    const painter = [];
+    deco.forEach(function (d) {
+      var img = HD_DECO[d.def.key];
+      var bw = d.def.w * TILE, bh = bw * (img.height / img.width);
+      var bx = d.col * TILE + TILE / 2, by = (d.row + 1) * TILE;
+      painter.push({ y: by - 2, draw: function () {
+        c.fillStyle = 'rgba(0,0,0,0.22)';
+        c.beginPath(); c.ellipse(bx, by - 3, bw * 0.36, bw * 0.12, 0, 0, Math.PI * 2); c.fill();
+        if (d.ch === 'T' || d.ch === 'b') {
+          var sw = Math.sin(tick * 0.02 + d.col * 1.1 + d.row * 0.7) * 0.012;
+          c.save(); c.translate(bx, by); c.rotate(sw); c.drawImage(img, -bw / 2, -bh, bw, bh); c.restore();
+        } else {
+          c.drawImage(img, bx - bw / 2, by - bh, bw, bh);
+        }
+      } });
+    });
+    blds.forEach(function (b) {
+      var img = HD_BLD[b.key];
+      var bw = b.w * TILE, bx = b.c0 * TILE, bottom = (b.r0 + b.h) * TILE;
+      var bh = bw * (img.height / img.width);
+      painter.push({ y: bottom - 1, draw: function () {
+        var sg = c.createLinearGradient(0, bottom - 8, 0, bottom + 8);
+        sg.addColorStop(0, 'rgba(0,0,0,0)'); sg.addColorStop(0.5, 'rgba(0,0,0,0.20)'); sg.addColorStop(1, 'rgba(0,0,0,0)');
+        c.fillStyle = sg; c.fillRect(bx + 4, bottom - 8, bw - 8, 16);
+        c.drawImage(img, bx, bottom - bh, bw, bh);
+      } });
+    });
     // Actors（player=null ならプレイヤー非表示: カットシーン用）
-    const actors = [];
-    map.npcs.forEach(function (n) { actors.push({ x: n.col * TILE + TILE / 2, y: n.row * TILE + TILE / 2, kind: n.kind, facing: 'down' }); });
-    if (player) actors.push({ x: player.x, y: player.y, kind: player.kind, facing: player.facing, moving: player.moving });
-    actors.sort(function (a, b) { return a.y - b.y; });
-    actors.forEach(function (a) { drawActor(c, a.x, a.y, a.kind, a.facing, 1, a.moving); });
+    map.npcs.forEach(function (n) {
+      var ax = n.col * TILE + TILE / 2, ay = n.row * TILE + TILE / 2;
+      painter.push({ y: ay, draw: function () { drawActor(c, ax, ay, n.kind, 'down', 1); } });
+    });
+    if (player) painter.push({ y: player.y, draw: function () { drawActor(c, player.x, player.y, player.kind, player.facing, 1, player.moving); } });
+    painter.sort(function (a, b) { return a.y - b.y; });
+    painter.forEach(function (p) { p.draw(); });
   }
   // ワールドパス後半: ワールド座標の光だまり（カメラ translate の内側）
   function drawFieldAtmoWorld(c, map) {
@@ -1201,6 +1260,17 @@
       drawLightPool(c, 12 * TILE, 1.5 * TILE, 55, 'rgba(255,220,150,1)', 0.07);
     } else if (map.key === 'zoneA' && chapter === 'pro') {
       drawLightPool(c, 19.5 * TILE, 15 * TILE, 95, 'rgba(180,170,220,1)', 0.06);
+    }
+    // 雲影: 屋外をゆっくり流れる大きな影（HD-2Dの空気感）
+    if (map.tileset === 'outdoor') {
+      var mw = map.grid[0].length * TILE, mh = map.grid.length * TILE;
+      c.save(); c.fillStyle = 'rgba(8,12,28,0.05)';
+      for (var ci = 0; ci < 3; ci++) {
+        var cwx = ((ci * 733 + tick * (0.25 + ci * 0.07)) % (mw + 700)) - 350;
+        var cwy = ((ci * 431 + tick * 0.1) % (mh + 500)) - 250;
+        c.beginPath(); c.ellipse(cwx, cwy, 190 + ci * 40, 110 + ci * 20, 0.4, 0, Math.PI * 2); c.fill();
+      }
+      c.restore();
     }
   }
   // スクリーンパス: 画面座標のオーバーレイ（カメラ translate の外側）
@@ -1282,6 +1352,62 @@
     img.onload = function () { TITLE_LOGO_IMG = img; };
     img.src = 'assets/logo/title_logo.png';
   })();
+  // ===================== HD-2D フィールド画像（第1弾: 地面・装飾・建物）=====================
+  // assets/tiles|deco|buildings/ に画像を置くと自動で差し替わる（無ければ従来のプロシージャル描画）。
+  // 生成プロンプトは docs/asset_prompts.md を参照。
+  const HD_TEX = {};   // 地面テクスチャ（シームレス）: grass / road / dirt / water
+  const HD_DECO = {};  // 装飾スプライト（透過）: tree / bush / rock / mound / mound_s
+  const HD_BLD = {};   // 建物一枚絵（透過・下寄せ）: museum / aeon / station / ...
+  function loadHDImg(store, key, src) {
+    var img = new Image();
+    img.onload = function () { store[key] = img; };
+    img.onerror = function () {};
+    img.src = src;
+  }
+  ['grass', 'road', 'dirt', 'water'].forEach(function (k) { loadHDImg(HD_TEX, k, 'assets/tiles/' + k + '.png'); });
+  ['tree', 'bush', 'rock', 'mound', 'mound_s'].forEach(function (k) { loadHDImg(HD_DECO, k, 'assets/deco/' + k + '.png'); });
+  ['museum', 'aeon', 'station', 'ramen', 'tearoom', 'cityhall', 'kodomo', 'temple', 'bunka', 'library', 'ferris'].forEach(function (k) { loadHDImg(HD_BLD, k, 'assets/buildings/' + k + '.png'); });
+  // 地面テクスチャ → 敷き詰めパターン（元画像を 8×8 タイル分に縮小してリピート。元ファイルは縮小保存しない）
+  const HD_PAT = {};
+  function hdPattern(c, key) {
+    var img = HD_TEX[key];
+    if (!img) return null;
+    if (HD_PAT[key]) return HD_PAT[key];
+    var off = document.createElement('canvas');
+    var size = TILE * 8;
+    off.width = size; off.height = size;
+    off.getContext('2d').drawImage(img, 0, 0, size, size);
+    HD_PAT[key] = c.createPattern(off, 'repeat');
+    return HD_PAT[key];
+  }
+  // 装飾スプライトの描画定義（w=タイル幅の倍率。高さは画像アスペクトから算出し底辺で接地）
+  const HD_DECO_DEF = {
+    T: { key: 'tree', w: 1.55 },
+    b: { key: 'bush', w: 1.2 },
+    R: { key: 'rock', w: 1.1 },
+    M: { key: 'mound', w: 1.4 },
+    N: { key: 'mound_s', w: 1.2 },
+  };
+  // 建物一枚絵の配置（タイル矩形）。画像は横幅にフィットし、余った高さは上（屋根方向）へはみ出す
+  const HD_BLD_DEF = {
+    zoneA: [
+      { key: 'museum', c0: 20, r0: 2, w: 13, h: 5 },
+      { key: 'aeon', c0: 1, r0: 3, w: 3, h: 3 },
+      { key: 'station', c0: 35, r0: 1, w: 3, h: 2 },
+    ],
+    zoneB: [{ key: 'ramen', c0: 24, r0: 9, w: 5, h: 3 }],
+    zoneC: [
+      { key: 'temple', c0: 4, r0: 8, w: 5, h: 3 },
+      { key: 'tearoom', c0: 15, r0: 10, w: 5, h: 3 },
+      { key: 'cityhall', c0: 25, r0: 12, w: 6, h: 4 },
+      { key: 'kodomo', c0: 32, r0: 18, w: 5, h: 3 },
+    ],
+    zoneD: [
+      { key: 'bunka', c0: 12, r0: 6, w: 16, h: 7 },
+      { key: 'library', c0: 31, r0: 17, w: 7, h: 4 },
+    ],
+    zoneE: [{ key: 'ferris', c0: 32, r0: 3, w: 4, h: 4 }],
+  };
   // 顔ウィンドウ（仮：図形ポートレート。画像があればそれを描く）
   function drawPortrait(c, kind, x, y, s) {
     c.fillStyle = 'rgba(0,0,0,0.35)'; roundRect(c, x + 3, y + 3, s, s, 8); c.fill();
