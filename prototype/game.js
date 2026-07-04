@@ -1817,11 +1817,43 @@
   // ===================== Save / Load (localStorage) =====================
   // v2: difficulty を追加。v1 セーブは初回読み込み時に v2 へ変換する（difficulty='easy'）。
   // storyStage は現状数値のまま。章ID化する際（P2/P3）はここに変換表を足す。
-  const SAVE_KEY = 'kassenzu_save_v2';
+  // セーブは2ファイル制（ファイル1 / ファイル2）。セーブポイントと「つづきから」でファイルを選ぶ。
+  // オートセーブは現在の記録先（saveSlot）に入る
+  const SAVE_KEY = 'kassenzu_save_v2';       // 旧: 単一セーブ時代のキー（初回起動時にファイル1へ移行）
   const SAVE_KEY_V1 = 'kassenzu_save_v1';
+  const SLOT_LAST = 'kassenzu_last_slot';
+  function slotKey(n) { return 'kassenzu_save_v2_f' + n; }
+  let saveSlot = 1;
+  (function () {
+    // 移行: 旧単一セーブ（v2→優先、無ければv1）をファイル1へコピー（ファイル1が空のときだけ）
+    try {
+      if (!localStorage.getItem(slotKey(1))) {
+        var legacy = localStorage.getItem(SAVE_KEY) || localStorage.getItem(SAVE_KEY_V1);
+        if (legacy) localStorage.setItem(slotKey(1), legacy);
+      }
+      saveSlot = parseInt(localStorage.getItem(SLOT_LAST) || '1', 10) === 2 ? 2 : 1;
+    } catch (e) {}
+  })();
+  function hasSlot(n) {
+    try { return !!localStorage.getItem(slotKey(n)); } catch (e) { return false; }
+  }
+  // ファイル選択メニューに出す進行サマリ
+  function slotLabel(n) {
+    try {
+      var d = JSON.parse(localStorage.getItem(slotKey(n)) || 'null');
+      if (!d) return '（データなし）';
+      var ch = { pro: 'プロローグ', ch1: '一章', ch2: '二章', ch3: '三章', legacy: '見回り', post: 'クリア後' }[d.chapter];
+      if (!ch) ch = (d.stageP3 >= 6) ? '六章' : ((d.stageP3 >= 4) ? '五章' : '四章');
+      return ch + '・Lv' + ((d.hero && d.hero.lv) || 1) + '・' + (d.difficulty === 'hard' ? 'ハード' : 'イージー');
+    } catch (e) { return '（データなし）'; }
+  }
+  function setSaveSlot(n) {
+    saveSlot = n === 2 ? 2 : 1;
+    try { localStorage.setItem(SLOT_LAST, String(saveSlot)); } catch (e) {}
+  }
   function saveGame() {
     try {
-      localStorage.setItem(SAVE_KEY, JSON.stringify({
+      localStorage.setItem(slotKey(saveSlot), JSON.stringify({
         v: 2, hero: Hero, difficulty: difficulty,
         tutorialDone: tutorialDone, storyStage: storyStage,
         chapter: chapter, ch1Seen: ch1Seen, ch2step: ch2step, ch3rusu: ch3rusu, zoneAMood: zoneAMood, teaBest: teaBest, stageP3: stageP3, p3v: 2,
@@ -1833,18 +1865,20 @@
       return true;
     } catch (e) { return false; }
   }
-  function hasSave() {
-    try { return !!(localStorage.getItem(SAVE_KEY) || localStorage.getItem(SAVE_KEY_V1)); }
-    catch (e) { return false; }
-  }
-  function loadGame() {
+  function hasSave() { return hasSlot(1) || hasSlot(2); }
+  // n を渡すとそのファイルを記録先にしてロード。省略時は現在の記録先（最後に使ったファイル）
+  function loadGame(n) {
     try {
-      let d = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
-      if (!d) {
-        const d1 = JSON.parse(localStorage.getItem(SAVE_KEY_V1) || 'null');
-        if (!d1) return false;
-        d = d1; d.v = 2; d.difficulty = 'easy'; // v1 → v2 変換
+      if (n) setSaveSlot(n);
+      let d = JSON.parse(localStorage.getItem(slotKey(saveSlot)) || 'null');
+      if (!d && !n) {
+        // 記録先が空なら、もう片方のファイルを試す（タイトルの史跡めぐり等の無指定ロード用）
+        var other = saveSlot === 1 ? 2 : 1;
+        d = JSON.parse(localStorage.getItem(slotKey(other)) || 'null');
+        if (d) setSaveSlot(other);
       }
+      if (!d) return false;
+      if (!d.v) { d.difficulty = d.difficulty || 'easy'; } // v1 相当の変換
       if (d.hero) { Hero.lv = d.hero.lv; Hero.exp = d.hero.exp; Hero.maxhp = d.hero.maxhp; Hero.atkBonus = d.hero.atkBonus; Hero.weapon = d.hero.weapon; Hero.armor = d.hero.armor; Hero.items = d.hero.items || []; }
       difficulty = (d.difficulty === 'hard') ? 'hard' : 'easy';
       tutorialDone = !!d.tutorialDone; storyStage = d.storyStage || 0;
@@ -1964,7 +1998,15 @@
       if (id === 'byobu') Dialog.start(DIALOGUE.byobu);
       else if (id === 'katchu') Dialog.start(DIALOGUE.katchu);
       else if (id === 'katana') Dialog.start(DIALOGUE.katana);
-      else if (id === 'save') { const ok = saveGame(); Dialog.start(ok ? DIALOGUE.save_ok : DIALOGUE.save_fail); }
+      else if (id === 'save') {
+        // ファイルを指定して保存（以後のオートセーブも選んだファイルに入る）
+        Choice.start('どのファイルに 保存する？', ['ファイル１　' + slotLabel(1), 'ファイル２　' + slotLabel(2), 'やめる'], function (pick) {
+          if (pick === 2) return;
+          setSaveSlot(pick + 1);
+          const ok = saveGame();
+          Dialog.start(ok ? DIALOGUE.save_ok : DIALOGUE.save_fail);
+        });
+      }
       else if (id === 'shokuro') { unlockZukan('shokuro'); Dialog.start(DIALOGUE.ch1_shokuro, function () { ch1Seen.shokuro = true; checkCh1Done(); }); }
       else if (id === 'rock') Dialog.start(DIALOGUE.ch1_rock);
       else if (id === 'museum_enter') {
@@ -4269,6 +4311,7 @@
   function makeTitle(fadeIn) {
     const opts = hasSave() ? ['はじめから', 'つづきから', '史跡めぐり'] : ['はじめから', '史跡めぐり'];
     let cur = 0;
+    let fileSel = null; // ファイル選択サブメニュー { mode: 'load'|'new', cur }
     var titleFade = fadeIn ? 1.0 : 0;
     return {
       enter: function () {},
@@ -4277,17 +4320,33 @@
         updateParts(dt);
         if (tick % 40 === 0) emitP(rnd(0, W), -5, 6 + Math.random() * 10, 12 + Math.random() * 8, 8, 'rgba(255,200,210,0.45)', 2 + Math.random() * 1.5, 1.5);
         if (tick % 25 === 0) emitP(rnd(30, W - 30), rnd(60, H - 60), (Math.random() - 0.5) * 3, -1 + Math.random(), 6, 'rgba(255,220,100,0.35)', 1 + Math.random(), 0);
+        if (fileSel) {
+          // ファイル選択（つづきから=ロード / はじめから=記録先）
+          if (Input.pressed('up')) fileSel.cur = (fileSel.cur + 2) % 3;
+          if (Input.pressed('down')) fileSel.cur = (fileSel.cur + 1) % 3;
+          if (Input.pressed('cancel')) { fileSel = null; return; }
+          if (Input.pressed('confirm')) {
+            if (fileSel.cur === 2) { fileSel = null; return; }
+            var n = fileSel.cur + 1;
+            if (fileSel.mode === 'load') {
+              if (!hasSlot(n)) return; // 空ファイルはロードできない
+              if (loadGame(n)) startTransition(function () {
+                // 章進行に応じた復帰先（legacy=旧フローのフィールド、それ以外は古戦場公園）
+                setScene(makeField(chapter === 'legacy' ? 'field' : 'zoneA', null, null));
+              });
+            } else {
+              setSaveSlot(n);
+              setScene(makeDifficultySelect());
+            }
+          }
+          return;
+        }
         if (Input.pressed('up')) cur = (cur + opts.length - 1) % opts.length;
         if (Input.pressed('down')) cur = (cur + 1) % opts.length;
         if (Input.pressed('confirm')) {
-          if (opts[cur] === 'つづきから') {
-            if (loadGame()) startTransition(function () {
-              // 章進行に応じた復帰先（legacy=旧フローのフィールド、それ以外は古戦場公園）
-              setScene(makeField(chapter === 'legacy' ? 'field' : 'zoneA', null, null));
-            });
-          }
+          if (opts[cur] === 'つづきから') fileSel = { mode: 'load', cur: hasSlot(1) ? 0 : 1 };
           else if (opts[cur] === '史跡めぐり') { if (hasSave()) loadGame(); setScene(makeSiteTour()); }
-          else setScene(makeDifficultySelect());
+          else fileSel = { mode: 'new', cur: hasSlot(1) && !hasSlot(2) ? 1 : 0 };
         }
       },
       render: function (c) {
@@ -4392,6 +4451,23 @@
         // Ground fog
         drawFogBand(c, H - 100, 80, 'rgba(140,160,180,0.03)');
         // Menu items
+        if (fileSel) {
+          // ファイル選択サブメニュー
+          c.fillStyle = '#cdd9ff'; c.font = 'bold 15px "Hiragino Sans",sans-serif';
+          c.fillText(fileSel.mode === 'load' ? 'つづきから ― ファイルを えらぶ' : 'はじめから ― 記録する ファイルを えらぶ', W / 2, 332);
+          var frows = ['ファイル１　' + slotLabel(1), 'ファイル２　' + slotLabel(2), 'もどる'];
+          for (let i = 0; i < 3; i++) {
+            var fy = 366 + i * 34;
+            var dim = fileSel.mode === 'load' && i < 2 && !hasSlot(i + 1);
+            c.fillStyle = i === fileSel.cur ? '#ffd43b' : (dim ? '#4a5568' : '#8899bb');
+            c.font = (i === fileSel.cur ? 'bold ' : '') + '17px "Hiragino Sans",sans-serif';
+            c.fillText((i === fileSel.cur ? '▶ ' : '　') + frows[i], W / 2, fy);
+          }
+          if (fileSel.mode === 'new' && hasSlot(fileSel.cur + 1) && fileSel.cur < 2) {
+            c.fillStyle = '#ff9d9d'; c.font = '12px "Hiragino Sans",sans-serif';
+            c.fillText('※このファイルの データは 上書きされます', W / 2, 366 + 3 * 34);
+          }
+        } else {
         for (let i = 0; i < opts.length; i++) {
           var my = 364 + i * 36;
           if (i === cur) {
@@ -4404,6 +4480,7 @@
           c.fillStyle = i === cur ? '#ffd43b' : '#8899bb';
           c.font = (i === cur ? 'bold ' : '') + '21px "Hiragino Sans",sans-serif';
           c.fillText((i === cur ? '▶ ' : '　') + opts[i], W / 2, my);
+        }
         }
         // Vignette
         drawVignette(c);
@@ -4603,10 +4680,11 @@
         '難易度　　' + DIFF[difficulty].label,
         '所持金　　' + gold + ' 円',
         'どうぐ　　おにぎり×' + bag.onigiri + '　長久手茶×' + bag.cha + '　兵糧丸×' + bag.hyorogan,
+        '記録先　　ファイル' + saveSlot,
       ];
       if (iwasakiCleared) lines.push('称号　　　両市公認・歴史の語り部');
       let y = cy + 32;
-      const lstep = lines.length > 11 ? 29 : 32; // 称号追加時も枠に収める
+      const lstep = Math.min(32, ((H - cy - 44) / lines.length) | 0); // 行数が増えても枠に収める
       for (let i = 0; i < lines.length; i++) { c.fillText(lines[i], cx + 22, y); y += lstep; }
     } else if (tab === 1) {
       const slots = [['武器', Hero.weapon], ['防具', Hero.armor]];
