@@ -580,7 +580,7 @@
     'T...........TTTTTT..,..TTTTTT..........T',
     'T...........TTTTTT..,..TTTTTT..........T',
     'T..................,,..................T',
-    'T..................,,..................T',
+    'T..................,,...x..............T',
     'T..............JJJJJ,..................T',
     'T..............JJJJJ,..................T',
     'T..............JJ1JJ,....WWWWWW........T',
@@ -749,9 +749,9 @@
     },
     zoneC: {
       rows: ZONEC, kind: 'outdoor', tileset: 'outdoor', playerFloor: '.',
-      solid: ['T', '~', 'M', 'N', 'R', 'J', 'W', 'K', '1', '2', '3'],
+      solid: ['T', '~', 'M', 'N', 'R', 'J', 'W', 'K', '1', '2', '3', 'x'],
       npcs: {},
-      acts: { R: 'site_irogane', 1: 'tearoom', 2: 'cityhall', 3: 'kodomo', a: 'site_chinoike', o: 'site_ansho', M: 'site_musashi', N: 'site_mihata' },
+      acts: { R: 'site_irogane', 1: 'tearoom', 2: 'cityhall', 3: 'kodomo', a: 'site_chinoike', o: 'site_ansho', M: 'site_musashi', N: 'site_mihata', x: 'shateki' },
       edges: { south: 'zoneA', west: 'zoneD' },
       encounter: null,
     },
@@ -792,7 +792,7 @@
       rows: MORIHALL, kind: 'indoor', tileset: 'museum', playerFloor: '.',
       solid: ['#', 'D', '='],
       npcs: { s: { kind: 'sakamoto', id: 'sakamoto', floor: '.' } },
-      acts: { D: 'mori_exit' },
+      acts: { D: 'mori_exit', '=': 'drumcircle' },
       encounter: null,
     },
   };
@@ -1105,6 +1105,13 @@
         });
         c.fillStyle = 'rgba(0,0,0,0.08)'; c.fillRect(x, y, T, 2);
         if (h0 > 0.85) { c.fillStyle = 'rgba(255,255,255,0.06)'; c.fillRect(x + h1 * 20, y + h2 * 20, 6, 2); }
+      } else if (ch === 'x') {
+        // 射的の的（木枠＋同心円）
+        c.fillStyle = 'rgba(0,0,0,0.18)'; c.beginPath(); c.ellipse(x + T / 2, y + T - 3, 10, 3.5, 0, 0, Math.PI * 2); c.fill();
+        c.fillStyle = '#7a5a30'; c.fillRect(x + T / 2 - 2, y + 14, 4, T - 18);
+        c.fillStyle = '#f0ead8'; c.beginPath(); c.arc(x + T / 2, y + 11, 9, 0, Math.PI * 2); c.fill();
+        c.fillStyle = '#c0392b'; c.beginPath(); c.arc(x + T / 2, y + 11, 6, 0, Math.PI * 2); c.fill();
+        c.fillStyle = '#f0ead8'; c.beginPath(); c.arc(x + T / 2, y + 11, 3, 0, Math.PI * 2); c.fill();
       } else if (ch === 'a' || ch === 'o') {
         // 史跡の標柱（a=赤旗つき / o=寺標）
         c.fillStyle = 'rgba(0,0,0,0.18)'; c.beginPath(); c.ellipse(x + T / 2, y + T - 3, 9, 3.5, 0, 0, Math.PI * 2); c.fill();
@@ -1447,10 +1454,11 @@
   const GOODS = {
     onigiri: { name: 'おにぎり', heal: 15, price: 30, desc: '戦闘中に HPを 15 回復する。' },
     cha:     { name: '長久手茶', heal: 40, price: 80, desc: '戦闘中に HPを 40 回復する。香りがいい。' },
+    hyorogan: { name: '兵糧丸', heal: 25, price: 0, desc: '戦国の 携帯食。戦闘中に HPを 25 回復する。（こども塾で 作れる）' },
   };
   let gold = 50; // 所持金（りょう）
-  const bag = { onigiri: 0, cha: 0 };
-  function bagCount() { return (bag.onigiri || 0) + (bag.cha || 0); }
+  const bag = { onigiri: 0, cha: 0, hyorogan: 0 };
+  function bagCount() { return (bag.onigiri || 0) + (bag.cha || 0) + (bag.hyorogan || 0); }
 
   // 史跡図鑑・武将名鑑
   const ZUKAN = [
@@ -1513,6 +1521,7 @@
   let ch3rusu = false;         // 館長不在を確認したか
   let zoneAMood = 'dusk';      // dusk → weird（踊り子の舞で世界が変わった後）
   let teaBest = '';            // 抹茶体験のベストランク（'' / 'C' / 'B' / 'A'）
+  let mgDone = {};                    // ミニゲーム初回クリア記録（報酬の重複防止）
   let stationUsed = false;            // リニモ初回ネタ用（セッション内）
   const enteredFlavor = new Set();    // 施設の入場ナレーションを一度だけ出す用
   // main2（四章〜エピローグ）の直列進行。各値は「これから行うこと」:
@@ -1532,7 +1541,7 @@
         v: 2, hero: Hero, difficulty: difficulty,
         tutorialDone: tutorialDone, storyStage: storyStage,
         chapter: chapter, ch1Seen: ch1Seen, ch2step: ch2step, ch3rusu: ch3rusu, zoneAMood: zoneAMood, teaBest: teaBest, stageP3: stageP3, p3v: 2,
-        gold: gold, bag: bag,
+        gold: gold, bag: bag, mgDone: mgDone,
         zukan: Array.from(zukanSet), meikan: Array.from(meikanSet),
         tour: Array.from(tourCleared), tourReward: tourReward,
       }));
@@ -1567,6 +1576,8 @@
       gold = (typeof d.gold === 'number') ? d.gold : 50;
       bag.onigiri = (d.bag && d.bag.onigiri) || 0;
       bag.cha = (d.bag && d.bag.cha) || 0;
+      bag.hyorogan = (d.bag && d.bag.hyorogan) || 0;
+      mgDone = d.mgDone || {};
       // 旧ダイジェスト版セーブ（legacy）は原作フル収録の四章から再開
       if (chapter === 'legacy') { chapter = 'main2'; stageP3 = 0; }
       zukanSet.clear(); (d.zukan || []).forEach(function (x) { zukanSet.add(x); });
@@ -1688,9 +1699,32 @@
         if (gold >= 90) { gold -= 90; Dialog.start(DIALOGUE.ramen_event, function () { saveGame(); }); }
         else Dialog.start([{ name: 'オダ', text: '（一杯 90りょう…。いまは 持ち合わせが 足りない。もののけ退治で 稼いでこよう）' }]);
       }
-      else if (id === 'cityhall') Dialog.start(DIALOGUE.cityhall_talk);
-      else if (id === 'kodomo') Dialog.start(DIALOGUE.kodomo_talk);
-      else if (id === 'library') Dialog.start(DIALOGUE.library_talk);
+      else if (id === 'cityhall') {
+        var chBack = (function () { var hx = player.x, hy = player.y; return function () { startTransition(function () { setScene(makeField(mapKey, { x: hx, y: hy }, null)); }); }; })();
+        Dialog.start(DIALOGUE.cityhall_talk, function () {
+          Dialog.start(DIALOGUE.kentei_intro, function () { setScene(makeKentei(chBack)); });
+        });
+      }
+      else if (id === 'kodomo') {
+        var kdBack = (function () { var hx = player.x, hy = player.y; return function () { startTransition(function () { setScene(makeField(mapKey, { x: hx, y: hy }, null)); }); }; })();
+        Dialog.start(DIALOGUE.kodomo_talk, function () {
+          Dialog.start(DIALOGUE.hyorogan_intro, function () { setScene(makeHyorogan(kdBack)); });
+        });
+      }
+      else if (id === 'library') {
+        var lbBack = (function () { var hx = player.x, hy = player.y; return function () { startTransition(function () { setScene(makeField(mapKey, { x: hx, y: hy }, null)); }); }; })();
+        Dialog.start(DIALOGUE.library_talk, function () {
+          Dialog.start(DIALOGUE.lib_intro, function () { setScene(makeLibPuzzle(lbBack)); });
+        });
+      }
+      else if (id === 'shateki') {
+        var stBack = (function () { var hx = player.x, hy = player.y; return function () { startTransition(function () { setScene(makeField(mapKey, { x: hx, y: hy }, null)); }); }; })();
+        setScene(makeShateki(stBack));
+      }
+      else if (id === 'drumcircle') {
+        var dcBack = (function () { var hx = player.x, hy = player.y; return function () { startTransition(function () { setScene(makeField(mapKey, { x: hx, y: hy }, null)); }); }; })();
+        Dialog.start(DIALOGUE.drum_intro, function () { setScene(makeDrumCircle(dcBack)); });
+      }
       else if (id === 'wheel') Dialog.start(DIALOGUE.wheel_talk);
       else if (id === 'higane') {
         if (!zukanSet.has('higane')) {
@@ -2380,8 +2414,10 @@
         // 回復量が大きく減っているなら長久手茶を優先、そうでなければおにぎり
         var useKey = null;
         var deficit = actor.maxhp - actor.hp;
-        if (bag.cha > 0 && (deficit >= 25 || bag.onigiri <= 0)) useKey = 'cha';
+        if (bag.cha > 0 && deficit >= 35) useKey = 'cha';
+        else if (bag.hyorogan > 0 && deficit >= 20) useKey = 'hyorogan';
         else if (bag.onigiri > 0) useKey = 'onigiri';
+        else if (bag.hyorogan > 0) useKey = 'hyorogan';
         else if (bag.cha > 0) useKey = 'cha';
         if (!useKey) { showMsg('どうぐを 何も 持っていない！', openMenu); return; }
         bag[useKey]--;
@@ -2883,6 +2919,459 @@
     };
   }
 
+  // ===================== ミニゲーム: ドラムサークル（文化の家・森のホール） =====================
+  // 収束する輪が太鼓に重なった瞬間に Z。16拍中の的中数でランク。
+  function makeDrumCircle(onReturn) {
+    const hard = difficulty === 'hard';
+    const PERIOD = hard ? 26 : 36;
+    const WINDOW = hard ? 4 : 6;
+    const TOTAL = 16;
+    let beats = 0, hits = 0, judged = false, flashT = 0, missT = 0, phase = 'play', doneT = 0, lastPhase = 0;
+    return {
+      enter: function () {},
+      update: function (dt) {
+        if (flashT > 0) flashT -= dt;
+        if (missT > 0) missT -= dt;
+        if (phase === 'result') {
+          doneT += dt;
+          if (doneT > 1.6 || Input.pressed('confirm')) {
+            var reward = mgDone.drum ? 10 : (hits >= 13 ? 40 : 25);
+            mgDone.drum = true; gold += reward; saveGame();
+            onReturn();
+          }
+          return;
+        }
+        var ph = tick % PERIOD;
+        if (ph < lastPhase) {
+          judged = false;
+          beats++;
+          if (beats > TOTAL) { phase = 'result'; doneT = 0; }
+        }
+        lastPhase = ph;
+        if (Input.pressed('confirm') && !judged && beats >= 1 && phase === 'play') {
+          judged = true;
+          var dist = Math.min(ph, PERIOD - ph);
+          if (dist <= WINDOW) { hits++; flashT = 0.25; emitP(W / 2, 240, (Math.random() - 0.5) * 80, -50, 0.6, '#ffd43b', 3, 60); }
+          else missT = 0.4;
+        }
+        updateParts(dt);
+      },
+      render: function (c) {
+        var g = c.createLinearGradient(0, 0, 0, H);
+        g.addColorStop(0, '#241a12'); g.addColorStop(1, '#3b2a20');
+        c.fillStyle = g; c.fillRect(0, 0, W, H);
+        c.fillStyle = 'rgba(255,220,150,0.06)'; c.fillRect(0, 0, W, 90);
+        c.textAlign = 'center';
+        c.fillStyle = '#ffd43b'; c.font = 'bold 22px "Hiragino Mincho ProN",serif';
+        c.fillText('ドラムサークル', W / 2, 46);
+        c.fillStyle = '#d8c8a8'; c.font = '13px "Hiragino Sans",sans-serif';
+        c.fillText('輪が いちばん 小さくなった 瞬間に Z / タップ！', W / 2, 72);
+        var ph = tick % PERIOD, ratio = ph / PERIOD;
+        c.fillStyle = '#5a3a20'; c.beginPath(); c.arc(W / 2, 250, 70, 0, Math.PI * 2); c.fill();
+        c.fillStyle = flashT > 0 ? '#ffe9b0' : '#e8d8b8';
+        c.beginPath(); c.arc(W / 2, 250, 58, 0, Math.PI * 2); c.fill();
+        c.strokeStyle = '#3b2a18'; c.lineWidth = 3; c.beginPath(); c.arc(W / 2, 250, 58, 0, Math.PI * 2); c.stroke(); c.lineWidth = 1;
+        var ringR = 58 + (1 - ratio) * 120;
+        c.strokeStyle = 'rgba(255,212,59,' + (0.35 + ratio * 0.5) + ')'; c.lineWidth = 3;
+        c.beginPath(); c.arc(W / 2, 250, ringR, 0, Math.PI * 2); c.stroke(); c.lineWidth = 1;
+        drawParts(c);
+        if (missT > 0) { c.fillStyle = 'rgba(255,140,140,' + Math.min(1, missT * 2) + ')'; c.font = 'bold 16px "Hiragino Sans",sans-serif'; c.fillText('ズレた…！', W / 2, 356); }
+        c.fillStyle = '#f5ead0'; c.font = 'bold 15px "Hiragino Sans",sans-serif';
+        c.fillText('的中 ' + hits + '（全 ' + TOTAL + ' 拍）', W / 2, 396);
+        if (phase === 'result') {
+          c.fillStyle = 'rgba(0,0,0,0.55)'; c.fillRect(0, 0, W, H);
+          var rankTxt = hits >= 13 ? 'すばらしい！' : (hits >= 9 ? 'いいリズム！' : 'また あそぼう！');
+          c.fillStyle = '#ffd43b'; c.font = 'bold 28px "Hiragino Mincho ProN",serif';
+          c.fillText(rankTxt + '　的中 ' + hits + '/' + TOTAL, W / 2, 220);
+        }
+        drawVignette(c);
+        c.textAlign = 'left';
+      },
+    };
+  }
+
+  // ===================== ミニゲーム: 種子島射的（色金山） =====================
+  // 横切る的が中央の照準線に重なった瞬間に撃つ。装填時間あり。全5的。
+  function makeShateki(onReturn) {
+    const hard = difficulty === 'hard';
+    let target = null;
+    let round = 0, hits = 0, reloadT = 0, flashT = 0, phase = 'play', doneT = 0;
+    function newTarget() {
+      round++;
+      var fromLeft = round % 2 === 1;
+      target = {
+        x: fromLeft ? -20 : W + 20, y: 150 + (round * 37) % 90,
+        vx: (fromLeft ? 1 : -1) * (hard ? 150 + round * 14 : 105 + round * 9),
+        alive: true,
+      };
+    }
+    return {
+      enter: function () { newTarget(); },
+      update: function (dt) {
+        updateParts(dt);
+        if (flashT > 0) flashT -= dt;
+        if (reloadT > 0) reloadT -= dt;
+        if (phase === 'result') {
+          doneT += dt;
+          if (doneT > 1.6 || Input.pressed('confirm')) {
+            var reward = (mgDone.shateki ? 5 : 15) + hits * 8;
+            mgDone.shateki = true; gold += reward; saveGame();
+            onReturn();
+          }
+          return;
+        }
+        if (target && target.alive) {
+          target.x += target.vx * dt;
+          if (target.x < -30 || target.x > W + 30) {
+            if (round >= 5) { phase = 'result'; doneT = 0; } else newTarget();
+          }
+        }
+        if (Input.pressed('confirm') && reloadT <= 0 && phase === 'play') {
+          reloadT = hard ? 1.1 : 0.85;
+          flashT = 0.15;
+          if (target && target.alive && Math.abs(target.x - W / 2) < 26) {
+            target.alive = false; hits++;
+            emitP(target.x, target.y, 0, -40, 0.6, '#ffd43b', 4, 80);
+            if (round >= 5) { phase = 'result'; doneT = 0; } else newTarget();
+          }
+        }
+      },
+      render: function (c) {
+        var g = c.createLinearGradient(0, 0, 0, H);
+        g.addColorStop(0, '#101b2a'); g.addColorStop(0.6, '#1c2f1c'); g.addColorStop(1, '#12210f');
+        c.fillStyle = g; c.fillRect(0, 0, W, H);
+        c.textAlign = 'center';
+        c.fillStyle = '#ffd43b'; c.font = 'bold 22px "Hiragino Mincho ProN",serif';
+        c.fillText('種子島 射的', W / 2, 44);
+        c.fillStyle = '#adb5bd'; c.font = '13px "Hiragino Sans",sans-serif';
+        c.fillText('的が 中央の 線に 重なった 瞬間に Z！（装填時間に 注意）', W / 2, 70);
+        c.strokeStyle = 'rgba(255,212,59,0.5)'; c.lineWidth = 2;
+        c.beginPath(); c.moveTo(W / 2, 100); c.lineTo(W / 2, 300); c.stroke(); c.lineWidth = 1;
+        if (target && target.alive) {
+          c.fillStyle = '#f0ead8'; c.beginPath(); c.arc(target.x, target.y, 16, 0, Math.PI * 2); c.fill();
+          c.fillStyle = '#c0392b'; c.beginPath(); c.arc(target.x, target.y, 10, 0, Math.PI * 2); c.fill();
+          c.fillStyle = '#f0ead8'; c.beginPath(); c.arc(target.x, target.y, 4, 0, Math.PI * 2); c.fill();
+        }
+        c.fillStyle = '#4a2c12'; c.fillRect(W / 2 - 5, 320, 10, 70);
+        c.fillStyle = '#2a180a'; c.fillRect(W / 2 - 3, 316, 6, 14);
+        if (flashT > 0) {
+          c.fillStyle = 'rgba(255,230,140,0.9)';
+          c.beginPath(); c.arc(W / 2, 312, 10 * flashT / 0.15, 0, Math.PI * 2); c.fill();
+        }
+        drawParts(c);
+        c.fillStyle = reloadT > 0 ? '#ff8787' : '#c3e88d'; c.font = 'bold 14px "Hiragino Sans",sans-serif';
+        c.fillText(reloadT > 0 ? '装填中……' : '発射 OK！', W / 2, 352);
+        c.fillStyle = '#cdd9ff'; c.font = '14px "Hiragino Sans",sans-serif';
+        c.fillText('命中 ' + hits + '　　的 ' + Math.min(round, 5) + ' / 5', W / 2, 398);
+        if (phase === 'result') {
+          c.fillStyle = 'rgba(0,0,0,0.55)'; c.fillRect(0, 0, W, H);
+          c.fillStyle = '#ffd43b'; c.font = 'bold 28px "Hiragino Mincho ProN",serif';
+          c.fillText((hits >= 5 ? '全的中！ ズドーン！！' : hits >= 3 ? 'なかなかの 腕前！' : '数うちゃ 当たる…！') + '　' + hits + '/5', W / 2, 220);
+        }
+        drawVignette(c);
+        c.textAlign = 'left';
+      },
+    };
+  }
+
+  // ===================== ミニゲーム: 本を読みながら謎解き（中央図書館） =====================
+  // 3冊の資料を読んでヒントを集め、答えの文字を順に選ぶ（エピローグの閏月と連動）
+  function makeLibPuzzle(onReturn) {
+    const BOOKS = [
+      { title: '『信長と 暦』', body: '織田信長は 暦（こよみ）に 大層 きびしかった。月と 季節の ズレを 直す 仕組みを、朝廷と 争ってでも 正そうとした という。' },
+      { title: '『旧暦の しくみ』', body: '昔の 暦は 月の 満ち欠けが 基準。1年が 約354日しか ないため、季節と 少しずつ ズレていく。そこで 数年に 一度、「1か月」を まるごと 足した。' },
+      { title: '『長久手の 四月九日』', body: '天正12年の 4月9日は、今の 暦では 5月ごろに あたる。当時と 今の 日付を つなぐ 鍵は、この「足された 月」の 呼び名で ある。' },
+    ];
+    const ANSWER = ['う', 'る', 'う', 'づ', 'き'];
+    const POOL = ['る', 'こ', 'う', 'づ', 'よ', 'き', 'み', 'ま'];
+    let mode = 'books';
+    let cur = 0, reading = -1, readSet = {};
+    let picked = 0, missT = 0, doneT = 0;
+    return {
+      enter: function () {},
+      update: function (dt) {
+        if (missT > 0) missT -= dt;
+        if (mode === 'result') {
+          doneT += dt;
+          if (doneT > 1.6 || Input.pressed('confirm')) {
+            var reward = mgDone.lib ? 15 : 100;
+            mgDone.lib = true; gold += reward; saveGame();
+            onReturn();
+          }
+          return;
+        }
+        if (mode === 'books') {
+          if (reading >= 0) { if (Input.pressed('confirm') || Input.pressed('cancel')) reading = -1; return; }
+          var n = BOOKS.length + 1;
+          if (Input.pressed('up')) cur = (cur + n - 1) % n;
+          if (Input.pressed('down')) cur = (cur + 1) % n;
+          if (Input.pressed('cancel')) { onReturn(); return; }
+          if (Input.pressed('confirm')) {
+            if (cur < BOOKS.length) { reading = cur; readSet[cur] = true; }
+            else { mode = 'puzzle'; cur = 0; }
+          }
+          return;
+        }
+        // puzzle
+        var m = POOL.length;
+        if (Input.pressed('left')) cur = (cur + m - 1) % m;
+        if (Input.pressed('right')) cur = (cur + 1) % m;
+        if (Input.pressed('cancel')) { mode = 'books'; cur = 0; return; }
+        if (Input.pressed('confirm')) {
+          if (POOL[cur] === ANSWER[picked]) {
+            picked++;
+            if (picked >= ANSWER.length) { mode = 'result'; doneT = 0; }
+          } else { picked = 0; missT = 1.2; }
+        }
+      },
+      render: function (c) {
+        var g = c.createLinearGradient(0, 0, 0, H);
+        g.addColorStop(0, '#2a2118'); g.addColorStop(1, '#3a2f22');
+        c.fillStyle = g; c.fillRect(0, 0, W, H);
+        c.textAlign = 'center';
+        c.fillStyle = '#ffd43b'; c.font = 'bold 20px "Hiragino Mincho ProN",serif';
+        c.fillText('本を 読みながら 謎解き', W / 2, 42);
+        c.fillStyle = '#d8c8a8'; c.font = '13px "Hiragino Sans",sans-serif';
+        c.fillText('信長も 大切にした、「季節の ズレを 直す 月」の 名前は？', W / 2, 68);
+        if (mode === 'books') {
+          if (reading >= 0) {
+            var b = BOOKS[reading];
+            c.fillStyle = '#f5efdc'; roundRect(c, 56, 96, W - 112, 250, 8); c.fill();
+            c.fillStyle = '#3a2f22'; c.font = 'bold 17px "Hiragino Mincho ProN",serif';
+            c.fillText(b.title, W / 2, 130);
+            c.font = '15px "Hiragino Mincho ProN",serif'; c.textAlign = 'left';
+            var bl = wrapText(c, b.body, W - 160);
+            var by2 = 162;
+            for (var i = 0; i < bl.length; i++) { c.fillText(bl[i], 84, by2); by2 += 24; }
+            c.textAlign = 'center';
+            c.fillStyle = '#8a7a60'; c.font = '12px "Hiragino Sans",sans-serif';
+            c.fillText('Z / X で 閉じる', W / 2, 330);
+          } else {
+            var y = 110;
+            for (var i2 = 0; i2 < BOOKS.length; i2++) {
+              var sel = i2 === cur;
+              c.fillStyle = sel ? 'rgba(255,212,59,0.16)' : 'rgba(255,255,255,0.06)';
+              roundRect(c, 72, y, W - 144, 44, 8); c.fill();
+              if (sel) { c.strokeStyle = '#ffd43b'; c.lineWidth = 2; roundRect(c, 72, y, W - 144, 44, 8); c.stroke(); c.lineWidth = 1; }
+              c.fillStyle = sel ? '#ffd43b' : '#e8dcc0'; c.font = 'bold 16px "Hiragino Mincho ProN",serif';
+              c.fillText((sel ? '▶ ' : '') + BOOKS[i2].title + (readSet[i2] ? '　✓読んだ' : ''), W / 2, y + 28);
+              y += 54;
+            }
+            var selA = cur === BOOKS.length;
+            c.fillStyle = selA ? '#ffd43b' : '#b8a988'; c.font = (selA ? 'bold ' : '') + '17px "Hiragino Sans",sans-serif';
+            c.fillText((selA ? '▶ ' : '') + '謎に 答える', W / 2, y + 30);
+            c.fillStyle = '#8a7a60'; c.font = '12px "Hiragino Sans",sans-serif';
+            c.fillText('↑ ↓ 選択　Z 決定　X もどる', W / 2, H - 16);
+          }
+        } else if (mode === 'puzzle') {
+          c.fillStyle = '#e8dcc0'; c.font = '15px "Hiragino Sans",sans-serif';
+          c.fillText('答えの 文字を、順番に 選ぼう（' + ANSWER.length + '文字）', W / 2, 108);
+          var pw = 40, px0 = W / 2 - (ANSWER.length * pw) / 2 + pw / 2;
+          for (var a = 0; a < ANSWER.length; a++) {
+            c.fillStyle = a < picked ? '#ffd43b' : 'rgba(255,255,255,0.15)';
+            c.font = 'bold 30px "Hiragino Mincho ProN",serif';
+            c.fillText(a < picked ? ANSWER[a] : '＿', px0 + a * pw, 168);
+          }
+          var gw2 = 52, gx0 = W / 2 - (POOL.length * gw2) / 2 + gw2 / 2;
+          for (var p2 = 0; p2 < POOL.length; p2++) {
+            var selP = p2 === cur;
+            c.fillStyle = selP ? 'rgba(255,212,59,0.2)' : 'rgba(255,255,255,0.07)';
+            roundRect(c, gx0 + p2 * gw2 - 21, 210, 42, 46, 8); c.fill();
+            if (selP) { c.strokeStyle = '#ffd43b'; c.lineWidth = 2; roundRect(c, gx0 + p2 * gw2 - 21, 210, 42, 46, 8); c.stroke(); c.lineWidth = 1; }
+            c.fillStyle = selP ? '#ffd43b' : '#e8dcc0'; c.font = 'bold 24px "Hiragino Mincho ProN",serif';
+            c.fillText(POOL[p2], gx0 + p2 * gw2, 243);
+          }
+          if (missT > 0) { c.fillStyle = 'rgba(255,140,140,' + Math.min(1, missT) + ')'; c.font = 'bold 15px "Hiragino Sans",sans-serif'; c.fillText('ちがう みたい…。はじめから！', W / 2, 300); }
+          c.fillStyle = '#8a7a60'; c.font = '12px "Hiragino Sans",sans-serif';
+          c.fillText('← → 選択　Z 決定　X 本に もどる', W / 2, H - 16);
+        } else {
+          c.fillStyle = 'rgba(0,0,0,0.5)'; c.fillRect(0, 0, W, H);
+          c.fillStyle = '#ffd43b'; c.font = 'bold 30px "Hiragino Mincho ProN",serif';
+          c.fillText('正解は「うるうづき」！', W / 2, 200);
+          c.fillStyle = '#e8dcc0'; c.font = '15px "Hiragino Sans",sans-serif';
+          c.fillText('閏月——季節と 暦の ズレを 直す、もうひとつの 月。', W / 2, 236);
+        }
+        drawVignette(c);
+        c.textAlign = 'left';
+      },
+    };
+  }
+
+  // ===================== ミニゲーム: 長久手検定（市役所） =====================
+  function makeKentei(onReturn) {
+    const QUIZ = DIALOGUE.kentei_quiz;
+    let idx = 0, qcur = 0, answered = false, correct = false, score = 0, phase = 'quiz', doneT = 0;
+    return {
+      enter: function () {},
+      update: function (dt) {
+        if (phase === 'result') {
+          doneT += dt;
+          if (doneT > 1.6 || Input.pressed('confirm')) {
+            var reward = (score >= QUIZ.length && !mgDone.kentei) ? 150 : score * 15;
+            if (score >= QUIZ.length) mgDone.kentei = true;
+            gold += reward; saveGame();
+            onReturn();
+          }
+          return;
+        }
+        const q = QUIZ[idx];
+        if (!answered) {
+          if (Input.pressed('up')) qcur = (qcur + q.choices.length - 1) % q.choices.length;
+          if (Input.pressed('down')) qcur = (qcur + 1) % q.choices.length;
+          if (Input.pressed('confirm')) { answered = true; correct = (qcur === q.answer); if (correct) score++; }
+        } else if (Input.pressed('confirm')) {
+          idx++;
+          if (idx >= QUIZ.length) { phase = 'result'; doneT = 0; return; }
+          qcur = 0; answered = false;
+        }
+      },
+      render: function (c) {
+        var g = c.createLinearGradient(0, 0, 0, H);
+        g.addColorStop(0, '#1a2433'); g.addColorStop(1, '#243447');
+        c.fillStyle = g; c.fillRect(0, 0, W, H);
+        c.textAlign = 'center';
+        c.fillStyle = '#ffd43b'; c.font = 'bold 22px "Hiragino Mincho ProN",serif';
+        c.fillText('長久手検定', W / 2, 44);
+        if (phase === 'result') {
+          c.fillStyle = '#ffd43b'; c.font = 'bold 30px "Hiragino Mincho ProN",serif';
+          c.fillText(score + ' / ' + QUIZ.length + ' 問 正解！', W / 2, 200);
+          c.fillStyle = '#cdd9ff'; c.font = '16px "Hiragino Sans",sans-serif';
+          c.fillText(score >= QUIZ.length ? 'あなたは 立派な「長久手の使い」です！' : 'また 挑戦してね！', W / 2, 240);
+          drawVignette(c); c.textAlign = 'left'; return;
+        }
+        c.fillStyle = '#8fa8c8'; c.font = '13px "Hiragino Sans",sans-serif';
+        c.fillText('第 ' + (idx + 1) + ' 問 / 全 ' + QUIZ.length + ' 問　　正解 ' + score, W / 2, 70);
+        const q = QUIZ[idx];
+        c.fillStyle = 'rgba(8,16,40,0.9)'; roundRect(c, 24, 88, W - 48, 58, 10); c.fill();
+        c.strokeStyle = '#cdd9ff'; c.lineWidth = 2; roundRect(c, 26, 90, W - 52, 54, 8); c.stroke(); c.lineWidth = 1;
+        c.fillStyle = '#f1f3f5'; c.font = '16px "Hiragino Sans",sans-serif'; c.textAlign = 'left';
+        const ql = wrapText(c, q.q, W - 76);
+        let qy = 114; for (let i = 0; i < ql.length; i++) { c.fillText(ql[i], 38, qy); qy += 22; }
+        let y = 164;
+        for (let i = 0; i < q.choices.length; i++) {
+          const sel = i === qcur, isAns = i === q.answer;
+          let bg = 'rgba(255,255,255,0.06)', fgc = '#f1f3f5';
+          if (answered) {
+            if (isAns) { bg = 'rgba(55,178,77,0.30)'; fgc = '#b2f2bb'; }
+            else if (sel) { bg = 'rgba(224,49,49,0.28)'; fgc = '#ffc9c9'; }
+          } else if (sel) { bg = 'rgba(255,212,59,0.18)'; fgc = '#ffd43b'; }
+          c.fillStyle = bg; roundRect(c, 40, y, W - 80, 36, 8); c.fill();
+          if (sel && !answered) { c.strokeStyle = '#ffd43b'; c.lineWidth = 2; roundRect(c, 40, y, W - 80, 36, 8); c.stroke(); c.lineWidth = 1; }
+          c.fillStyle = fgc; c.font = '16px "Hiragino Sans",sans-serif';
+          let mark = (!answered && sel) ? '▶ ' : '　 ';
+          if (answered && isAns) mark = '○ ';
+          else if (answered && sel && !isAns) mark = '× ';
+          c.fillText(mark + q.choices[i], 56, y + 24);
+          y += 44;
+        }
+        if (answered) {
+          c.fillStyle = 'rgba(8,16,40,0.92)'; roundRect(c, 24, y + 6, W - 48, 78, 10); c.fill();
+          c.fillStyle = '#e9ecef'; c.font = '13px "Hiragino Sans",sans-serif';
+          const nl = wrapText(c, q.note, W - 76);
+          let ny = y + 30; for (let i = 0; i < nl.length; i++) { c.fillText(nl[i], 38, ny); ny += 19; }
+          c.textAlign = 'center';
+          if (tick % 56 < 34) { c.fillStyle = '#cdd9ff'; c.font = '12px "Hiragino Sans",sans-serif'; c.fillText('Z / タップで つぎへ ▶', W / 2, H - 14); }
+        } else {
+          c.textAlign = 'center';
+          c.fillStyle = '#868e96'; c.font = '12px "Hiragino Sans",sans-serif';
+          c.fillText('↑ ↓ 選択　　Z 決定', W / 2, H - 12);
+        }
+        drawVignette(c);
+        c.textAlign = 'left';
+      },
+    };
+  }
+
+  // ===================== ミニゲーム: 兵糧丸づくり（平成こども塾） =====================
+  // レシピの順番を覚えて、そのとおりに材料を選ぶ。成功で兵糧丸×2を持ち帰れる。
+  function makeHyorogan(onReturn) {
+    const hard = difficulty === 'hard';
+    const ING = ['米', '味噌', '胡麻', '蜂蜜', '山芋', '桂皮'];
+    const LEN = hard ? 5 : 4;
+    let recipe = [];
+    (function () {
+      var pool = [0, 1, 2, 3, 4, 5];
+      for (var i = 0; i < LEN; i++) {
+        var pi = (tick * 7 + i * 13 + i * i * 5) % pool.length;
+        recipe.push(pool.splice(pi, 1)[0]);
+      }
+    })();
+    let phase = 'memo';
+    let memoT = hard ? 3.2 : 5.0;
+    let cur = 0, picked = 0, missT = 0, doneT = 0, success = false;
+    return {
+      enter: function () {},
+      update: function (dt) {
+        if (missT > 0) missT -= dt;
+        if (phase === 'memo') {
+          memoT -= dt;
+          if (memoT <= 0 || Input.pressed('confirm')) phase = 'input';
+          return;
+        }
+        if (phase === 'result') {
+          doneT += dt;
+          if (doneT > 1.6 || Input.pressed('confirm')) {
+            if (success) { bag.hyorogan += 2; saveGame(); }
+            onReturn();
+          }
+          return;
+        }
+        var m = ING.length;
+        if (Input.pressed('left')) cur = (cur + m - 1) % m;
+        if (Input.pressed('right')) cur = (cur + 1) % m;
+        if (Input.pressed('confirm')) {
+          if (cur === recipe[picked]) {
+            picked++;
+            if (picked >= recipe.length) { phase = 'result'; success = true; doneT = 0; }
+          } else {
+            picked = 0; missT = 1.2; phase = 'memo'; memoT = hard ? 2.4 : 4.0;
+          }
+        }
+      },
+      render: function (c) {
+        var g = c.createLinearGradient(0, 0, 0, H);
+        g.addColorStop(0, '#3b2c1a'); g.addColorStop(1, '#4d3a22');
+        c.fillStyle = g; c.fillRect(0, 0, W, H);
+        c.textAlign = 'center';
+        c.fillStyle = '#ffd43b'; c.font = 'bold 22px "Hiragino Mincho ProN",serif';
+        c.fillText('兵糧丸づくり', W / 2, 44);
+        if (phase === 'memo') {
+          c.fillStyle = '#e8dcc0'; c.font = '14px "Hiragino Sans",sans-serif';
+          c.fillText('レシピを おぼえよう！（あと ' + Math.max(0, Math.ceil(memoT)) + ' 秒）', W / 2, 76);
+          var rw = 76, rx0 = W / 2 - (recipe.length * rw) / 2 + rw / 2;
+          for (var i = 0; i < recipe.length; i++) {
+            c.fillStyle = 'rgba(255,235,180,0.92)'; roundRect(c, rx0 + i * rw - 32, 140, 64, 64, 10); c.fill();
+            c.fillStyle = '#4d3a22'; c.font = 'bold 20px "Hiragino Mincho ProN",serif';
+            c.fillText(ING[recipe[i]], rx0 + i * rw, 180);
+            c.fillStyle = '#ffd43b'; c.font = 'bold 13px sans-serif';
+            c.fillText('' + (i + 1), rx0 + i * rw, 130);
+          }
+        } else if (phase === 'input') {
+          c.fillStyle = '#e8dcc0'; c.font = '14px "Hiragino Sans",sans-serif';
+          c.fillText('おぼえた 順番どおりに、材料を 選ぼう！（' + picked + ' / ' + recipe.length + '）', W / 2, 76);
+          var gw3 = 72, gx3 = W / 2 - (ING.length * gw3) / 2 + gw3 / 2;
+          for (var p3 = 0; p3 < ING.length; p3++) {
+            var selI = p3 === cur;
+            c.fillStyle = selI ? 'rgba(255,212,59,0.22)' : 'rgba(255,255,255,0.08)';
+            roundRect(c, gx3 + p3 * gw3 - 30, 170, 60, 60, 10); c.fill();
+            if (selI) { c.strokeStyle = '#ffd43b'; c.lineWidth = 2; roundRect(c, gx3 + p3 * gw3 - 30, 170, 60, 60, 10); c.stroke(); c.lineWidth = 1; }
+            c.fillStyle = selI ? '#ffd43b' : '#e8dcc0'; c.font = 'bold 19px "Hiragino Mincho ProN",serif';
+            c.fillText(ING[p3], gx3 + p3 * gw3, 208);
+          }
+          if (missT > 0) { c.fillStyle = 'rgba(255,140,140,' + Math.min(1, missT) + ')'; c.font = 'bold 15px "Hiragino Sans",sans-serif'; c.fillText('順番が ちがう！ もう一度 レシピを 見よう', W / 2, 280); }
+          c.fillStyle = '#b8a480'; c.font = '12px "Hiragino Sans",sans-serif';
+          c.fillText('← → 選択　　Z 決定', W / 2, H - 16);
+        } else {
+          c.fillStyle = 'rgba(0,0,0,0.5)'; c.fillRect(0, 0, W, H);
+          c.fillStyle = '#ffd43b'; c.font = 'bold 28px "Hiragino Mincho ProN",serif';
+          c.fillText('兵糧丸、かんせい！ ×2 手に入れた', W / 2, 210);
+        }
+        drawVignette(c);
+        c.textAlign = 'left';
+      },
+    };
+  }
+
   // ===================== Splash (credit) =====================
   function makeSplash() {
     var timer = 0, phase = 'fadein';
@@ -3247,7 +3736,7 @@
         '防具　　' + ITEMS[Hero.armor].name,
         '難易度　　' + DIFF[difficulty].label,
         '所持金　　' + gold + ' りょう',
-        'どうぐ　　おにぎり×' + bag.onigiri + '　長久手茶×' + bag.cha,
+        'どうぐ　　おにぎり×' + bag.onigiri + '　長久手茶×' + bag.cha + '　兵糧丸×' + bag.hyorogan,
       ];
       let y = cy + 32;
       for (let i = 0; i < lines.length; i++) { c.fillText(lines[i], cx + 22, y); y += 32; }
@@ -3306,7 +3795,7 @@
 
   // ===================== ショップ（イオンモール長久手） =====================
   function makeShop(onReturn) {
-    const keys = Object.keys(GOODS);
+    const keys = Object.keys(GOODS).filter(function (k) { return GOODS[k].price > 0; });
     let cur = 0, msg = '', msgT = 0;
     const n = keys.length + 1; // 末尾「みせを でる」
     return {
