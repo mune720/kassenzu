@@ -474,16 +474,17 @@
     if (alpha != null && alpha < 1) { c.save(); c.globalAlpha = Math.max(0, alpha); }
     var sheet = HD_SPRITE[kind];
     if (sheet) {
-      // スプライトシート描画（3列×4行）。足元を cy+TILE/2 付近に接地
-      var cw = sheet.width / 3, chh = sheet.height / 4;
+      // スプライトシート描画（3列×4行）。実描画域を高さ基準で拡縮し、足元を cy+TILE/2 に接地
+      var cw = Math.floor(sheet.width / 3), chh = Math.floor(sheet.height / 4);
+      var box = HD_SPRITE_BOX[kind] || { x: 0, y: 0, w: cw, h: chh };
       var row = { down: 0, left: 1, right: 2, up: 3 }[facing || 'down'] || 0;
       var seq = [0, 1, 0, 2];
       var col = moving ? seq[(tick / 7 | 0) % 4] : 0;
-      var dw = TILE * 1.15 * scale, dh = dw * (chh / cw);
+      var dh = TILE * 1.35 * scale, dw = dh * (box.w / box.h);
       var footY = cy + (TILE / 2) * scale;
       c.fillStyle = 'rgba(0,0,0,0.22)';
-      c.beginPath(); c.ellipse(cx, footY - 2, dw * 0.32, dw * 0.11, 0, 0, Math.PI * 2); c.fill();
-      c.drawImage(sheet, col * cw, row * chh, cw, chh, cx - dw / 2, footY - dh, dw, dh);
+      c.beginPath(); c.ellipse(cx, footY - 2, dw * 0.34, dw * 0.12, 0, 0, Math.PI * 2); c.fill();
+      c.drawImage(sheet, col * cw + box.x, row * chh + box.y, box.w, box.h, cx - dw / 2, footY - dh, dw, dh);
     }
     else if (kind === 'enemy') { drawGhost(c, cx, cy, scale); }
     else { drawHumanoid(c, cx, cy, scale, PAL[kind] || PAL.oda, facing || 'down', moving); }
@@ -1385,9 +1386,41 @@
   ['tree', 'bush', 'rock', 'mound', 'mound_s'].forEach(function (k) { loadHDImg(HD_DECO, k, 'assets/deco/' + k + '.png'); });
   ['museum', 'aeon', 'station', 'ramen', 'tearoom', 'cityhall', 'kodomo', 'temple', 'bunka', 'library', 'ferris'].forEach(function (k) { loadHDImg(HD_BLD, k, 'assets/buildings/' + k + '.png'); });
   // 歩行スプライトシート（assets/sprites/<kind>_walk.png）: 3列×4行。
-  // 行=正面/左/右/後ろ、列=立ち/歩き1/歩き2。あれば drawActor が自動で使う
+  // 行=正面/左/右/後ろ、列=立ち/歩き1/歩き2。あれば drawActor が自動で使う。
+  // 生成画像はセル内の余白が大きいため、全セル共通の実描画域（不透明ピクセルの外接矩形）を
+  // 一度だけ解析して切り出す。解析できない環境（file:// 等）は全セル描画にフォールバック
   const HD_SPRITE = {};
-  ['oda', 'ike', 'michi', 'kancho', 'odoriko', 'sakamoto', 'civ1', 'civ2'].forEach(function (k) { loadHDImg(HD_SPRITE, k, 'assets/sprites/' + k + '_walk.png'); });
+  const HD_SPRITE_BOX = {};
+  function sheetContentBox(kind, img) {
+    try {
+      var oc = document.createElement('canvas');
+      oc.width = img.width; oc.height = img.height;
+      var octx = oc.getContext('2d');
+      octx.drawImage(img, 0, 0);
+      var cw = Math.floor(img.width / 3), chh = Math.floor(img.height / 4);
+      var minX = cw, minY = chh, maxX = 0, maxY = 0;
+      for (var row = 0; row < 4; row++) {
+        for (var col = 0; col < 3; col++) {
+          var d = octx.getImageData(col * cw, row * chh, cw, chh).data;
+          for (var y = 0; y < chh; y++) {
+            for (var x = 0; x < cw; x++) {
+              if (d[(y * cw + x) * 4 + 3] > 10) {
+                if (x < minX) minX = x; if (x > maxX) maxX = x;
+                if (y < minY) minY = y; if (y > maxY) maxY = y;
+              }
+            }
+          }
+        }
+      }
+      if (maxX > minX && maxY > minY) HD_SPRITE_BOX[kind] = { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
+    } catch (e) { /* 解析不可なら全セル描画のまま */ }
+  }
+  ['oda', 'ike', 'michi', 'kancho', 'odoriko', 'sakamoto', 'civ1', 'civ2'].forEach(function (k) {
+    var img = new Image();
+    img.onload = function () { HD_SPRITE[k] = img; sheetContentBox(k, img); };
+    img.onerror = function () {};
+    img.src = 'assets/sprites/' + k + '_walk.png';
+  });
   // 地面テクスチャ → 敷き詰めパターン（元画像を 8×8 タイル分に縮小してリピート。元ファイルは縮小保存しない）
   const HD_PAT = {};
   function hdPattern(c, key) {
