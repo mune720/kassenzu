@@ -1889,15 +1889,22 @@
           Dialog.start(DIALOGUE.ch5_tenka, function () { storyStage = 5; unlockMeikan('nobunaga'); });
         } else {
           Dialog.start(DIALOGUE.ch6_farewell, function () {
+            // ハード: 第1形態撃破で「炎の舞」第2形態へ（背景の山が燃える・2回行動・特殊技）。
+            // 敗北するとゲームオーバー（タイトルへ）。イージーは従来どおり勝敗不問でエピローグ
+            var isHard = difficulty === 'hard';
+            var toEpi = function () { startTransition(function () { setScene(makeEpilogue()); }); };
             startBattle({
               gated: false,
               enemy: {
                 name: '踊り子', hp: 50, kind: 'odoriko',
                 atkLabel: DIALOGUE.battle.odoriko.atkLabel, appearMsg: DIALOGUE.battle.odoriko.appearMsg,
                 winMsg: DIALOGUE.battle.odoriko.winMsg,
+                phase2: isHard ? { name: '踊り子 ―炎の舞―', hp: 280, atkLo: 10, atkHi: 15 } : null,
               },
-              onWin: function () { startTransition(function () { setScene(makeEpilogue()); }); },
-              onLose: function () { startTransition(function () { setScene(makeEpilogue()); }); },
+              onWin: toEpi,
+              onLose: isHard
+                ? function () { startTransition(function () { setScene(makeTitle()); }); }
+                : toEpi,
             });
           });
         }
@@ -2141,6 +2148,10 @@
             }
           });
         });
+      } else if (stageP3 === 9 && difficulty === 'hard' && !kanchoEv.p9hint) {
+        // ハードのみ: 稼ぎ場解放と「鍛えてから挑め」のヒント（一度だけ）
+        kanchoEv.p9hint = true; saveGame();
+        Dialog.start(DIALOGUE.hard_patrol_hint);
       }
       // stageP3 === 9 は自由行動（見回り）。踊り子に話しかけると update() がラストバトルを起動する
     }
@@ -2254,14 +2265,26 @@
             }
           }
         }
-        if ((dx !== 0 || dy !== 0) && tutorialDone && map.def.encounter && encCooldown <= 0) {
+        // ハードの稼ぎ場: ラスボス前の見回り（stageP3=9）とクリア後は、街の各ゾーンでも夜行のもののけが出る
+        const patrolEnc = !map.def.encounter && difficulty === 'hard'
+          && (mapKey === 'zoneA' || mapKey === 'zoneB' || mapKey === 'zoneC' || mapKey === 'zoneD')
+          && ((chapter === 'main2' && stageP3 === 9) || chapter === 'post') ? { rate: 0.05 } : null;
+        const encDef = map.def.encounter || patrolEnc;
+        if ((dx !== 0 || dy !== 0) && tutorialDone && encDef && encCooldown <= 0) {
           stepAcc += sp;
           if (stepAcc > 40) {
             stepAcc = 0;
             const tc = Math.floor(player.x / TILE), tr = Math.floor(player.y / TILE);
             const t = map.grid[tr] && map.grid[tr][tc];
-            const encRate = map.def.encounter.rate * DIFF[difficulty].encRate;
-            if ((t === '.' || t === ',') && Math.random() < encRate) { encCooldown = 3.5; startTransition(function () { startBattle({ gated: false }); }); return; }
+            const encRate = encDef.rate * DIFF[difficulty].encRate;
+            if ((t === '.' || t === ',') && Math.random() < encRate) {
+              encCooldown = 3.5;
+              startTransition(function () {
+                // 夜行のもののけは経験値・報酬が多め（第2形態に向けたレベル上げ用）
+                startBattle(patrolEnc ? { gated: false, enemy: { name: '夜行の もののけ', hp: 36, atkLo: 6, atkHi: 10, expReward: [16, 22], goldReward: [180, 260] } } : { gated: false });
+              });
+              return;
+            }
           }
         }
         if (mapKey === 'zoneA' && chapter === 'pro' && !proTriggered) {
@@ -2324,15 +2347,21 @@
               player.facing = 'up'; player.moving = false;
               Dialog.start(DIALOGUE.epi_odoriko, function () {
                 partyMembers.length = 0;
+                // ハード: 第1形態撃破で「炎の舞」第2形態へ（山が燃える・2回行動・特殊技）。
+                // 敗北するとゲームオーバー（タイトルへ）。イージーは従来どおり勝敗不問でエピローグ
+                var isHard = difficulty === 'hard';
                 startBattle({
                   gated: false,
                   enemy: {
                     name: '踊り子', hp: 60, kind: 'odoriko',
                     atkLabel: DIALOGUE.battle.odoriko.atkLabel, appearMsg: DIALOGUE.battle.odoriko.appearMsg,
                     winMsg: DIALOGUE.battle.odoriko.winMsg,
+                    phase2: isHard ? { name: '踊り子 ―炎の舞―', hp: 280, atkLo: 10, atkHi: 15 } : null,
                   },
                   onWin: function () { finishGame(); },
-                  onLose: function () { finishGame(); },
+                  onLose: isHard
+                    ? function () { startTransition(function () { setScene(makeTitle()); }); }
+                    : function () { finishGame(); },
                 });
               });
               function finishGame() {
@@ -2424,6 +2453,10 @@
       roundLimit: e.roundLimit || 0, noKO: !!e.noKO, endMsg: e.endMsg || null,
       hideHp: !!e.hideHp, fleeMsg: e.fleeMsg || null,
       atkLo: e.atkLo || 3, atkHi: e.atkHi || 6,
+      // 拡張: acts=1ターンの行動回数, specials=特殊技（乱れ舞/幻惑/緋の舞）,
+      // phase2=撃破時に第2形態へ移行（ハードのラスボス用）, expReward/goldReward=[lo,hi]で報酬上書き
+      acts: e.acts || 1, specials: !!e.specials, phase2: e.phase2 || null,
+      expReward: e.expReward || null, goldReward: e.goldReward || null,
     };
     const allies = [{
       id: 'oda', name: 'オダ', kind: 'oda', isOda: true,
@@ -2492,10 +2525,37 @@
       if (turnIdx >= allies.length) turnIdx = 0;
       openMenu();
     }
+    // ハードのラスボス: 第1形態を倒すと第2形態へ。山が燃える背景にフェードし、いけ・みちが駆けつける
+    function startPhase2() {
+      const p2 = enemy.phase2; enemy.phase2 = null;
+      const B2 = DIALOGUE.battle_odoriko2;
+      enemy.firePhase = true; // update() が fireT を 0→1 へフェード（燃える山の背景）
+      const seq = [B2.intro1, B2.intro2, B2.joinIke, B2.joinMichi];
+      const joins = [
+        { id: 'ike', name: 'いけ', kind: 'ike', maxhp: 34, atkLo: 9, atkHi: 14, aDef: 1 },
+        { id: 'michi', name: 'みち', kind: 'michi', maxhp: 36, atkLo: 8, atkHi: 12, aDef: 1 },
+      ];
+      if (kanchoBond) { joins.push({ id: 'kancho', name: '館長', kind: 'kancho', maxhp: 30, atkLo: 6, atkHi: 10, aDef: 1 }); seq.push(B2.joinKancho); }
+      joins.forEach(function (m) {
+        allies.push({ id: m.id, name: m.name, kind: m.kind, isOda: false, hp: m.maxhp, maxhp: m.maxhp, atkLo: m.atkLo, atkHi: m.atkHi, aDef: m.aDef });
+      });
+      seq.push(B2.intro3);
+      enemy.name = p2.name; enemy.hp = p2.hp; enemy.maxhp = p2.hp;
+      enemy.atkLo = p2.atkLo; enemy.atkHi = p2.atkHi;
+      enemy.acts = 2; enemy.specials = true;
+      enemy.atkLabel = B2.atkLabel; enemy.winMsg = B2.winMsg;
+      enemy.fleeMsg = B2.fleeMsg; enemy.loseMsg = B2.loseMsg;
+      enemy.expReward = [40, 60]; enemy.goldReward = [2500, 3000];
+      enemy.broken = false; enemy.shake = 0.6;
+      let i = 0;
+      function step() { if (i < seq.length) showMsg(seq[i++], step); else startRound(); }
+      step();
+    }
     function winSequence() {
+      if (enemy.phase2) { startPhase2(); return; }
       if (gated) { tutorialDone = true; storyStage = 1; }
-      const reward = rnd(5, 8);
-      const goldGain = rnd(80, 150);
+      const reward = enemy.expReward ? rnd(enemy.expReward[0], enemy.expReward[1]) : rnd(5, 8);
+      const goldGain = enemy.goldReward ? rnd(enemy.goldReward[0], enemy.goldReward[1]) : rnd(80, 150);
       Hero.exp += reward;
       gold += goldGain;
       const seq = [enemy.winMsg, '経験値を ' + reward + '、' + goldGain + '円を 手に入れた！'];
@@ -2521,17 +2581,55 @@
         showMsg(enemy.atkLabel + '！\nオダは ' + fdmg + 'の ダメージ！', function () { loseCheck(startRound); });
         return;
       }
-      // 対象は生存メンバーからランダム
-      const alive = aliveAllies();
-      const target = alive[rnd(0, alive.length - 1)] || player;
       rounds++;
+      if (player.atkDownT > 0) player.atkDownT--; // 幻惑の舞の残りターンを消化
       // イベント戦: 規定ラウンドで幕引き（勝ち扱い）
-      const afterAtk = (enemy.roundLimit && rounds >= enemy.roundLimit)
+      const finish = (enemy.roundLimit && rounds >= enemy.roundLimit)
         ? function () { showMsg(enemy.endMsg || '……戦いは、ふいに 終わった。', function () { mode = 'end'; endKind = 'win'; msg = '（Z / タップで つづける）'; }); }
         : function () { loseCheck(startRound); };
-      if (Math.random() < 0.22) { showMsg(enemy.atkLabel + '！\n' + target.name + 'は ひらりと身をかわした！', afterAtk); return; }
-      const dmg = Math.max(1, Math.round(rnd(enemy.atkLo, enemy.atkHi) * (enemy.atkMul || 1)) - target.aDef); hitAlly(target, dmg);
-      showMsg(enemy.atkLabel + '！ ' + target.name + 'は ' + dmg + 'のダメージ！', function () { loseCheck(afterAtk); });
+      // acts=2 なら1ターンに2回行動（第2形態）。各行動後に全滅判定を挟む
+      let acted = 0;
+      const nActs = enemy.acts || 1;
+      function nextAct() {
+        if (acted >= nActs) { finish(); return; }
+        acted++;
+        doOneAct(function () { loseCheck(nextAct); });
+      }
+      function doOneAct(done) {
+        const alive = aliveAllies();
+        const target = alive[rnd(0, alive.length - 1)] || player;
+        if (enemy.specials) {
+          const roll = Math.random();
+          if (roll < 0.18) { // 乱れ舞: 全体攻撃
+            const parts = [];
+            for (var ai = 0; ai < alive.length; ai++) {
+              var aa = alive[ai];
+              var d = Math.max(1, Math.round(rnd(enemy.atkLo, enemy.atkHi) * (enemy.atkMul || 1) * 0.62) - aa.aDef);
+              aa.hp -= d; if (aa.hp < 0) aa.hp = 0;
+              if (enemy.noKO && aa.hp <= 0) aa.hp = 1; // イベント戦: 倒れない（hitAlly と同じ扱い）
+              parts.push(aa.name + 'に' + d);
+            }
+            shake = 6; flash = 0.32;
+            showMsg(enemy.name + 'の【乱れ舞】！ 炎の輪が 全員を 薙ぎはらう！\n' + parts.join('、') + ' の ダメージ！', done);
+            return;
+          }
+          if (roll < 0.30 && !(player.atkDownT > 0)) { // 幻惑の舞: 攻撃力デバフ
+            player.atkDownT = 2;
+            showMsg(enemy.name + 'の【幻惑の舞】！ 妖しい 舞に 目が くらむ…！\nみんなの こうげきの力が 下がった！（2ターン）', done);
+            return;
+          }
+          if (roll < 0.42) { // 緋の舞: 強力な単体攻撃
+            const d2 = Math.max(1, Math.round(rnd(enemy.atkLo, enemy.atkHi) * (enemy.atkMul || 1) * 1.55) - target.aDef);
+            hitAlly(target, d2);
+            showMsg(enemy.name + 'の【緋の舞】！ 燃える袖が ' + target.name + 'を 薙ぐ！\n' + d2 + 'の 大ダメージ！', done);
+            return;
+          }
+        }
+        if (Math.random() < (enemy.specials ? 0.12 : 0.22)) { showMsg(enemy.atkLabel + '！\n' + target.name + 'は ひらりと身をかわした！', done); return; }
+        const dmg = Math.max(1, Math.round(rnd(enemy.atkLo, enemy.atkHi) * (enemy.atkMul || 1)) - target.aDef); hitAlly(target, dmg);
+        showMsg(enemy.atkLabel + '！ ' + target.name + 'は ' + dmg + 'のダメージ！', done);
+      }
+      nextAct();
     }
     function miyaTier(lv) {
       const r = Math.random();
@@ -2547,6 +2645,7 @@
         if (!enemy.weakKnown && actor.isOda) { showMsg('オダのこうげき！\nしかし手ごたえがない…！ まず「みやぶる」で 弱点を さがそう。', nextTurn); return; }
         if (Math.random() < 0.16) { showMsg(actor.name + 'のこうげき！\nしかし攻撃は 空を切った…！', nextTurn); return; }
         let dmg = actor.isOda ? (rnd(5, 8) + actor.atkBonus + actor.wAtk) : rnd(actor.atkLo || 4, actor.atkHi || 7);
+        if (player.atkDownT > 0) dmg = Math.max(1, Math.floor(dmg * 0.65)); // 幻惑の舞
         if (enemy.broken) dmg += 3;
         const crit = Math.random() < 0.18;
         if (crit) { dmg = Math.floor(dmg * 1.8); hitEnemy(dmg, true); showMsg(actor.name + 'のこうげき！ 急所に当たった！\n' + dmg + 'の大ダメージ！', nextTurn); }
@@ -2596,6 +2695,11 @@
       update: function (dt) {
         updateParts(dt);
         spawnBattleParts();
+        // 第2形態: 燃える山の背景へ約3秒かけてクロスフェード＋火の粉
+        if (enemy.firePhase && (enemy.fireT || 0) < 1) enemy.fireT = Math.min(1, (enemy.fireT || 0) + dt / 3);
+        if ((enemy.fireT || 0) > 0.25 && tick % 7 === 0) {
+          emitP(Math.random() * W, 196 + Math.random() * 10, (Math.random() - 0.5) * 16, -22 - Math.random() * 34, 1.5, 'rgba(255,150,60,0.75)', 1.8, -8);
+        }
         if (shake > 0) { shake -= dt * 30; if (shake < 0) shake = 0; }
         if (flash > 0) { flash -= dt * 1.6; if (flash < 0) flash = 0; }
         if (enemy.shake > 0) { enemy.shake -= dt; if (enemy.shake < 0) enemy.shake = 0; }
@@ -2642,6 +2746,42 @@
     c.beginPath(); c.moveTo(0, 188);
     c.quadraticCurveTo(120, 172, 256, 182); c.quadraticCurveTo(380, 170, W, 185);
     c.lineTo(W, 200); c.lineTo(0, 200); c.closePath(); c.fill();
+    // 第2形態: 燃え盛る山なみ（原作上演の山焼け演出）。fireT でクロスフェード
+    var ft = enemy.fireT || 0;
+    if (ft > 0) {
+      c.save(); c.globalAlpha = ft;
+      // 赤黒い空
+      var fsky = c.createLinearGradient(0, 0, 0, 200);
+      fsky.addColorStop(0, '#160303'); fsky.addColorStop(0.55, '#471006'); fsky.addColorStop(1, '#7d2408');
+      c.fillStyle = fsky; c.fillRect(0, 0, W, 200);
+      // 舞い散る火の粉（空側・点滅）
+      for (var ei = 0; ei < 24; ei++) {
+        var ex2 = (ei * 374761 + 59) % W, ey2 = (ei * 668265 + 31) % 165;
+        var tw = 0.25 + 0.55 * Math.abs(Math.sin(tick * 0.07 + ei * 1.3));
+        c.fillStyle = 'rgba(255,170,80,' + tw + ')';
+        c.fillRect(ex2, ey2, 1.6, 1.6);
+      }
+      // 黒い山なみ＋稜線の炎
+      c.fillStyle = '#1c0703';
+      c.beginPath(); c.moveTo(0, 180);
+      c.quadraticCurveTo(80, 155, 160, 172); c.quadraticCurveTo(260, 150, 360, 168);
+      c.quadraticCurveTo(440, 155, W, 175); c.lineTo(W, 200); c.lineTo(0, 200); c.closePath(); c.fill();
+      for (var fi = 0; fi < 15; fi++) {
+        var fx = fi * 35 + ((fi * 53) % 19);
+        var fy = 168 + ((fi * 29) % 12);
+        var fh = 9 + Math.abs(Math.sin(tick * 0.11 + fi * 1.7)) * 15;
+        c.fillStyle = 'rgba(255,120,30,0.55)';
+        c.beginPath(); c.moveTo(fx - 6, fy); c.quadraticCurveTo(fx + (Math.sin(tick * 0.09 + fi) * 3), fy - fh, fx + 6, fy); c.closePath(); c.fill();
+        c.fillStyle = 'rgba(255,220,120,0.5)';
+        c.beginPath(); c.moveTo(fx - 3, fy); c.quadraticCurveTo(fx, fy - fh * 0.55, fx + 3, fy); c.closePath(); c.fill();
+      }
+      // 地平の照り返し
+      c.globalCompositeOperation = 'lighter';
+      var fglow = c.createRadialGradient(W / 2, 196, 0, W / 2, 196, 250);
+      fglow.addColorStop(0, 'rgba(255,90,20,0.20)'); fglow.addColorStop(1, 'rgba(0,0,0,0)');
+      c.fillStyle = fglow; c.beginPath(); c.arc(W / 2, 196, 250, 0, Math.PI * 2); c.fill();
+      c.restore();
+    }
     c.save();
     var sx = shake > 0 ? (Math.random() * 2 - 1) * shake : 0;
     var sy = shake > 0 ? (Math.random() * 2 - 1) * shake : 0;
@@ -2673,7 +2813,7 @@
       var eih = 220, eiw = eih * (battleImg.width / battleImg.height);
       var eFloat = Math.sin(tick * 0.05) * 4;
       var eix = W / 2 - eiw / 2 + ex, eiy = 25 + eFloat;
-      var auraColor = enemy.kind === 'odoriko' ? 'rgba(100,60,140,' : 'rgba(60,20,100,';
+      var auraColor = enemy.kind === 'odoriko' ? ((enemy.fireT || 0) > 0.3 ? 'rgba(220,80,20,' : 'rgba(100,60,140,') : 'rgba(60,20,100,';
       var aura = c.createRadialGradient(W / 2 + ex, eiy + eih * 0.45, 0, W / 2 + ex, eiy + eih * 0.45, eih * 0.6);
       aura.addColorStop(0, auraColor + '0.25)'); aura.addColorStop(0.6, auraColor + '0.1)'); aura.addColorStop(1, 'rgba(0,0,0,0)');
       c.fillStyle = aura; c.beginPath(); c.arc(W / 2 + ex, eiy + eih * 0.45, eih * 0.6, 0, Math.PI * 2); c.fill();
@@ -2700,6 +2840,13 @@
     c.fillText(enemy.name, W / 2, 208);
     if (!enemy.forcelose && !enemy.hideHp) drawHPBar(c, W / 2 - 80, 216, 160, enemy.hp, enemy.maxhp, '#e8590c');
     c.textAlign = 'left';
+    if (player.atkDownT > 0) {
+      // 敵HPバー（中央）と重ならないよう右寄せ・短縮表記
+      c.textAlign = 'right';
+      c.fillStyle = '#ff8787'; c.font = 'bold 11px "Hiragino Sans",sans-serif';
+      c.fillText('▼攻ダウン あと' + player.atkDownT + 'ターン', W - 22, allies.length === 1 ? 282 : (allies.length >= 4 ? 224 : 236));
+      c.textAlign = 'left';
+    }
     if (allies.length === 1) {
       // 1人（従来レイアウト）
       c.fillStyle = '#cdd9ff'; c.font = '15px "Hiragino Sans",sans-serif';
