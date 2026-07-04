@@ -5271,6 +5271,17 @@
     Input.clearEdges();
     requestAnimationFrame(frame);
   }
-  setScene(makeSplash());
+  // テスターモード（test.html）: kassenzu_dev_start があれば、セーブを読んで指定シーンから直接開始する。
+  // キーは一回で消費するため、通常プレイには影響しない
+  var devStart = null;
+  try {
+    devStart = JSON.parse(localStorage.getItem('kassenzu_dev_start') || 'null');
+    if (devStart) localStorage.removeItem('kassenzu_dev_start');
+  } catch (e) { devStart = null; }
+  if (devStart && hasSave() && loadGame()) {
+    var dvMap = devStart.map || (chapter === 'legacy' ? 'field' : 'zoneA');
+    var dvSpawn = (devStart.col != null) ? { col: devStart.col, row: devStart.row } : null;
+    setScene(makeField(dvMap, dvSpawn, null));
+  } else setScene(makeSplash());
   requestAnimationFrame(frame);
 })();
