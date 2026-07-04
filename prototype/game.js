@@ -1416,6 +1416,42 @@
     },
   };
 
+  // ===================== Choice（選択肢） =====================
+  // Dialog と同様のシングルトン。フィールド系シーンの update/render から呼ばれる。
+  const Choice = {
+    active: false, options: [], cur: 0, onPick: null, prompt: '',
+    start: function (prompt, options, onPick) {
+      this.active = true; this.prompt = prompt; this.options = options; this.cur = 0; this.onPick = onPick || null;
+    },
+    update: function (dt) {
+      if (!this.active) return;
+      if (Input.pressed('up')) this.cur = (this.cur + this.options.length - 1) % this.options.length;
+      if (Input.pressed('down')) this.cur = (this.cur + 1) % this.options.length;
+      if (Input.pressed('confirm')) {
+        this.active = false;
+        var cb = this.onPick, pick = this.cur; this.onPick = null;
+        if (cb) cb(pick);
+      }
+    },
+    render: function (c) {
+      if (!this.active) return;
+      var n = this.options.length;
+      var bh = 50 + n * 34;
+      var x = 56, y = H - bh - 18, w = W - 112;
+      c.fillStyle = 'rgba(0,0,0,0.3)'; roundRect(c, x + 3, y + 3, w, bh, 10); c.fill();
+      c.fillStyle = 'rgba(10,16,40,0.97)'; roundRect(c, x, y, w, bh, 10); c.fill();
+      c.strokeStyle = '#cdd9ff'; c.lineWidth = 1.5; roundRect(c, x + 3, y + 3, w - 6, bh - 6, 8); c.stroke(); c.lineWidth = 1;
+      c.textAlign = 'left';
+      c.fillStyle = '#ffd43b'; c.font = 'bold 15px "Hiragino Sans",sans-serif';
+      c.fillText(this.prompt, x + 16, y + 26);
+      c.font = '16px "Hiragino Sans",sans-serif';
+      for (var i = 0; i < n; i++) {
+        c.fillStyle = i === this.cur ? '#ffd43b' : '#e8ecf2';
+        c.fillText((i === this.cur ? '▶ ' : '　 ') + this.options[i], x + 22, y + 50 + i * 34);
+      }
+    },
+  };
+
   // ===================== Transition (flash) =====================
   const trans = { active: false, t: 0, dur: 0.8, mid: null, fired: false };
   function startTransition(mid) { trans.active = true; trans.t = 0; trans.mid = mid; trans.fired = false; }
@@ -1452,11 +1488,11 @@
 
   // ===================== 通貨・消耗品（イオンで購入・戦闘中に使用） =====================
   const GOODS = {
-    onigiri: { name: 'おにぎり', heal: 15, price: 30, desc: '戦闘中に HPを 15 回復する。' },
-    cha:     { name: '長久手茶', heal: 40, price: 80, desc: '戦闘中に HPを 40 回復する。香りがいい。' },
+    onigiri: { name: 'おにぎり', heal: 15, price: 150, desc: '戦闘中に HPを 15 回復する。' },
+    cha:     { name: '長久手茶', heal: 40, price: 300, desc: '戦闘中に HPを 40 回復する。香りがいい。' },
     hyorogan: { name: '兵糧丸', heal: 25, price: 0, desc: '戦国の 携帯食。戦闘中に HPを 25 回復する。（こども塾で 作れる）' },
   };
-  let gold = 50; // 所持金（りょう）
+  let gold = 1000; // 所持金（円）
   const bag = { onigiri: 0, cha: 0, hyorogan: 0 };
   function bagCount() { return (bag.onigiri || 0) + (bag.cha || 0) + (bag.hyorogan || 0); }
 
@@ -1522,6 +1558,10 @@
   let zoneAMood = 'dusk';      // dusk → weird（踊り子の舞で世界が変わった後）
   let teaBest = '';            // 抹茶体験のベストランク（'' / 'C' / 'B' / 'A'）
   let mgDone = {};                    // ミニゲーム初回クリア記録（報酬の重複防止）
+  let kanchoLove = 0;                 // 館長の好感度（選択肢で上下）
+  let kanchoBond = false;             // エピローグで絆が結ばれたか（ハードの仲間加入条件）
+  let kanchoEv = {};                  // 好感度イベントの発火記録
+  const visitedSites = new Set();     // 本編で現地を訪れた史跡（史跡めぐりの解放条件）
   let stationUsed = false;            // リニモ初回ネタ用（セッション内）
   const enteredFlavor = new Set();    // 施設の入場ナレーションを一度だけ出す用
   // main2（四章〜エピローグ）の直列進行。各値は「これから行うこと」:
@@ -1541,7 +1581,8 @@
         v: 2, hero: Hero, difficulty: difficulty,
         tutorialDone: tutorialDone, storyStage: storyStage,
         chapter: chapter, ch1Seen: ch1Seen, ch2step: ch2step, ch3rusu: ch3rusu, zoneAMood: zoneAMood, teaBest: teaBest, stageP3: stageP3, p3v: 2,
-        gold: gold, bag: bag, mgDone: mgDone,
+        gold: gold, bag: bag, mgDone: mgDone, yen: 1,
+        kanchoLove: kanchoLove, kanchoBond: kanchoBond, kanchoEv: kanchoEv, visited: Array.from(visitedSites),
         zukan: Array.from(zukanSet), meikan: Array.from(meikanSet),
         tour: Array.from(tourCleared), tourReward: tourReward,
       }));
@@ -1573,16 +1614,24 @@
       stageP3 = d.stageP3 || 0;
       // 旧ステージ番号（現地取材クエスト導入前）からの移行: 1以降を+1ずらす
       if (!d.p3v && chapter === 'main2' && stageP3 >= 1) stageP3 += 1;
-      gold = (typeof d.gold === 'number') ? d.gold : 50;
+      gold = (typeof d.gold === 'number') ? d.gold : 1000;
+      if (!d.yen) gold = Math.max(1000, gold * 7); // 旧「りょう」セーブを円に換算
       bag.onigiri = (d.bag && d.bag.onigiri) || 0;
       bag.cha = (d.bag && d.bag.cha) || 0;
       bag.hyorogan = (d.bag && d.bag.hyorogan) || 0;
       mgDone = d.mgDone || {};
+      kanchoLove = d.kanchoLove || 0;
+      kanchoBond = !!d.kanchoBond;
+      kanchoEv = d.kanchoEv || {};
+      visitedSites.clear();
+      (d.visited || []).forEach(function (x) { visitedSites.add(x); });
       // 旧ダイジェスト版セーブ（legacy）は原作フル収録の四章から再開
       if (chapter === 'legacy') { chapter = 'main2'; stageP3 = 0; }
       zukanSet.clear(); (d.zukan || []).forEach(function (x) { zukanSet.add(x); });
       meikanSet.clear(); (d.meikan || []).forEach(function (x) { meikanSet.add(x); });
       tourCleared.clear(); (d.tour || []).forEach(function (x) { tourCleared.add(x); });
+      // 旧セーブ互換: 既に踏破済みの史跡は訪問済み扱い
+      tourCleared.forEach(function (x) { visitedSites.add(x); });
       tourReward = !!d.tourReward;
       return true;
     } catch (e) { return false; }
@@ -1696,8 +1745,21 @@
         });
       }
       else if (id === 'ramen') {
-        if (gold >= 90) { gold -= 90; Dialog.start(DIALOGUE.ramen_event, function () { saveGame(); }); }
-        else Dialog.start([{ name: 'オダ', text: '（一杯 90りょう…。いまは 持ち合わせが 足りない。もののけ退治で 稼いでこよう）' }]);
+        if (gold >= 950) {
+          gold -= 950;
+          Dialog.start(DIALOGUE.ramen_event, function () {
+            if (chapter === 'main2' && stageP3 === 1 && !kanchoEv.ramen && gold >= 950) {
+              Choice.start('（……館長の 分も、買っておく？）', ['お土産に もう一杯 買う（950円）', '自分の 分だけに する'], function (pick) {
+                kanchoEv.ramen = true;
+                if (pick === 0) {
+                  gold -= 950; kanchoLove++;
+                  Dialog.start([{ name: 'オダ', text: '（お土産ラーメン、確保。のびない うちに 渡せると いいけど）' }], function () { saveGame(); });
+                } else saveGame();
+              });
+            } else saveGame();
+          });
+        }
+        else Dialog.start([{ name: 'オダ', text: '（一杯 950円…。いまは 持ち合わせが 足りない。もののけ退治で 稼いでこよう）' }]);
       }
       else if (id === 'cityhall') {
         var chBack = (function () { var hx = player.x, hy = player.y; return function () { startTransition(function () { setScene(makeField(mapKey, { x: hx, y: hy }, null)); }); }; })();
@@ -1734,11 +1796,15 @@
         } else Dialog.start(DIALOGUE.higane_done);
       }
       else if (id === 'tearoom') {
-        setScene(makeTeaRoom(function () { startTransition(function () { setScene(makeField('zoneC', { col: 17, row: 13 }, null)); }); }));
+        if (gold >= 500) {
+          gold -= 500; saveGame();
+          setScene(makeTeaRoom(function () { startTransition(function () { setScene(makeField('zoneC', { col: 17, row: 13 }, null)); }); }));
+        } else Dialog.start([{ name: 'オダ', text: '（抹茶体験は 500円。……いまは 持ち合わせが 足りない）' }]);
       }
       else if (id && id.indexOf('site_') === 0) {
         var site = siteById(id.slice(5));
         if (site) {
+          visitedSites.add(site.id); saveGame();
           var backX = player.x, backY = player.y;
           setScene(makeSiteVisit(site, function () { startTransition(function () { setScene(makeField(mapKey, { x: backX, y: backY }, null)); }); }));
         }
@@ -1754,7 +1820,55 @@
       else if (id === 'expo2') Dialog.start(DIALOGUE.expo2_talk);
       else if (id === 'expo3') { unlockZukan('moricoro'); Dialog.start(DIALOGUE.expo3_talk); }
       else if (id === 'ike') Dialog.start(DIALOGUE.ike_idle);
-      else if (id === 'mound') { unlockZukan('shonyu'); unlockMeikan('tsuneoki'); Dialog.start(DIALOGUE.mound, function () { ch1Seen.mound = true; checkCh1Done(); }); }
+      else if (id === 'mound') {
+        unlockZukan('shonyu'); unlockMeikan('tsuneoki');
+        if (chapter === 'post' && mapKey === 'zoneA') {
+          // ポストゲーム: 勝入塚に祈ると仲間が再集結し、大ボスに挑める
+          Choice.start('勝入塚に 祈りを 捧げますか？', ['祈る', 'やめておく'], function (pick) {
+            if (pick !== 0) return;
+            Dialog.start(DIALOGUE.post_pray, function () {
+              var withKancho = (difficulty === 'hard' && kanchoBond);
+              partyMembers.length = 0;
+              partyMembers.push({ id: 'ike', name: 'いけ', kind: 'ike', maxhp: 34, atkLo: 9, atkHi: 14, aDef: 2 });
+              partyMembers.push({ id: 'michi', name: 'みち', kind: 'michi', maxhp: 36, atkLo: 8, atkHi: 12, aDef: 2 });
+              function proceedBoss() {
+                Dialog.start(DIALOGUE.post_boss_intro, function () {
+                  startBattle({
+                    gated: false,
+                    enemy: {
+                      name: difficulty === 'hard' ? '真・はぐれ大もののけ' : 'はぐれ大もののけ',
+                      hp: difficulty === 'hard' ? 110 : 80, kind: 'enemy',
+                      atkLo: difficulty === 'hard' ? 9 : 6, atkHi: difficulty === 'hard' ? 15 : 11,
+                      atkLabel: '大もののけの 一撃',
+                      appearMsg: '無念の 群れが、ひとつに 束なった！',
+                      winMsg: '大もののけは、光の 粒に なって ほどけていった。',
+                    },
+                    onWin: function () {
+                      partyMembers.length = 0;
+                      gold += 5000; saveGame();
+                      Dialog.start(DIALOGUE.post_win);
+                      startTransition(function () { setScene(makeField('zoneA', { col: 33, row: 12 }, null)); });
+                    },
+                    onLose: function () { partyMembers.length = 0; startTransition(function () { setScene(makeField('zoneA', { col: 33, row: 12 }, null)); }); },
+                  });
+                });
+              }
+              function maybeKancho() {
+                if (withKancho) {
+                  partyMembers.push({ id: 'kancho', name: '館長', kind: 'kancho', maxhp: 30, atkLo: 6, atkHi: 10, aDef: 1 });
+                  Dialog.start(DIALOGUE.post_kancho_join, function () { proceedBoss(); });
+                } else proceedBoss();
+              }
+              if (Hero.items.indexOf('kanehira') < 0 && Hero.weapon !== 'kanehira') {
+                Hero.items.push('kanehira');
+                Dialog.start(DIALOGUE.post_kanehira, function () { saveGame(); maybeKancho(); });
+              } else maybeKancho();
+            });
+          });
+          return;
+        }
+        Dialog.start(DIALOGUE.mound, function () { ch1Seen.mound = true; checkCh1Done(); });
+      }
       else if (id === 'michi') {
         if (!tutorialDone) {
           Dialog.start(DIALOGUE.ch1_michi, function () { unlockMeikan('michi'); startTransition(function () { startBattle({ gated: true }); }); });
@@ -2002,12 +2116,22 @@
         sceneActors.push(kan);
         walkTo(kan, player.x + TILE, player.y - TILE, 100, function () {
           Dialog.start(DIALOGUE.epi_kancho, function () {
+            // 好感度2以上で絆イベント（ハードの仲間加入条件）
+            function afterBond() { proceedEpi(); }
+            if (kanchoLove >= 2 && !kanchoBond) {
+              kanchoBond = true;
+              Dialog.start(DIALOGUE.epi_bond, function () { afterBond(); });
+              return;
+            }
+            afterBond();
+            function proceedEpi() {
             var k2 = findActor('kancho');
             if (k2) walkTo(k2, 25.5 * TILE, 8 * TILE, 110, function () { var k3 = findActor('kancho'); if (k3) k3.fading = true; });
             stageP3 = 9; saveGame();
             var dc = findActor('dancer2');
             if (dc) { dc.x = 19.5 * TILE; dc.y = 15 * TILE + TILE / 2; dc.dancing = true; }
             else sceneActors.push({ x: 19.5 * TILE, y: 15 * TILE + TILE / 2, kind: 'odoriko', facing: 'down', alpha: 1, dancing: true, id: 'dancer2' });
+            }
           });
         });
       }
@@ -2019,6 +2143,22 @@
       enter: function () {
         activeField = this;
         if (mapKey === 'field' || mapKey === 'zoneA') unlockZukan('kosenjo');
+        if (mapKey === 'zoneB' && chapter === 'main2' && stageP3 === 1 && !kanchoEv.b) {
+          kanchoEv.b = true; saveGame();
+          var kb = { x: 26 * TILE, y: 16 * TILE, kind: 'kancho', facing: 'up', id: 'kancho_b' };
+          sceneActors.push(kb);
+          walkTo(kb, 20 * TILE, 2 * TILE, 130, function () { var kb2 = findActor('kancho_b'); if (kb2) kb2.fading = true; });
+          Dialog.start([{ name: '', text: '——交差点の 向こうに、見覚えのある 後ろ姿。……館長！？' }], function () {
+            Choice.start('（どうする？）', ['追いかける', '気のせいかな…'], function (pick) {
+              if (pick === 0) {
+                kanchoLove++; saveGame();
+                Dialog.start([{ name: 'オダ', text: '館長ーー！！ ……あれ。角を 曲がったら、もう 誰も いない。（すれ違って しまったらしい）' }]);
+              } else {
+                Dialog.start([{ name: 'オダ', text: '（帰ったはずだし……きっと 気のせいだ。取材、取材。）' }]);
+              }
+            });
+          });
+        }
         if (mapKey === 'zoneA') {
           if (chapter === 'pro') {
             sceneActors.push({ x: 19.5 * TILE, y: 15 * TILE + TILE / 2, kind: 'odoriko', facing: 'down', alpha: 1, dancing: true, id: 'dancer' });
@@ -2035,7 +2175,14 @@
           }
           // chapter === 'post' はクリア後の自由散策（イベントなし）
         } else if (mapKey === 'museum' && chapter === 'ch3' && !ch3rusu) {
-          Dialog.start(DIALOGUE.ch3_rusu, function () { ch3rusu = true; saveGame(); });
+          Dialog.start(DIALOGUE.ch3_rusu, function () {
+            Choice.start('（館長、どこに……）', ['心配だ。もう少し 探してみよう', 'さては、帰ったな…'], function (pick) {
+              if (pick === 0) {
+                kanchoLove++;
+                Dialog.start([{ name: 'オダ', text: '（事務室の 電気は 消えてる。……戸締まりの 途中じゃないと いいけど。もう一周だけ、見ておこう）' }], function () { ch3rusu = true; saveGame(); });
+              } else { ch3rusu = true; saveGame(); }
+            });
+          });
         } else if ((mapKey === 'bunka1' || mapKey === 'bunka2' || mapKey === 'mori') && !enteredFlavor.has(mapKey)) {
           enteredFlavor.add(mapKey);
           Dialog.start(mapKey === 'bunka1' ? DIALOGUE.bunka_galleria : (mapKey === 'bunka2' ? DIALOGUE.bunka_2f : DIALOGUE.bunka_mori));
@@ -2049,6 +2196,7 @@
         var camU = camPos();
         spawnFieldParts(map.tileset, camU.x, camU.y);
         if (anim) { anim(dt); return; }
+        if (Choice.active) { Choice.update(dt); return; }
         // 一章冒頭: 踊り子が資料を渡し、オダのセリフに入ったらすっと消えていく
         if (mapKey === 'zoneA' && chapter === 'ch1' && Dialog.active && Dialog.lines[Dialog.i] && Dialog.lines[Dialog.i].name === 'オダ') {
           for (var fk = 0; fk < sceneActors.length; fk++) { if (sceneActors[fk].kind === 'odoriko' && !sceneActors[fk].fading) sceneActors[fk].fading = true; }
@@ -2237,7 +2385,14 @@
           drawActor(c, player.x, player.y, player.kind, player.facing, 1, player.moving);
           c.restore();
         }
+        // 操作ヒント（誰でもメニューにたどり着けるように常時表示）
+        if (!Dialog.active && !Choice.active && !darkFx) {
+          c.fillStyle = 'rgba(6,10,24,0.6)'; roundRect(c, W - 190, 8, 182, 24, 8); c.fill();
+          c.fillStyle = '#cdd9ff'; c.font = '11px "Hiragino Sans",sans-serif'; c.textAlign = 'left';
+          c.fillText('Ｚ：しらべる　Ｘ／Ｂ：メニュー', W - 180, 24);
+        }
         drawVignette(c); if (Dialog.active) Dialog.render(c);
+        if (Choice.active) Choice.render(c);
       },
     };
   }
@@ -2333,10 +2488,10 @@
     function winSequence() {
       if (gated) { tutorialDone = true; storyStage = 1; }
       const reward = rnd(5, 8);
-      const goldGain = rnd(4, 9);
+      const goldGain = rnd(80, 150);
       Hero.exp += reward;
       gold += goldGain;
-      const seq = [enemy.winMsg, '経験値を ' + reward + '、' + goldGain + 'りょうを 手に入れた！'];
+      const seq = [enemy.winMsg, '経験値を ' + reward + '、' + goldGain + '円を 手に入れた！'];
       while (Hero.exp >= expToNext(Hero.lv)) {
         Hero.exp -= expToNext(Hero.lv);
         const before = miyaLvFromLv(Hero.lv);
@@ -2544,16 +2699,18 @@
       c.fillText('オダ　Lv' + player.lv + '　HP ' + player.hp + '/' + player.maxhp, 22, 296);
       drawHPBar(c, 22, 304, 170, player.hp, player.maxhp, '#37b24d');
     } else {
-      // パーティ: 左下に縦積み（y=240 から 28px 間隔）
+      // パーティ: 左下に縦積み（人数に応じて詰める・最大4人）
+      const slotH = allies.length >= 4 ? 25 : 28;
+      const slotY0 = allies.length >= 4 ? 228 : 240;
       for (let ai = 0; ai < allies.length; ai++) {
         const a = allies[ai];
-        const ay = 240 + ai * 28;
+        const ay = slotY0 + ai * slotH;
         const isTurn = (mode === 'menu' && ai === turnIdx);
         c.fillStyle = a.hp <= 0 ? '#6b7280' : (isTurn ? '#ffd43b' : '#cdd9ff');
         c.font = (isTurn ? 'bold ' : '') + '13px "Hiragino Sans",sans-serif';
         const lvTxt = a.isOda ? ' Lv' + a.lv : '';
         c.fillText((isTurn ? '▶' : '　') + a.name + lvTxt + '　' + a.hp + '/' + a.maxhp, 22, ay + 10);
-        drawHPBar(c, 22, ay + 14, 150, a.hp, a.maxhp, a.hp <= 0 ? '#495057' : '#37b24d');
+        drawHPBar(c, 22, ay + 13, allies.length >= 4 ? 132 : 150, a.hp, a.maxhp, a.hp <= 0 ? '#495057' : '#37b24d');
       }
     }
     if (mode === 'menu') {
@@ -2935,7 +3092,7 @@
         if (phase === 'result') {
           doneT += dt;
           if (doneT > 1.6 || Input.pressed('confirm')) {
-            var reward = mgDone.drum ? 10 : (hits >= 13 ? 40 : 25);
+            var reward = mgDone.drum ? 100 : (hits >= 13 ? 400 : 250);
             mgDone.drum = true; gold += reward; saveGame();
             onReturn();
           }
@@ -3014,7 +3171,7 @@
         if (phase === 'result') {
           doneT += dt;
           if (doneT > 1.6 || Input.pressed('confirm')) {
-            var reward = (mgDone.shateki ? 5 : 15) + hits * 8;
+            var reward = (mgDone.shateki ? 50 : 150) + hits * 80;
             mgDone.shateki = true; gold += reward; saveGame();
             onReturn();
           }
@@ -3094,7 +3251,7 @@
         if (mode === 'result') {
           doneT += dt;
           if (doneT > 1.6 || Input.pressed('confirm')) {
-            var reward = mgDone.lib ? 15 : 100;
+            var reward = mgDone.lib ? 100 : 500;
             mgDone.lib = true; gold += reward; saveGame();
             onReturn();
           }
@@ -3207,7 +3364,7 @@
         if (phase === 'result') {
           doneT += dt;
           if (doneT > 1.6 || Input.pressed('confirm')) {
-            var reward = (score >= QUIZ.length && !mgDone.kentei) ? 150 : score * 15;
+            var reward = (score >= QUIZ.length && !mgDone.kentei) ? 1000 : score * 100;
             if (score >= QUIZ.length) mgDone.kentei = true;
             gold += reward; saveGame();
             onReturn();
@@ -3735,7 +3892,7 @@
         '武器　　' + ITEMS[Hero.weapon].name,
         '防具　　' + ITEMS[Hero.armor].name,
         '難易度　　' + DIFF[difficulty].label,
-        '所持金　　' + gold + ' りょう',
+        '所持金　　' + gold + ' 円',
         'どうぐ　　おにぎり×' + bag.onigiri + '　長久手茶×' + bag.cha + '　兵糧丸×' + bag.hyorogan,
       ];
       let y = cy + 32;
@@ -3822,7 +3979,7 @@
         c.fillStyle = '#5a4a55'; c.font = '13px "Hiragino Sans",sans-serif';
         c.fillText('冒険のおとも、そろってます', W / 2, 78);
         c.fillStyle = '#3a2a35'; c.font = 'bold 15px "Hiragino Sans",sans-serif';
-        c.fillText('所持金　' + gold + ' りょう', W / 2, 104);
+        c.fillText('所持金　' + gold + ' 円', W / 2, 104);
         let y = 136;
         for (let i = 0; i < keys.length; i++) {
           const gd = GOODS[keys[i]], sel = i === cur;
@@ -3831,7 +3988,7 @@
           if (sel) { c.strokeStyle = '#d9539a'; c.lineWidth = 2; roundRect(c, 48, y, W - 96, 56, 10); c.stroke(); c.lineWidth = 1; }
           c.textAlign = 'left';
           c.fillStyle = sel ? '#b03578' : '#3a2a35'; c.font = 'bold 17px "Hiragino Sans",sans-serif';
-          c.fillText((sel ? '▶ ' : '　 ') + gd.name + '　' + gd.price + 'りょう', 62, y + 24);
+          c.fillText((sel ? '▶ ' : '　 ') + gd.name + '　' + gd.price + '円', 62, y + 24);
           c.fillStyle = '#7a6a75'; c.font = '12px "Hiragino Sans",sans-serif';
           c.fillText(gd.desc + '（所持 ' + bag[keys[i]] + '）', 78, y + 44);
           c.textAlign = 'center';
@@ -3983,6 +4140,205 @@
     };
   }
 
+  // ===================== 現地写真（IndexedDB・カメラ・GPS認証） =====================
+  // 写真はこの端末のブラウザ内（IndexedDB）にのみ保存される。
+  function idbOpen() {
+    return new Promise(function (res, rej) {
+      var r = indexedDB.open('kassenzu', 1);
+      r.onupgradeneeded = function () { r.result.createObjectStore('photos'); };
+      r.onsuccess = function () { res(r.result); };
+      r.onerror = function () { rej(r.error); };
+    });
+  }
+  function idbSet(key, val) {
+    return idbOpen().then(function (db) {
+      return new Promise(function (res, rej) {
+        var tx = db.transaction('photos', 'readwrite');
+        tx.objectStore('photos').put(val, key);
+        tx.oncomplete = function () { res(); };
+        tx.onerror = function () { rej(tx.error); };
+      });
+    });
+  }
+  function idbGet(key) {
+    return idbOpen().then(function (db) {
+      return new Promise(function (res, rej) {
+        var tx = db.transaction('photos', 'readonly');
+        var rq = tx.objectStore('photos').get(key);
+        rq.onsuccess = function () { res(rq.result); };
+        rq.onerror = function () { rej(rq.error); };
+      });
+    });
+  }
+  // 実際の史跡のおおよその座標（現地認証: 半径500m）※要現地確認
+  const SITE_GEO = {
+    irogane: { lat: 35.1861, lng: 137.0580 },
+    mihata: { lat: 35.1739, lng: 137.0532 },
+    chinoike: { lat: 35.1802, lng: 137.0450 },
+    musashi: { lat: 35.1757, lng: 137.0563 },
+    ansho: { lat: 35.1830, lng: 137.0511 },
+  };
+  function geoDistM(lat1, lng1, lat2, lng2) {
+    var kx = 111320 * Math.cos(lat1 * Math.PI / 180), ky = 110574;
+    var dx = (lng2 - lng1) * kx, dy = (lat2 - lat1) * ky;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+  function photoMeta() {
+    try { return JSON.parse(localStorage.getItem('kassenzu_photo_meta') || '{}'); } catch (e) { return {}; }
+  }
+  function setPhotoMeta(id, cert) {
+    try {
+      var m = photoMeta(); m[id] = { cert: !!cert };
+      localStorage.setItem('kassenzu_photo_meta', JSON.stringify(m));
+    } catch (e) {}
+  }
+  // カメラ/フォトライブラリ入力（モバイルではカメラが起動する）
+  var photoInput = null;
+  function ensurePhotoInput() {
+    if (photoInput) return photoInput;
+    photoInput = document.createElement('input');
+    photoInput.type = 'file';
+    photoInput.accept = 'image/*';
+    photoInput.setAttribute('capture', 'environment');
+    photoInput.style.display = 'none';
+    document.body.appendChild(photoInput);
+    return photoInput;
+  }
+  function capturePhoto(siteId, onDone) {
+    var inp = ensurePhotoInput();
+    inp.onchange = function () {
+      var f = inp.files && inp.files[0];
+      inp.value = '';
+      if (!f) { onDone(false, 'キャンセルされた'); return; }
+      var fr = new FileReader();
+      fr.onload = function () {
+        var img = new Image();
+        img.onload = function () {
+          // 長辺900pxに縮小して保存（容量対策）
+          var maxL = 900, sc = Math.min(1, maxL / Math.max(img.width, img.height));
+          var cv = document.createElement('canvas');
+          cv.width = Math.round(img.width * sc); cv.height = Math.round(img.height * sc);
+          cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+          var dataUrl = cv.toDataURL('image/jpeg', 0.72);
+          // GPSで現地認証（取れなくても保存はする）
+          var saved = function (cert) {
+            idbSet('photo_' + siteId, dataUrl).then(function () {
+              setPhotoMeta(siteId, cert);
+              onDone(true, cert ? '現地認証つきで 保存した！' : '保存した！（現地認証なし）');
+            }).catch(function () { onDone(false, '保存に 失敗した…'); });
+          };
+          var geo = SITE_GEO[siteId];
+          if (geo && navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(function (pos) {
+              var d = geoDistM(pos.coords.latitude, pos.coords.longitude, geo.lat, geo.lng);
+              saved(d <= 500);
+            }, function () { saved(false); }, { timeout: 6000, maximumAge: 60000 });
+          } else saved(false);
+        };
+        img.src = fr.result;
+      };
+      fr.readAsDataURL(f);
+    };
+    inp.click();
+  }
+
+  // ===================== 史跡カード（イラスト/現地写真・カメラ・訪問） =====================
+  function makeSiteCard(site, onReturn) {
+    var cur = 0, msg = '', msgT = 0;
+    var photoImg = null, cert = false;
+    var meta = photoMeta()[site.id];
+    if (meta) cert = !!meta.cert;
+    idbGet('photo_' + site.id).then(function (dataUrl) {
+      if (dataUrl) { var im = new Image(); im.onload = function () { photoImg = im; }; im.src = dataUrl; }
+    }).catch(function () {});
+    var zk = null;
+    for (var zi = 0; zi < ZUKAN.length; zi++) if (ZUKAN[zi].id === site.id) zk = ZUKAN[zi];
+    var MENU = ['おとずれる（学び・クイズ・戦い）', 'カメラで さつえい', 'もどる'];
+    return {
+      enter: function () {},
+      update: function (dt) {
+        if (msgT > 0) msgT -= dt;
+        if (Input.pressed('cancel')) { onReturn(); return; }
+        if (Input.pressed('up')) cur = (cur + MENU.length - 1) % MENU.length;
+        if (Input.pressed('down')) cur = (cur + 1) % MENU.length;
+        if (Input.pressed('confirm')) {
+          if (cur === 0) {
+            setScene(makeSiteVisit(site, function () { startTransition(function () { setScene(makeSiteCard(site, onReturn)); }); }));
+          } else if (cur === 1) {
+            msg = 'カメラを 起動中…'; msgT = 2;
+            capturePhoto(site.id, function (ok, m) {
+              msg = m; msgT = 2.5;
+              if (ok) {
+                var meta2 = photoMeta()[site.id];
+                cert = !!(meta2 && meta2.cert);
+                idbGet('photo_' + site.id).then(function (dataUrl) {
+                  if (dataUrl) { var im2 = new Image(); im2.onload = function () { photoImg = im2; }; im2.src = dataUrl; }
+                });
+              }
+            });
+          } else onReturn();
+        }
+      },
+      render: function (c) {
+        var g = c.createLinearGradient(0, 0, 0, H);
+        g.addColorStop(0, '#26425e'); g.addColorStop(1, '#0c1424');
+        c.fillStyle = g; c.fillRect(0, 0, W, H);
+        // 画像エリア
+        var ix = 46, iy = 16, iw = W - 92, ih = 196;
+        c.fillStyle = '#0a1020'; roundRect(c, ix - 3, iy - 3, iw + 6, ih + 6, 10); c.fill();
+        c.save();
+        roundRect(c, ix, iy, iw, ih, 8); c.clip();
+        if (photoImg) {
+          // cover フィット
+          var sc2 = Math.max(iw / photoImg.width, ih / photoImg.height);
+          var dw = photoImg.width * sc2, dh = photoImg.height * sc2;
+          c.drawImage(photoImg, ix + (iw - dw) / 2, iy + (ih - dh) / 2, dw, dh);
+        } else {
+          // 仮イラスト（差し替えポイント: 現地写真で上書きされる）
+          var sg = c.createLinearGradient(0, iy, 0, iy + ih);
+          sg.addColorStop(0, '#a8cbe0'); sg.addColorStop(0.55, '#cfe3d8'); sg.addColorStop(1, '#7fae6a');
+          c.fillStyle = sg; c.fillRect(ix, iy, iw, ih);
+          c.fillStyle = '#8fae8a'; c.beginPath(); c.moveTo(ix, iy + ih); c.lineTo(ix + iw * 0.3, iy + 60); c.lineTo(ix + iw * 0.55, iy + ih); c.closePath(); c.fill();
+          c.fillStyle = '#7c9f78'; c.beginPath(); c.moveTo(ix + iw * 0.4, iy + ih); c.lineTo(ix + iw * 0.72, iy + 40); c.lineTo(ix + iw, iy + ih); c.closePath(); c.fill();
+          c.fillStyle = 'rgba(20,16,10,0.7)'; roundRect(c, ix + iw / 2 - 90, iy + 20, 180, 40, 8); c.fill();
+          c.textAlign = 'center';
+          c.fillStyle = '#ffd43b'; c.font = 'bold 18px "Hiragino Mincho ProN",serif';
+          c.fillText(site.name, ix + iw / 2, iy + 46);
+          c.fillStyle = 'rgba(255,255,255,0.75)'; c.font = '11px "Hiragino Sans",sans-serif';
+          c.fillText('（イラスト｜現地で 撮影すると 写真に 差し替わる）', ix + iw / 2, iy + ih - 14);
+        }
+        c.restore();
+        c.textAlign = 'left';
+        if (photoImg && cert) {
+          c.fillStyle = 'rgba(47,158,68,0.92)'; roundRect(c, ix + 8, iy + 8, 96, 24, 12); c.fill();
+          c.fillStyle = '#fff'; c.font = 'bold 12px "Hiragino Sans",sans-serif';
+          c.fillText('✓ 現地認証', ix + 18, iy + 25);
+        }
+        c.textAlign = 'center';
+        c.fillStyle = '#ffd43b'; c.font = 'bold 20px "Hiragino Mincho ProN",serif';
+        c.fillText(site.name + '（' + site.sub + '）', W / 2, iy + ih + 32);
+        if (zk) {
+          c.fillStyle = '#cdd9ff'; c.font = '13px "Hiragino Sans",sans-serif'; c.textAlign = 'left';
+          var dl = wrapText(c, zk.desc, W - 120);
+          var dy2 = iy + ih + 54;
+          for (var i3 = 0; i3 < dl.length && i3 < 3; i3++) { c.fillText(dl[i3], 60, dy2); dy2 += 19; }
+          c.textAlign = 'center';
+        }
+        var my = 336;
+        for (var mi2 = 0; mi2 < MENU.length; mi2++) {
+          var sel3 = mi2 === cur;
+          c.fillStyle = sel3 ? '#ffd43b' : '#9fb0cc';
+          c.font = (sel3 ? 'bold ' : '') + '16px "Hiragino Sans",sans-serif';
+          c.fillText((sel3 ? '▶ ' : '') + MENU[mi2], W / 2, my);
+          my += 30;
+        }
+        if (msgT > 0) { c.fillStyle = 'rgba(195,232,141,' + Math.min(1, msgT) + ')'; c.font = 'bold 14px "Hiragino Sans",sans-serif'; c.fillText(msg, W / 2, H - 14); }
+        drawVignette(c);
+        c.textAlign = 'left';
+      },
+    };
+  }
+
   // ===================== 史跡めぐり（サイドクエスト：学び→クイズ→戦闘） =====================
   // 長久手の実在する史跡をめぐり、小エピソードで学び、歴史クイズに答え、もののけと戦う。
   // 勝つと史跡図鑑が解放される。シティプロモーション＆学習の中心機能。
@@ -4011,8 +4367,20 @@
         if (Input.pressed('down')) cur = (cur + 1) % n;
         if (Input.pressed('cancel')) { setScene(makeTitle()); return; }
         if (Input.pressed('confirm')) {
-          if (cur < SITES.length) { setScene(makeSiteVisit(SITES[cur])); return; }
-          if (teaAvail && cur === SITES.length) { setScene(makeTeaRoom(function () { setScene(makeSiteTour()); })); return; }
+          if (cur < SITES.length) {
+            var stSel = SITES[cur];
+            if (!visitedSites.has(stSel.id)) {
+              Dialog.start([{ name: '', text: '？？？？？——本編で 現地を 訪ねると、ここに 記録される。' }]);
+              return;
+            }
+            setScene(makeSiteCard(stSel, function () { setScene(makeSiteTour()); }));
+            return;
+          }
+          if (teaAvail && cur === SITES.length) {
+            if (gold >= 500) { gold -= 500; saveGame(); setScene(makeTeaRoom(function () { setScene(makeSiteTour()); })); }
+            else Dialog.start([{ name: 'オダ', text: '（抹茶体験は 500円。……いまは 持ち合わせが 足りない）' }]);
+            return;
+          }
           setScene(makeTitle());
         }
       },
@@ -4036,17 +4404,18 @@
     let y = teaAvail ? 122 : 132;
     for (let i = 0; i < SITES.length; i++) {
       const s = SITES[i], done = tourCleared.has(s.id), sel = i === cur;
+      const known = visitedSites.has(s.id);
       const bx = 40, bw = W - 80, bh = rowBh;
       c.fillStyle = sel ? 'rgba(255,212,59,0.16)' : 'rgba(255,255,255,0.05)';
       roundRect(c, bx, y, bw, bh, 8); c.fill();
       if (sel) { c.strokeStyle = '#ffd43b'; c.lineWidth = 2; roundRect(c, bx, y, bw, bh, 8); c.stroke(); c.lineWidth = 1; }
-      c.fillStyle = done ? '#37b24d' : (sel ? '#ffd43b' : '#cdd9ff');
+      c.fillStyle = !known ? '#55607a' : (done ? '#37b24d' : (sel ? '#ffd43b' : '#cdd9ff'));
       c.font = 'bold 18px "Hiragino Sans",sans-serif';
-      c.fillText((sel ? '▶ ' : '　 ') + s.name, bx + 14, y + 24);
+      c.fillText((sel ? '▶ ' : '　 ') + (known ? s.name : '？？？？？'), bx + 14, y + 24);
       c.fillStyle = '#9aa7c0'; c.font = '12px "Hiragino Sans",sans-serif';
-      c.fillText(s.sub, bx + bw - 120, y + 15);
-      c.fillStyle = done ? '#37b24d' : '#6b7894'; c.font = '13px "Hiragino Sans",sans-serif';
-      c.fillText(done ? '踏破ずみ ✓' : '未踏破', bx + bw - 120, y + 30);
+      c.fillText(known ? s.sub : '？？？', bx + bw - 120, y + 15);
+      c.fillStyle = !known ? '#55607a' : (done ? '#37b24d' : '#6b7894'); c.font = '13px "Hiragino Sans",sans-serif';
+      c.fillText(!known ? '未発見' : (done ? '踏破ずみ ✓' : '未踏破'), bx + bw - 120, y + 30);
       y += rowH;
     }
     if (teaAvail) {
@@ -4087,7 +4456,7 @@
           if (Input.pressed('cancel')) { back(); return; }
           if (Input.pressed('up')) qcur = (qcur + ch.length - 1) % ch.length;
           if (Input.pressed('down')) qcur = (qcur + 1) % ch.length;
-          if (Input.pressed('confirm')) { answered = true; correct = (qcur === site.quiz.answer); if (correct) gold += 5; }
+          if (Input.pressed('confirm')) { answered = true; correct = (qcur === site.quiz.answer); if (correct) gold += 50; }
         } else {
           if (Input.pressed('confirm')) {
             // 学び → クイズ → もののけ戦。勝つと踏破
