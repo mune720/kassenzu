@@ -507,38 +507,41 @@
     'TTTTTTTTTTTTTTTT',
   ];
   // ゾーンA: 長久手古戦場公園（40x28・カメラスクロール）
+  // 実際の地理に寄せた配置: 公園の西に県道57号（縦の大通り）、その西にイオン。
+  // 北辺にグリーンロード（横の大通り）とリニモ古戦場駅（北東）。
   // W/^=記念館外観, D=記念館入口, M=勝入塚, N=庄九郎塚, R=岩, b=茂み, P=セーブ篝火
   const ZONEA = [
     'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT..TTTT',
-    'T......................................T',
-    'T...................^^^^^^^^^^^^^......T',
-    'T...................^^^^^^^^^^^^^......T',
-    'T...................WWWWWWWWWWWWW......T',
-    'T...................WWWWWWWWWWWWW......T',
-    'T...................WWWWWDDWWWWWW......T',
-    'T........................,,............T',
-    'T........................,,............T',
-    'T..bbb...................,,............T',
-    'T..bbb...................,,.......M....T',
-    'T..bbb..R................,,............T',
-    'T........................,,....N.......T',
-    '.......................................T',
-    '.......................................T',
-    'T......................................T',
-    'T..................................~~~.T',
-    'T..................................~~~.T',
-    'T......................................T',
-    'T...........................P..........T',
-    'TIII...................................T',
-    'TI4I................................eeeT',
-    'T......................................T',
-    'T......................................T',
-    'T..................@...................T',
-    'T....T....T.............T....T.........T',
-    'T......................................T',
+    'T....rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrT',
+    'T....rrr............^^^^^^^^^^^^^..eee.T',
+    'TIII.rrr............^^^^^^^^^^^^^......T',
+    'TII4.rrr............WWWWWWWWWWWWW......T',
+    'TIII.rrr............WWWWWWWWWWWWW......T',
+    'T....rrr............WWWWWDDWWWWWW......T',
+    'T....rrr.................,,............T',
+    'T....rrr.................,,............T',
+    'T....rrr.bbb.............,,............T',
+    'T....rrr.bbb.............,,.......M....T',
+    'T....rrr.bbb.R...........,,............T',
+    'T....rrr.................,,....N.......T',
+    'rrrrrrrr...............................T',
+    'rrrrrrrr...............................T',
+    'T....rrr...............................T',
+    'T....rrr...........................~~~.T',
+    'T....rrr...........................~~~.T',
+    'T....rrr...............................T',
+    'T....rrr....................P..........T',
+    'T....rrr...............................T',
+    'T....rrr...............................T',
+    'T....rrr...............................T',
+    'T....rrr...............................T',
+    'T....rrr...........@...................T',
+    'T....rrr..T..............T....T........T',
+    'T....rrr...............................T',
     'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
   ];
-  // ゾーンB: 市街地（グリーンロード・砂子交差点・一蘭・桧ヶ根公園）
+  // ゾーンB: 市街地（グリーンロード・砂子交差点・一蘭・桧ヶ根公園・御旗山）
+  // 御旗山は実際には古戦場公園の南西 → 南東エリア（N）に配置
   const ZONEB = [
     'TTTTTTTTTTTTTTTTTTT..TTTTTTTTTTTTTTTTTTT',
     'T..................rrr.................T',
@@ -560,7 +563,7 @@
     'T..................rrr.................T',
     'T..................rrr.................T',
     'T...bTb............rrr.................T',
-    'T...b.b............rrr.................T',
+    'T...b.b............rrr........N........T',
     'T...b.a.b..........rrr.................T',
     'T...b.b............rrr.................T',
     'T...bbb............rrr.................T',
@@ -569,7 +572,8 @@
     'T..................rrr.................T',
     'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
   ];
-  // ゾーンC: 岩作・色金山（色金山＋床机石・茶室・市役所・こども塾・血の池・安昌寺・武蔵塚・御旗山）
+  // ゾーンC: 岩作・色金山（色金山＋床机石・茶室・市役所・こども塾・血の池・安昌寺・武蔵塚）
+  // 安昌寺は実際には色金山のすぐ西 → 山の西隣（J＋o）に配置。御旗山はゾーンBへ移設
   const ZONEC = [
     'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
     'T......................................T',
@@ -579,10 +583,10 @@
     'T...........TTTTTT..,..TTTTTT..........T',
     'T...........TTTTTT..,..TTTTTT..........T',
     'T...........TTTTTT..,..TTTTTT..........T',
-    'T..................,,..................T',
-    'T..................,,...x..............T',
-    'T..............JJJJJ,..................T',
-    'T..............JJJJJ,..................T',
+    'T...JJJJJ..........,,..................T',
+    'T...JJJJJ..........,,...x..............T',
+    'T...JJJJJ......JJJJJ,..................T',
+    'T.....o........JJJJJ,..................T',
     'T..............JJ1JJ,....WWWWWW........T',
     '....................,....WWWWWW........T',
     '....................,....WWWWWW........T',
@@ -592,10 +596,10 @@
     'T.......~~~~~.......,...........KKKKK..T',
     'T.......~~~~~.......,...........KKKKK..T',
     'T.......a...........,...........KK3KK..T',
-    'T..JJJJJ............,...M..............T',
-    'T..JJJJJ............,..................T',
-    'T..JJJJJ............,..........N.......T',
-    'T....o..............,..................T',
+    'T...................,...M..............T',
+    'T...................,..................T',
+    'T...................,..................T',
+    'T...................,..................T',
     'T...................,..................T',
     'T......................................T',
     'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT..TTTT',
@@ -741,9 +745,9 @@
     },
     zoneB: {
       rows: ZONEB, kind: 'outdoor', tileset: 'outdoor', playerFloor: '.',
-      solid: ['T', 'b', 'Y', '1'],
+      solid: ['T', 'b', 'Y', '1', 'N'],
       npcs: {},
-      acts: { 1: 'ramen', a: 'higane' },
+      acts: { 1: 'ramen', a: 'higane', N: 'site_mihata' },
       edges: { east: 'zoneA', north: 'zoneD' },
       encounter: null,
     },
@@ -751,7 +755,7 @@
       rows: ZONEC, kind: 'outdoor', tileset: 'outdoor', playerFloor: '.',
       solid: ['T', '~', 'M', 'N', 'R', 'J', 'W', 'K', '1', '2', '3', 'x'],
       npcs: {},
-      acts: { R: 'site_irogane', 1: 'tearoom', 2: 'cityhall', 3: 'kodomo', a: 'site_chinoike', o: 'site_ansho', M: 'site_musashi', N: 'site_mihata', x: 'shateki' },
+      acts: { R: 'site_irogane', 1: 'tearoom', 2: 'cityhall', 3: 'kodomo', a: 'site_chinoike', o: 'site_ansho', M: 'site_musashi', x: 'shateki' },
       edges: { south: 'zoneA', west: 'zoneD' },
       encounter: null,
     },
@@ -1730,7 +1734,9 @@
         startTransition(function () { setScene(makeField('zoneA', { col: 25, row: 7 }, null)); });
       }
       else if (id === 'aeon') {
-        Dialog.start(DIALOGUE.aeon_welcome, function () {
+        // いけと出会う前（プロローグ・一章）は、いけに言及しないセリフにする
+        var aeonLines = (chapter === 'pro' || chapter === 'ch1') ? DIALOGUE.aeon_first : DIALOGUE.aeon_welcome;
+        Dialog.start(aeonLines, function () {
           setScene(makeShop(function () { startTransition(function () { setScene(makeField(mapKey, { x: player.x, y: player.y }, null)); }); }));
         });
       }
@@ -1739,7 +1745,7 @@
         stationUsed = true;
         Dialog.start(stLines, function () {
           startTransition(function () {
-            if (mapKey === 'zoneE') setScene(makeField('zoneA', { col: 34, row: 21 }, null));
+            if (mapKey === 'zoneE') setScene(makeField('zoneA', { col: 34, row: 2 }, null));
             else setScene(makeField('zoneE', { col: 6, row: 20 }, null));
           });
         });
@@ -1797,7 +1803,8 @@
       }
       else if (id === 'tearoom') {
         if (gold >= 500) {
-          gold -= 500; saveGame();
+          // 500円はここでは保存しない（ハードで失敗＝ゲームオーバー時に、他ミニゲーム同様セーブ地点まで巻き戻すため。成功時は結果画面の saveGame で確定する）
+          gold -= 500;
           setScene(makeTeaRoom(function () { startTransition(function () { setScene(makeField('zoneC', { col: 17, row: 13 }, null)); }); }));
         } else Dialog.start([{ name: 'オダ', text: '（抹茶体験は 500円。……いまは 持ち合わせが 足りない）' }]);
       }
@@ -1912,7 +1919,7 @@
       if (mapKey !== 'zoneA') return;
       if (ch2step === 0) {
         // いけ、茂みから登場（オダも広場西側へ歩み寄る）
-        var ike = ikeActor(4 * TILE + TILE / 2, 10 * TILE + TILE / 2, 'right');
+        var ike = ikeActor(10 * TILE + TILE / 2, 10 * TILE + TILE / 2, 'right');
         sceneActors.push(ike);
         walkTo(player, 14 * TILE, 12 * TILE + TILE / 2, 132, function () {
         player.facing = 'left';
@@ -1997,7 +2004,7 @@
     function startCh3Michi() {
       hidePlayer = true;
       camFocus = { x: 20 * TILE, y: 13 * TILE };
-      var michi = { x: 4 * TILE + TILE / 2, y: 11 * TILE + TILE / 2, kind: 'michi', facing: 'right', id: 'michi' };
+      var michi = { x: 10 * TILE + TILE / 2, y: 11 * TILE + TILE / 2, kind: 'michi', facing: 'right', id: 'michi' };
       sceneActors.push(michi);
       walkTo(michi, 24 * TILE, 14 * TILE + TILE / 2, 70, function () {
         Dialog.start(DIALOGUE.ch3_michi, function () {
@@ -2089,7 +2096,7 @@
             Dialog.start(DIALOGUE.ch6_mirai, function () {
               var mi = findActor('michi');
               if (mi) {
-                walkTo(mi, 4 * TILE, 11 * TILE, 150, function () {
+                walkTo(mi, 10 * TILE, 11 * TILE, 150, function () {
                   var mi2 = findActor('michi'); if (mi2) mi2.fading = true;
                   stageP3 = 6; saveGame(); runP3();
                 });
@@ -2108,7 +2115,7 @@
         Dialog.start(DIALOGUE.ch6_ochimusha, function () {
           var ik = findActor('ike');
           function proceed() { stageP3 = 8; saveGame(); runP3(); }
-          if (ik) walkTo(ik, 4 * TILE, 10 * TILE, 90, function () { var ik2 = findActor('ike'); if (ik2) ik2.fading = true; proceed(); });
+          if (ik) walkTo(ik, 10 * TILE, 10 * TILE, 90, function () { var ik2 = findActor('ike'); if (ik2) ik2.fading = true; proceed(); });
           else proceed();
         });
       } else if (stageP3 === 8) {
@@ -2301,7 +2308,7 @@
             }
             if (nearW) {
               var waitLines = (nearW.id === 'ike' ? DIALOGUE.ch4_wait_ike : DIALOGUE.ch4_wait_michi)
-                .concat([{ name: '', text: '（現地取材: ' + junbiCount() + ' / 5 史跡を 踏破。色金山・御旗山・血の池・武蔵塚・安昌寺は 北の 岩作エリアに）' }]);
+                .concat([{ name: '', text: '（現地取材: ' + junbiCount() + ' / 5 史跡を 踏破。色金山・血の池・武蔵塚・安昌寺は 北の 岩作エリアに。御旗山は 西の 市街地の 南に）' }]);
               Dialog.start(waitLines);
               return;
             }
@@ -2735,12 +2742,46 @@
   // ===================== ミニゲームA: いずみのかみかねさだ（早口言葉） =====================
   // オダ（プレイヤー）が挑戦。ゲージのマーカーが金色ゾーンにある時にZで一音ずつ言う。
   // 失敗するとオダが噛む（イージー: 何度でも同じ音から / ハード: 3ミスで最初から）
+  // ===================== ゲームオーバー（ハード: ミニゲーム失敗） =====================
+  // ハードモードでは全ミニゲームが「失敗＝ゲームオーバー→タイトルへ」。
+  // 本編必須のミニゲームは直前にオートセーブ済みなので「つづきから」でやり直せる。
+  function makeGameOver(reason) {
+    let t = 0;
+    return {
+      enter: function () {},
+      update: function (dt) {
+        t += dt;
+        if (t > 0.9 && (Input.pressed('confirm') || Input.pressed('cancel'))) setScene(makeTitle(true));
+      },
+      render: function (c) {
+        c.fillStyle = '#000000'; c.fillRect(0, 0, W, H);
+        var a = Math.min(1, t / 0.8);
+        c.textAlign = 'center';
+        c.fillStyle = 'rgba(214,69,55,' + a + ')'; c.font = 'bold 42px "Hiragino Mincho ProN",serif';
+        c.fillText('ゲームオーバー', W / 2, 180);
+        c.fillStyle = 'rgba(206,212,222,' + a + ')'; c.font = '15px "Hiragino Sans",sans-serif';
+        var lines = wrapText(c, reason, W - 120);
+        var y = 232;
+        for (var i = 0; i < lines.length; i++) { c.fillText(lines[i], W / 2, y); y += 24; }
+        c.fillStyle = 'rgba(150,158,170,' + a + ')'; c.font = '12px "Hiragino Sans",sans-serif';
+        c.fillText('【ハード】ミニゲームに 失敗すると ゲームオーバー。セーブから やり直そう。', W / 2, y + 22);
+        if (t > 0.9 && tick % 56 < 34) {
+          c.fillStyle = '#cdd9ff'; c.font = '14px "Hiragino Sans",sans-serif';
+          c.fillText('Z / タップで タイトルへ', W / 2, H - 56);
+        }
+        c.textAlign = 'left';
+      },
+    };
+  }
+
   function makeHayakuchiGame(onDone) {
     const KANA = ['い', 'ず', 'み', 'の', 'か', 'み', 'か', 'ね', 'さ', 'だ'];
     const hard = difficulty === 'hard';
     const zoneW = hard ? 0.13 : 0.24;   // 金色ゾーンの幅（0..1）
     const spd = hard ? 0.085 : 0.055;   // マーカーの速さ
+    const LIMIT = 20;                    // ハード: 制限時間（秒）
     let idx = 0, misses = 0, t = 0, msg = '', msgT = 0, doneT = 0, phase = 'play';
+    let timeLeft = LIMIT;
     return {
       enter: function () {},
       update: function (dt) {
@@ -2749,6 +2790,10 @@
           doneT += dt;
           if (doneT > 1.2 || Input.pressed('confirm')) onDone();
           return;
+        }
+        if (hard) {
+          timeLeft -= dt;
+          if (timeLeft <= 0) { setScene(makeGameOver('時間切れ…！ 「いずみのかみかねさだ」を 言い切れなかった。')); return; }
         }
         if (Input.pressed('confirm')) {
           const pos = (Math.sin(tick * spd) + 1) / 2;
@@ -2773,6 +2818,10 @@
         c.fillText('『い・ず・み・の・か・み・か・ね・さ・だ』', W / 2, 66);
         c.fillStyle = '#adb5bd'; c.font = '13px "Hiragino Sans",sans-serif';
         c.fillText('マーカーが 金色ゾーンに 入った瞬間に Z / タップ！　一音ずつ 言い切ろう', W / 2, 94);
+        if (hard) {
+          c.fillStyle = '#ff8787'; c.font = 'bold 13px "Hiragino Sans",sans-serif';
+          c.fillText('【ハード】制限時間 ' + LIMIT + '秒！ 時間切れで ゲームオーバー', W / 2, 116);
+        }
         // かな表示
         var kw = 40, kx0 = W / 2 - (KANA.length * kw) / 2 + kw / 2;
         for (let i = 0; i < KANA.length; i++) {
@@ -2795,7 +2844,7 @@
         c.strokeStyle = 'rgba(200,220,255,0.4)'; roundRect(c, bx, by, bw, bh, 8); c.stroke();
         // 進捗・メッセージ
         c.fillStyle = '#cdd9ff'; c.font = '14px "Hiragino Sans",sans-serif';
-        c.fillText((idx) + ' / ' + KANA.length + (hard ? '　　ミス ' + misses + '/3' : ''), W / 2, 306);
+        c.fillText((idx) + ' / ' + KANA.length + (hard ? '　　ミス ' + misses + '/3　　のこり ' + Math.max(0, Math.ceil(timeLeft)) + '秒' : ''), W / 2, 306);
         if (msgT > 0) {
           c.fillStyle = 'rgba(255,140,140,' + Math.min(1, msgT) + ')'; c.font = 'bold 15px "Hiragino Sans",sans-serif';
           c.fillText(msg, W / 2, 340);
@@ -2835,7 +2884,8 @@
           emitP(odaX - 10, 300, -40 - Math.random() * 30, -10 - Math.random() * 20, 0.5, 'rgba(220,210,190,0.8)', 2.5, 60);
         }
         if (odaX + 26 >= ikeX) { phase = 'catch'; doneT = 0; }
-        if (ikeX > W - 30) { // 逃げられた → 仕切り直し
+        if (ikeX > W - 30) { // 逃げられた → イージーは仕切り直し / ハードはゲームオーバー
+          if (hard) { setScene(makeGameOver('いけに 逃げられて しまった…。夜の 街に 見失った。')); return; }
           ikeX = 250; odaX = 60; failMsgT = 1.6;
         }
       },
@@ -2856,6 +2906,10 @@
         c.fillText('追いかけろ！！', W / 2, 70);
         c.fillStyle = '#adb5bd'; c.font = '13px "Hiragino Sans",sans-serif';
         c.fillText('Z / タップ 連打で ダッシュ！　いけを 逃がすな！', W / 2, 96);
+        if (hard) {
+          c.fillStyle = '#ff8787'; c.font = 'bold 13px "Hiragino Sans",sans-serif';
+          c.fillText('【ハード】逃げられたら ゲームオーバー！', W / 2, 118);
+        }
         // 二人（横向き走り）
         drawActor(c, ikeX, 300, 'ike', 'right', 1.3, true);
         drawActor(c, odaX, 302, 'oda', 'right', 1.3, true);
@@ -3024,7 +3078,7 @@
             var ike = trail[0] || { x: px, y: py };
             var d1 = Math.hypot(gd.x - px, gd.y - py), d2 = Math.hypot(gd.x - ike.x, gd.y - ike.y);
             if (d1 < R || d2 < R) {
-              if (hard) { resetPos(); msg = '見つかった！ ……スタートから やり直し！'; msgT = 1.6; safeT = 1.2; }
+              if (hard) { setScene(makeGameOver('見回りに 見つかった…！ いけを 森まで 送りとどけられなかった。')); return; }
               else {
                 warnN++;
                 if (warnN >= 3) { resetPos(); warnN = 0; msg = '見つかった！ ……仕切り直し！'; msgT = 1.6; }
@@ -3064,6 +3118,10 @@
         c.fillText('見つからずに、西の 森まで いけを 送りとどけろ', W / 2, 40);
         c.fillStyle = '#adb5bd'; c.font = '12px "Hiragino Sans",sans-serif';
         c.fillText('十字キーで 移動　　灯りの 輪に 入らないように！', W / 2, 62);
+        if (hard && msgT <= 0) {
+          c.fillStyle = '#ff8787'; c.font = 'bold 13px "Hiragino Sans",sans-serif';
+          c.fillText('【ハード】一度でも 見つかったら ゲームオーバー！', W / 2, 84);
+        }
         if (msgT > 0) { c.fillStyle = 'rgba(255,150,140,' + Math.min(1, msgT) + ')'; c.font = 'bold 16px "Hiragino Sans",sans-serif'; c.fillText(msg, W / 2, 86); }
         if (phase === 'clear') {
           c.fillStyle = 'rgba(255,255,255,' + Math.max(0, 0.4 - doneT * 0.3) + ')'; c.fillRect(0, 0, W, H);
@@ -3102,7 +3160,10 @@
         if (ph < lastPhase) {
           judged = false;
           beats++;
-          if (beats > TOTAL) { phase = 'result'; doneT = 0; }
+          if (beats > TOTAL) {
+            if (hard && hits < 9) { setScene(makeGameOver('リズムが 合わなかった…。（的中 ' + hits + '/' + TOTAL + '・9以上で 成功）')); return; }
+            phase = 'result'; doneT = 0;
+          }
         }
         lastPhase = ph;
         if (Input.pressed('confirm') && !judged && beats >= 1 && phase === 'play') {
@@ -3123,6 +3184,10 @@
         c.fillText('ドラムサークル', W / 2, 46);
         c.fillStyle = '#d8c8a8'; c.font = '13px "Hiragino Sans",sans-serif';
         c.fillText('輪が いちばん 小さくなった 瞬間に Z / タップ！', W / 2, 72);
+        if (hard) {
+          c.fillStyle = '#ff8787'; c.font = 'bold 13px "Hiragino Sans",sans-serif';
+          c.fillText('【ハード】的中9未満で ゲームオーバー！', W / 2, 94);
+        }
         var ph = tick % PERIOD, ratio = ph / PERIOD;
         c.fillStyle = '#5a3a20'; c.beginPath(); c.arc(W / 2, 250, 70, 0, Math.PI * 2); c.fill();
         c.fillStyle = flashT > 0 ? '#ffe9b0' : '#e8d8b8';
@@ -3177,10 +3242,14 @@
           }
           return;
         }
+        function finish() {
+          if (hard && hits < 3) { setScene(makeGameOver('命中 ' + hits + '/5…。的の 半分も 撃ち抜けなかった。')); return true; }
+          phase = 'result'; doneT = 0; return false;
+        }
         if (target && target.alive) {
           target.x += target.vx * dt;
           if (target.x < -30 || target.x > W + 30) {
-            if (round >= 5) { phase = 'result'; doneT = 0; } else newTarget();
+            if (round >= 5) { if (finish()) return; } else newTarget();
           }
         }
         if (Input.pressed('confirm') && reloadT <= 0 && phase === 'play') {
@@ -3189,7 +3258,7 @@
           if (target && target.alive && Math.abs(target.x - W / 2) < 26) {
             target.alive = false; hits++;
             emitP(target.x, target.y, 0, -40, 0.6, '#ffd43b', 4, 80);
-            if (round >= 5) { phase = 'result'; doneT = 0; } else newTarget();
+            if (round >= 5) { if (finish()) return; } else newTarget();
           }
         }
       },
@@ -3202,6 +3271,10 @@
         c.fillText('種子島 射的', W / 2, 44);
         c.fillStyle = '#adb5bd'; c.font = '13px "Hiragino Sans",sans-serif';
         c.fillText('的が 中央の 線に 重なった 瞬間に Z！（装填時間に 注意）', W / 2, 70);
+        if (hard) {
+          c.fillStyle = '#ff8787'; c.font = 'bold 13px "Hiragino Sans",sans-serif';
+          c.fillText('【ハード】命中3未満で ゲームオーバー！', W / 2, 92);
+        }
         c.strokeStyle = 'rgba(255,212,59,0.5)'; c.lineWidth = 2;
         c.beginPath(); c.moveTo(W / 2, 100); c.lineTo(W / 2, 300); c.stroke(); c.lineWidth = 1;
         if (target && target.alive) {
@@ -3241,9 +3314,10 @@
     ];
     const ANSWER = ['う', 'る', 'う', 'づ', 'き'];
     const POOL = ['る', 'こ', 'う', 'づ', 'よ', 'き', 'み', 'ま'];
+    const hard = difficulty === 'hard';
     let mode = 'books';
     let cur = 0, reading = -1, readSet = {};
-    let picked = 0, missT = 0, doneT = 0;
+    let picked = 0, missT = 0, doneT = 0, misses = 0;
     return {
       enter: function () {},
       update: function (dt) {
@@ -3278,7 +3352,11 @@
           if (POOL[cur] === ANSWER[picked]) {
             picked++;
             if (picked >= ANSWER.length) { mode = 'result'; doneT = 0; }
-          } else { picked = 0; missT = 1.2; }
+          } else {
+            misses++;
+            if (hard && misses >= 3) { setScene(makeGameOver('謎が 解けなかった…。（おてつき 3回）')); return; }
+            picked = 0; missT = 1.2;
+          }
         }
       },
       render: function (c) {
@@ -3338,7 +3416,8 @@
             c.fillStyle = selP ? '#ffd43b' : '#e8dcc0'; c.font = 'bold 24px "Hiragino Mincho ProN",serif';
             c.fillText(POOL[p2], gx0 + p2 * gw2, 243);
           }
-          if (missT > 0) { c.fillStyle = 'rgba(255,140,140,' + Math.min(1, missT) + ')'; c.font = 'bold 15px "Hiragino Sans",sans-serif'; c.fillText('ちがう みたい…。はじめから！', W / 2, 300); }
+          if (missT > 0) { c.fillStyle = 'rgba(255,140,140,' + Math.min(1, missT) + ')'; c.font = 'bold 15px "Hiragino Sans",sans-serif'; c.fillText('ちがう みたい…。はじめから！' + (hard ? '（あと ' + (3 - misses) + '回で ゲームオーバー）' : ''), W / 2, 300); }
+          if (hard) { c.fillStyle = '#ff8787'; c.font = 'bold 13px "Hiragino Sans",sans-serif'; c.fillText('【ハード】おてつき3回で ゲームオーバー！（現在 ' + misses + '/3）', W / 2, 330); }
           c.fillStyle = '#8a7a60'; c.font = '12px "Hiragino Sans",sans-serif';
           c.fillText('← → 選択　Z 決定　X 本に もどる', W / 2, H - 16);
         } else {
@@ -3378,7 +3457,10 @@
           if (Input.pressed('confirm')) { answered = true; correct = (qcur === q.answer); if (correct) score++; }
         } else if (Input.pressed('confirm')) {
           idx++;
-          if (idx >= QUIZ.length) { phase = 'result'; doneT = 0; return; }
+          if (idx >= QUIZ.length) {
+            if (difficulty === 'hard' && score < 3) { setScene(makeGameOver('長久手検定、不合格…。（正解 ' + score + '/' + QUIZ.length + '・3問以上で 合格）')); return; }
+            phase = 'result'; doneT = 0; return;
+          }
           qcur = 0; answered = false;
         }
       },
@@ -3397,7 +3479,7 @@
           drawVignette(c); c.textAlign = 'left'; return;
         }
         c.fillStyle = '#8fa8c8'; c.font = '13px "Hiragino Sans",sans-serif';
-        c.fillText('第 ' + (idx + 1) + ' 問 / 全 ' + QUIZ.length + ' 問　　正解 ' + score, W / 2, 70);
+        c.fillText('第 ' + (idx + 1) + ' 問 / 全 ' + QUIZ.length + ' 問　　正解 ' + score + (difficulty === 'hard' ? '　　【ハード】3問未満で ゲームオーバー' : ''), W / 2, 70);
         const q = QUIZ[idx];
         c.fillStyle = 'rgba(8,16,40,0.9)'; roundRect(c, 24, 88, W - 48, 58, 10); c.fill();
         c.strokeStyle = '#cdd9ff'; c.lineWidth = 2; roundRect(c, 26, 90, W - 52, 54, 8); c.stroke(); c.lineWidth = 1;
@@ -3455,7 +3537,7 @@
     })();
     let phase = 'memo';
     let memoT = hard ? 3.2 : 5.0;
-    let cur = 0, picked = 0, missT = 0, doneT = 0, success = false;
+    let cur = 0, picked = 0, missT = 0, doneT = 0, success = false, mistakes = 0;
     return {
       enter: function () {},
       update: function (dt) {
@@ -3481,6 +3563,8 @@
             picked++;
             if (picked >= recipe.length) { phase = 'result'; success = true; doneT = 0; }
           } else {
+            mistakes++;
+            if (hard && mistakes >= 2) { setScene(makeGameOver('レシピを まちがえた…。兵糧丸は 失敗作に なってしまった。')); return; }
             picked = 0; missT = 1.2; phase = 'memo'; memoT = hard ? 2.4 : 4.0;
           }
         }
@@ -3517,7 +3601,7 @@
           }
           if (missT > 0) { c.fillStyle = 'rgba(255,140,140,' + Math.min(1, missT) + ')'; c.font = 'bold 15px "Hiragino Sans",sans-serif'; c.fillText('順番が ちがう！ もう一度 レシピを 見よう', W / 2, 280); }
           c.fillStyle = '#b8a480'; c.font = '12px "Hiragino Sans",sans-serif';
-          c.fillText('← → 選択　　Z 決定', W / 2, H - 16);
+          c.fillText('← → 選択　　Z 決定' + (hard ? '　　【ハード】ミス2回で ゲームオーバー（' + mistakes + '/2）' : ''), W / 2, H - 16);
         } else {
           c.fillStyle = 'rgba(0,0,0,0.5)'; c.fillRect(0, 0, W, H);
           c.fillStyle = '#ffd43b'; c.font = 'bold 28px "Hiragino Mincho ProN",serif';
@@ -4059,8 +4143,9 @@
         if (Input.pressed('left')) pressWhisk('L');
         if (Input.pressed('right')) pressWhisk('R');
         if (timeLeft <= 0) {
-          phase = 'result';
           rank = foam >= 75 ? 'A' : (foam >= 45 ? 'B' : 'C');
+          if (hard && rank === 'C') { setScene(makeGameOver('泡が 立たなかった…。（泡45以上で 成功）お点前は 一日にして ならず。')); return; }
+          phase = 'result';
           if ('CBA'.indexOf(rank) > 'CBA'.indexOf(teaBest)) teaBest = rank;
           unlockZukan('chashitsu'); saveGame();
           Dialog.start(rank === 'A' ? DIALOGUE.tea_rank_a : (rank === 'B' ? DIALOGUE.tea_rank_b : DIALOGUE.tea_rank_c), function () { onReturn(rank); });
@@ -4121,6 +4206,10 @@
           c.fillText('← → 交互に シャカシャカ！', W / 2, 152);
           c.fillStyle = '#e8dcc8'; c.font = '12px "Hiragino Sans",sans-serif';
           c.fillText('ちょうどいい リズムで。はやすぎると こぼれるよ', W / 2, 172);
+          if (hard) {
+            c.fillStyle = '#ff8787'; c.font = 'bold 12px "Hiragino Sans",sans-serif';
+            c.fillText('【ハード】泡45未満で ゲームオーバー！', W / 2, 190);
+          }
           // 泡ゲージ
           var gx2 = 76, gw2 = W - 152, gy2 = 396;
           c.fillStyle = 'rgba(0,0,0,0.5)'; roundRect(c, gx2, gy2, gw2, 20, 7); c.fill();
@@ -4377,7 +4466,7 @@
             return;
           }
           if (teaAvail && cur === SITES.length) {
-            if (gold >= 500) { gold -= 500; saveGame(); setScene(makeTeaRoom(function () { setScene(makeSiteTour()); })); }
+            if (gold >= 500) { gold -= 500; setScene(makeTeaRoom(function () { setScene(makeSiteTour()); })); }
             else Dialog.start([{ name: 'オダ', text: '（抹茶体験は 500円。……いまは 持ち合わせが 足りない）' }]);
             return;
           }
