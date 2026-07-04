@@ -2577,7 +2577,8 @@
         drawFieldWorld(c, map, hidePlayer ? null : player, cam.x, cam.y);
         for (let i = 0; i < sceneActors.length; i++) {
           const a = sceneActors[i];
-          if (a.kind === 'odoriko' && ODORIKO_BATTLE_IMG) {
+          // 踊り子: 舞いの演出中は一枚絵。それ以外は歩行シート（odoriko_walk.png）があればちびドットで描く
+          if (a.kind === 'odoriko' && ODORIKO_BATTLE_IMG && (a.dancing || !HD_SPRITE.odoriko)) {
             var oh = TILE * 3, ow = oh * (ODORIKO_BATTLE_IMG.width / ODORIKO_BATTLE_IMG.height);
             c.save(); c.globalAlpha = a.alpha != null ? a.alpha : 1;
             if (a.dancing) {
@@ -3104,21 +3105,12 @@
         if (t > 0.9 && (Input.pressed('confirm') || Input.pressed('cancel'))) setScene(makeTitle(true));
       },
       render: function (c) {
+        // 赤字の「ゲームオーバー」のみ表示（Z / タップでタイトルへ）
         c.fillStyle = '#000000'; c.fillRect(0, 0, W, H);
         var a = Math.min(1, t / 0.8);
         c.textAlign = 'center';
         c.fillStyle = 'rgba(214,69,55,' + a + ')'; c.font = 'bold 42px "Hiragino Mincho ProN",serif';
-        c.fillText('ゲームオーバー', W / 2, 180);
-        c.fillStyle = 'rgba(206,212,222,' + a + ')'; c.font = '15px "Hiragino Sans",sans-serif';
-        var lines = wrapText(c, reason, W - 120);
-        var y = 232;
-        for (var i = 0; i < lines.length; i++) { c.fillText(lines[i], W / 2, y); y += 24; }
-        c.fillStyle = 'rgba(150,158,170,' + a + ')'; c.font = '12px "Hiragino Sans",sans-serif';
-        c.fillText('【ハード】ミニゲームに 失敗すると ゲームオーバー。セーブから やり直そう。', W / 2, y + 22);
-        if (t > 0.9 && tick % 56 < 34) {
-          c.fillStyle = '#cdd9ff'; c.font = '14px "Hiragino Sans",sans-serif';
-          c.fillText('Z / タップで タイトルへ', W / 2, H - 56);
-        }
+        c.fillText('ゲームオーバー', W / 2, H / 2 + 14);
         c.textAlign = 'left';
       },
     };
