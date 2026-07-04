@@ -181,6 +181,7 @@
     civ1: { body: '#c98747', legs: '#5a4632', skin: '#ffd8a8', hair: '#4a3423', short: true },
     civ2: { body: '#5b8c5a', legs: '#33502f', skin: '#ffd8a8', hair: '#6b4a35' },
     sakamoto: { body: '#7048a8', legs: '#3d2a55', skin: '#ffd8a8', hair: '#2b2b2b', short: true },
+    naiki: { body: '#2e5e4e', legs: '#243c34', skin: '#ffd8a8', hair: '#1d1d1d', short: true },
   };
   function drawShadow(c, cx, cy, s) {
     c.fillStyle = 'rgba(0,0,0,0.25)';
@@ -653,6 +654,39 @@
     'T......................................T',
     'TTTTTTTTTTTTTTTTTTT..TTTTTTTTTTTTTTTTTTT',
   ];
+  // 岩崎城址公園（日進市・ハードクリア後の裏イベント）
+  // W/5=模擬天守（本丸・空堀kに囲まれ土橋,で渡る）, F/6=歴史記念館, ~=二の丸庭園の池,
+  // n=学芸員・内貴, s=坂元, P=セーブ篝火, 7=帰りの案内板
+  const IWASAKI = [
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'T......................................T',
+    'T..T.....T..........................T..T',
+    'T......................................T',
+    'T............kkkkkkkkkkkkk.............T',
+    'T............k...........k.............T',
+    'T............k...WWWWW...k.............T',
+    'T............k...WWWWW...k.............T',
+    'T............k...WWWWW...k.............T',
+    'T............k...WW5WW...k.............T',
+    'T............k...........k.............T',
+    'T............kkkkkk,kkkkkk.............T',
+    'T................n.,.s.................T',
+    'T..T...............,..............T....T',
+    'T..................,...................T',
+    'T..................,...................T',
+    'T.......~~~........,........FFFFFF.....T',
+    'T.......~~~........,........FFFFFF.....T',
+    'T..................,........FF6FFF.....T',
+    'T.....bb...........,...................T',
+    'T..................,......P............T',
+    'T..................,...................T',
+    'T..T...............,...........T.......T',
+    'T..................,...................T',
+    'T..................@...................T',
+    'T..................,...................T',
+    'T..................7...................T',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  ];
   // ゾーンE: モリコロパーク（リニモでのみ来園）
   const ZONEE = [
     'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
@@ -812,10 +846,17 @@
     },
     mori: {
       rows: MORIHALL, kind: 'indoor', tileset: 'museum', playerFloor: '.',
-      solid: ['#', 'D', '='],
       npcs: { s: { kind: 'sakamoto', id: 'sakamoto', floor: '.' } },
+      solid: ['#', 'D', '='],
       acts: { D: 'mori_exit', '=': 'drumcircle' },
       encounter: null,
+    },
+    iwasaki: {
+      rows: IWASAKI, kind: 'outdoor', tileset: 'outdoor', playerFloor: '.',
+      solid: ['T', '~', 'W', '5', 'F', '6', 'k', 'P', '7', 'b'],
+      npcs: { n: { kind: 'naiki', id: 'naiki', floor: '.' }, s: { kind: 'sakamoto', id: 'sakamoto_iw', floor: '.' } },
+      acts: { 5: 'tenshu', 6: 'iwasaki_kinenkan', P: 'save', 7: 'iwasaki_gate' },
+      encounter: { rate: 0.055 },
     },
   };
   // ゾーン端のシームレス接続が解放されているか（四章の現地取材クエスト以降）
@@ -1120,7 +1161,16 @@
         c.beginPath(); c.moveTo(x, y + 10); c.lineTo(x + T, y + 10); c.stroke();
         c.beginPath(); c.moveTo(x, y + 21); c.lineTo(x + T, y + 21); c.stroke();
         c.fillStyle = 'rgba(255,255,255,0.05)'; c.fillRect(x, y + 1, T, 2);
-      } else if (ch === 'D' || ch === '1' || ch === '2' || ch === '3' || ch === '4') {
+      } else if (ch === 'k') {
+        // 空堀（岩崎城）: 乾いた堀の溝。上と左に落ち影
+        fillSmooth(c, tc, tr, x, y, function (v) {
+          var kb = 52 + v * 14 | 0;
+          return 'rgb(' + (kb + 14) + ',' + (kb + 4) + ',' + (kb - 6) + ')';
+        });
+        c.fillStyle = 'rgba(0,0,0,0.30)'; c.fillRect(x, y, T, 5);
+        c.fillStyle = 'rgba(0,0,0,0.18)'; c.fillRect(x, y, 4, T);
+        c.fillStyle = 'rgba(140,120,85,0.14)'; c.fillRect(x + h0 * 16, y + 8 + h1 * 12, 7, 3);
+      } else if (ch === 'D' || ch === '1' || ch === '2' || ch === '3' || ch === '4' || ch === '5' || ch === '6') {
         // 施設の入口（屋外側・共通の扉）
         c.fillStyle = '#7a5a30'; c.fillRect(x, y, T, T);
         c.fillStyle = '#6a4a20'; c.fillRect(x + 3, y + 2, T - 6, T - 4);
@@ -1144,8 +1194,8 @@
         c.fillStyle = '#f0ead8'; c.beginPath(); c.arc(x + T / 2, y + 11, 9, 0, Math.PI * 2); c.fill();
         c.fillStyle = '#c0392b'; c.beginPath(); c.arc(x + T / 2, y + 11, 6, 0, Math.PI * 2); c.fill();
         c.fillStyle = '#f0ead8'; c.beginPath(); c.arc(x + T / 2, y + 11, 3, 0, Math.PI * 2); c.fill();
-      } else if (ch === 'a' || ch === 'o') {
-        // 史跡の標柱（a=赤旗つき / o=寺標）
+      } else if (ch === 'a' || ch === 'o' || ch === '7') {
+        // 史跡の標柱（a=赤旗つき / o=寺標 / 7=帰り道の案内板）
         c.fillStyle = 'rgba(0,0,0,0.18)'; c.beginPath(); c.ellipse(x + T / 2, y + T - 3, 9, 3.5, 0, 0, Math.PI * 2); c.fill();
         c.fillStyle = '#8a6a40'; c.fillRect(x + T / 2 - 2, y + 6, 4, T - 10);
         c.fillStyle = '#c8b088'; c.fillRect(x + T / 2 - 5, y + 4, 10, 6);
@@ -1329,6 +1379,7 @@
     if (name === '館長') return 'kancho';
     if (name === '踊り子') return 'odoriko';
     if (name === '坂元') return 'sakamoto';
+    if (name === '内貴') return 'naiki';
     if (name === '通行人') return 'civ1';
     return null;
   }
@@ -1384,7 +1435,7 @@
   }
   ['grass', 'road', 'dirt', 'water'].forEach(function (k) { loadHDImg(HD_TEX, k, 'assets/tiles/' + k + '.png'); });
   ['tree', 'bush', 'rock', 'mound', 'mound_s'].forEach(function (k) { loadHDImg(HD_DECO, k, 'assets/deco/' + k + '.png'); });
-  ['museum', 'aeon', 'station', 'ramen', 'tearoom', 'cityhall', 'kodomo', 'temple', 'bunka', 'library', 'ferris'].forEach(function (k) { loadHDImg(HD_BLD, k, 'assets/buildings/' + k + '.png'); });
+  ['museum', 'aeon', 'station', 'ramen', 'tearoom', 'cityhall', 'kodomo', 'temple', 'bunka', 'library', 'ferris', 'iwasaki_tenshu', 'iwasaki_kinenkan'].forEach(function (k) { loadHDImg(HD_BLD, k, 'assets/buildings/' + k + '.png'); });
   // 歩行スプライトシート（assets/sprites/<kind>_walk.png）: 3列×4行。
   // 行=正面/左/右/後ろ、列=立ち/歩き1/歩き2。あれば drawActor が自動で使う。
   // 生成画像はセル内の余白が大きいため、全セル共通の実描画域（不透明ピクセルの外接矩形）を
@@ -1415,7 +1466,7 @@
       if (maxX > minX && maxY > minY) HD_SPRITE_BOX[kind] = { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
     } catch (e) { /* 解析不可なら全セル描画のまま */ }
   }
-  ['oda', 'ike', 'michi', 'kancho', 'odoriko', 'sakamoto', 'civ1', 'civ2'].forEach(function (k) {
+  ['oda', 'ike', 'michi', 'kancho', 'odoriko', 'sakamoto', 'naiki', 'civ1', 'civ2'].forEach(function (k) {
     var img = new Image();
     img.onload = function () { HD_SPRITE[k] = img; sheetContentBox(k, img); };
     img.onerror = function () {};
@@ -1464,6 +1515,10 @@
       { key: 'library', c0: 31, r0: 17, w: 7, h: 4 },
     ],
     zoneE: [{ key: 'ferris', c0: 32, r0: 3, w: 4, h: 4 }],
+    iwasaki: [
+      { key: 'iwasaki_tenshu', c0: 17, r0: 6, w: 5, h: 4 },
+      { key: 'iwasaki_kinenkan', c0: 28, r0: 16, w: 6, h: 3 },
+    ],
   };
   // 顔ウィンドウ（仮：図形ポートレート。画像があればそれを描く）
   function drawPortrait(c, kind, x, y, s) {
@@ -1668,6 +1723,7 @@
     nuno:     { name: '記念館の制服',   type: 'armor',  def: 0, desc: '長久手古戦場記念館の 制服。動きやすい。' },
     do:       { name: '胴丸',           type: 'armor',  def: 2, desc: '軽くて 丈夫な 胴の鎧。' },
     akazonae: { name: '赤備えの具足',   type: 'armor',  def: 5, desc: '真っ赤に 統一された 井伊の具足…の、写し。' },
+    ujishige: { name: '氏重の兜',       type: 'armor',  def: 8, desc: '岩崎城を 守り抜いた 十六歳の 若武者に ちなむ 兜。覚悟が 宿る。' },
   };
   const Hero = { lv: 1, exp: 0, maxhp: 30, atkBonus: 0, weapon: 'bokuto', armor: 'nuno', items: ['replica', 'do'] };
   function weaponAtk() { return (ITEMS[Hero.weapon] && ITEMS[Hero.weapon].atk) || 0; }
@@ -1747,6 +1803,7 @@
   let mgDone = {};                    // ミニゲーム初回クリア記録（報酬の重複防止）
   let kanchoLove = 0;                 // 館長の好感度（選択肢で上下）
   let kanchoBond = false;             // エピローグで絆が結ばれたか（ハードの仲間加入条件）
+  let iwasakiCleared = false;         // 岩崎城の裏ボス（内貴＆坂元）を倒したか（称号）
   let kanchoEv = {};                  // 好感度イベントの発火記録
   const visitedSites = new Set();     // 本編で現地を訪れた史跡（史跡めぐりの解放条件）
   let stationUsed = false;            // リニモ初回ネタ用（セッション内）
@@ -1769,7 +1826,7 @@
         tutorialDone: tutorialDone, storyStage: storyStage,
         chapter: chapter, ch1Seen: ch1Seen, ch2step: ch2step, ch3rusu: ch3rusu, zoneAMood: zoneAMood, teaBest: teaBest, stageP3: stageP3, p3v: 2,
         gold: gold, bag: bag, mgDone: mgDone, yen: 1,
-        kanchoLove: kanchoLove, kanchoBond: kanchoBond, kanchoEv: kanchoEv, visited: Array.from(visitedSites),
+        kanchoLove: kanchoLove, kanchoBond: kanchoBond, kanchoEv: kanchoEv, iwk: iwasakiCleared ? 1 : 0, visited: Array.from(visitedSites),
         zukan: Array.from(zukanSet), meikan: Array.from(meikanSet),
         tour: Array.from(tourCleared), tourReward: tourReward,
       }));
@@ -1809,6 +1866,7 @@
       mgDone = d.mgDone || {};
       kanchoLove = d.kanchoLove || 0;
       kanchoBond = !!d.kanchoBond;
+      iwasakiCleared = !!d.iwk;
       kanchoEv = d.kanchoEv || {};
       visitedSites.clear();
       (d.visited || []).forEach(function (x) { visitedSites.add(x); });
@@ -2005,7 +2063,65 @@
       else if (id === 'bunka_down') startTransition(function () { setScene(makeField('bunka1', { col: 2, row: 2 }, null)); });
       else if (id === 'mori_in') startTransition(function () { setScene(makeField('mori', null, null)); });
       else if (id === 'mori_exit') startTransition(function () { setScene(makeField('bunka1', { col: 13, row: 2 }, null)); });
-      else if (id === 'sakamoto') Dialog.start(DIALOGUE.sakamoto_talk);
+      else if (id === 'sakamoto') {
+        // ハードクリア後: 岩崎城への誘い（裏イベント）
+        if (difficulty === 'hard' && chapter === 'post' && !iwasakiCleared) {
+          Dialog.start(DIALOGUE.iwasaki_invite, function () {
+            Choice.start('岩崎城へ 行く？（推奨レベル20）', ['行く', 'また今度'], function (pick) {
+              if (pick === 0) startTransition(function () { setScene(makeField('iwasaki', null, null)); });
+            });
+          });
+        } else if (difficulty === 'hard' && chapter === 'post' && iwasakiCleared) {
+          Dialog.start(DIALOGUE.iwasaki_sakamoto_after, function () {
+            Choice.start('また 岩崎城へ 行く？', ['行く', 'また今度'], function (pick) {
+              if (pick === 0) startTransition(function () { setScene(makeField('iwasaki', null, null)); });
+            });
+          });
+        } else Dialog.start(DIALOGUE.sakamoto_talk);
+      }
+      else if (id === 'naiki') {
+        if (iwasakiCleared) { Dialog.start(DIALOGUE.naiki_after); return; }
+        // 裏ボス: 内貴＆坂元のタッグ（2体同時・クイズゲート・推奨Lv20）
+        Dialog.start(DIALOGUE.naiki_intro, function () {
+          startBattle({
+            gated: false,
+            quizGate: DIALOGUE.iwasaki_quiz,
+            enemies: [
+              {
+                name: '学芸員・内貴', kind: 'naiki', hp: 110, atkLo: 9, atkHi: 13,
+                atkLabel: DIALOGUE.battle_iwasaki.naikiAtk,
+                aoe: { label: DIALOGUE.battle_iwasaki.naikiAoe, mul: 0.6, chance: 0.22 },
+                appearMsg: DIALOGUE.battle_iwasaki.appearMsg, winMsg: DIALOGUE.battle_iwasaki.winMsg,
+                loseMsg: DIALOGUE.battle_iwasaki.loseMsg, fleeMsg: DIALOGUE.battle_iwasaki.fleeMsg,
+                expReward: [60, 80], goldReward: [2000, 2500],
+              },
+              {
+                name: '劇作家・坂元', kind: 'sakamoto', hp: 90, atkLo: 8, atkHi: 12,
+                atkLabel: DIALOGUE.battle_iwasaki.sakaAtk,
+                aoe: { label: DIALOGUE.battle_iwasaki.sakaAoe, mul: 0.55, chance: 0.18 },
+                expReward: [50, 70], goldReward: [1500, 2000],
+              },
+            ],
+            onWin: function () {
+              iwasakiCleared = true;
+              if (Hero.items.indexOf('ujishige') < 0 && Hero.armor !== 'ujishige') Hero.items.push('ujishige');
+              saveGame();
+              startTransition(function () {
+                setScene(activeField);
+                Dialog.start(DIALOGUE.iwasaki_win, function () { saveGame(); });
+              });
+            },
+          });
+        });
+      }
+      else if (id === 'sakamoto_iw') Dialog.start(iwasakiCleared ? DIALOGUE.iwasaki_saka_field_after : DIALOGUE.iwasaki_saka_field);
+      else if (id === 'tenshu') Dialog.start(DIALOGUE.tenshu_view);
+      else if (id === 'iwasaki_kinenkan') Dialog.start(DIALOGUE.iwasaki_kinenkan_talk);
+      else if (id === 'iwasaki_gate') {
+        Choice.start('長久手へ 帰る？', ['帰る', 'まだ 見て回る'], function (pick) {
+          if (pick === 0) startTransition(function () { setScene(makeField('bunka1', null, null)); });
+        });
+      }
       else if (id === 'expo1') Dialog.start(DIALOGUE.expo1_talk);
       else if (id === 'expo2') Dialog.start(DIALOGUE.expo2_talk);
       else if (id === 'expo3') { unlockZukan('moricoro'); Dialog.start(DIALOGUE.expo3_talk); }
@@ -2387,6 +2503,9 @@
         } else if ((mapKey === 'bunka1' || mapKey === 'bunka2' || mapKey === 'mori') && !enteredFlavor.has(mapKey)) {
           enteredFlavor.add(mapKey);
           Dialog.start(mapKey === 'bunka1' ? DIALOGUE.bunka_galleria : (mapKey === 'bunka2' ? DIALOGUE.bunka_2f : DIALOGUE.bunka_mori));
+        } else if (mapKey === 'iwasaki' && !enteredFlavor.has('iwasaki')) {
+          enteredFlavor.add('iwasaki');
+          Dialog.start(iwasakiCleared ? DIALOGUE.iwasaki_arrive_again : DIALOGUE.iwasaki_arrive);
         } else if (intro) {
           Dialog.start(intro);
           intro = null;
@@ -2463,8 +2582,20 @@
             if ((t === '.' || t === ',') && Math.random() < encRate) {
               encCooldown = 3.5;
               startTransition(function () {
-                // 夜行のもののけは経験値・報酬が多め（第2形態に向けたレベル上げ用）
-                startBattle(patrolEnc ? { gated: false, enemy: { name: '夜行の もののけ', hp: 36, atkLo: 6, atkHi: 10, expReward: [16, 22], goldReward: [180, 260] } } : { gated: false });
+                if (mapKey === 'iwasaki') {
+                  // 岩崎城: 強めの落武者。6割で2体同時（Lv20に向けた鍛錬用）
+                  var iwA = { name: '岩崎の 落武者', hp: 30, atkLo: 7, atkHi: 11, expReward: [22, 30], goldReward: [130, 190] };
+                  var iwB = { name: '岩崎の 物見', hp: 24, atkLo: 6, atkHi: 9, expReward: [16, 22], goldReward: [90, 140] };
+                  startBattle(Math.random() < 0.6 ? { gated: false, enemies: [iwA, iwB] } : { gated: false, enemy: iwA });
+                } else if (patrolEnc) {
+                  // 夜行のもののけは経験値・報酬が多め（第2形態に向けたレベル上げ用）。4割で2体
+                  var pe = { name: '夜行の もののけ', hp: 36, atkLo: 6, atkHi: 10, expReward: [16, 22], goldReward: [180, 260] };
+                  var pe2 = { name: '夜行の 影', hp: 28, atkLo: 5, atkHi: 8, expReward: [12, 16], goldReward: [120, 180] };
+                  startBattle(Math.random() < 0.4 ? { gated: false, enemies: [pe, pe2] } : { gated: false, enemy: pe });
+                } else {
+                  // 草原: Lv5以降は たまに物見のもののけが加勢して2体になる
+                  startBattle((Hero.lv >= 5 && Math.random() < 0.3) ? { gated: false, enemies: [{}, { name: '物見の もののけ', hp: 16, atkLo: 2, atkHi: 5 }] } : { gated: false });
+                }
               });
               return;
             }
@@ -2623,25 +2754,28 @@
   function startBattle(opts) {
     opts = opts || {};
     const gated = !!opts.gated;
-    const e = opts.enemy || {};
     const dm = DIFF[difficulty];
-    const hp = Math.max(1, Math.round((e.hp || 22) * dm.enemyHp));
-    const enemy = {
-      name: e.name || '落武者のもののけ', hp: hp, maxhp: hp, broken: false, weakKnown: !gated, shake: 0,
-      kind: e.kind || 'enemy', spar: !!opts.spar, forcelose: !!e.forcelose,
-      atkLabel: e.atkLabel || DIALOGUE.battle.random.atkLabel, winMsg: e.winMsg || DIALOGUE.battle.random.winMsg,
-      loseMsg: e.loseMsg || null, appearMsg: e.appearMsg || null,
-      atkMul: dm.enemyAtk,
-      // イベント戦用: roundLimit=Nラウンドで endMsg を表示して終了（勝ち扱い）。
-      // noKO=味方はHP1で耐える。hideHp=敵HPバー非表示。fleeMsg=にげる時の専用セリフ。
-      roundLimit: e.roundLimit || 0, noKO: !!e.noKO, endMsg: e.endMsg || null,
-      hideHp: !!e.hideHp, fleeMsg: e.fleeMsg || null,
-      atkLo: e.atkLo || 3, atkHi: e.atkHi || 6,
-      // 拡張: acts=1ターンの行動回数, specials=特殊技（乱れ舞/幻惑/緋の舞）,
-      // phase2=撃破時に第2形態へ移行（ハードのラスボス用）, expReward/goldReward=[lo,hi]で報酬上書き
-      acts: e.acts || 1, specials: !!e.specials, phase2: e.phase2 || null,
-      expReward: e.expReward || null, goldReward: e.goldReward || null,
-    };
+    // 複数敵対応: opts.enemies=[{...},{...}] で2体以上、従来の opts.enemy も1体として動く
+    const defs = (opts.enemies && opts.enemies.length) ? opts.enemies : [opts.enemy || {}];
+    const enemies = defs.map(function (e) {
+      const hp = Math.max(1, Math.round((e.hp || 22) * dm.enemyHp));
+      return {
+        name: e.name || '落武者のもののけ', hp: hp, maxhp: hp, broken: false, weakKnown: !gated, shake: 0,
+        kind: e.kind || 'enemy', spar: !!opts.spar, forcelose: !!e.forcelose,
+        atkLabel: e.atkLabel || DIALOGUE.battle.random.atkLabel, winMsg: e.winMsg || DIALOGUE.battle.random.winMsg,
+        loseMsg: e.loseMsg || null, appearMsg: e.appearMsg || null,
+        atkMul: dm.enemyAtk,
+        // イベント戦用: roundLimit=Nラウンドで endMsg を表示して終了（勝ち扱い）。
+        // noKO=味方はHP1で耐える。hideHp=敵HPバー非表示。fleeMsg=にげる時の専用セリフ。
+        roundLimit: e.roundLimit || 0, noKO: !!e.noKO, endMsg: e.endMsg || null,
+        hideHp: !!e.hideHp, fleeMsg: e.fleeMsg || null,
+        atkLo: e.atkLo || 3, atkHi: e.atkHi || 6,
+        // 拡張: acts=1ターンの行動回数, specials=踊り子の特殊技, aoe={label,mul,chance}=汎用全体技,
+        // phase2=撃破時に第2形態へ移行（ハードのラスボス用）, expReward/goldReward=[lo,hi]で報酬上書き
+        acts: e.acts || 1, specials: !!e.specials, aoe: e.aoe || null, phase2: e.phase2 || null,
+        expReward: e.expReward || null, goldReward: e.goldReward || null,
+      };
+    });
     const allies = [{
       id: 'oda', name: 'オダ', kind: 'oda', isOda: true,
       hp: Hero.maxhp, maxhp: Hero.maxhp, lv: Hero.lv, miyaLv: miyaLvFromLv(Hero.lv),
@@ -2650,12 +2784,14 @@
     partyMembers.forEach(function (m) {
       allies.push({ id: m.id, name: m.name, kind: m.kind, isOda: false, hp: m.maxhp, maxhp: m.maxhp, atkLo: m.atkLo, atkHi: m.atkHi, aDef: m.aDef || 0 });
     });
-    setScene(makeBattle(enemy, allies, gated,
+    setScene(makeBattle(enemies, allies, gated,
       opts.onWin || function () { startTransition(function () { setScene(activeField); }); },
-      opts.onLose || function () { startTransition(function () { setScene(makeTitle()); }); }));
+      opts.onLose || function () { startTransition(function () { setScene(makeTitle()); }); },
+      opts.quizGate || null));
   }
-  function makeBattle(enemy, allies, gated, onWin, onLose) {
+  function makeBattle(enemies, allies, gated, onWin, onLose, quizGate) {
     const player = allies[0]; // オダ（forcelose/spar/みやぶる はオダ基準）
+    const enemy = enemies[0]; // 主敵（spar/forcelose/roundLimit/phase2/背景演出は主敵基準）
     function commandsFor(a) {
       if (!a.isOda) return ['たたかう', 'にげる'];
       return bagCount() > 0 ? ['たたかう', 'みやぶる', 'どうぐ', 'にげる'] : ['たたかう', 'みやぶる', 'にげる'];
@@ -2669,16 +2805,25 @@
     let endKind = null;
     let shake = 0, flash = 0;
     const popups = [];
+    // 複数敵: 対象選択とクイズゲートの状態
+    let targetCursor = 0, pendingCmd = null;
+    let quiz = null, quizSel = 0, quizAnswered = false, quizCorrect = false;
 
+    function aliveEnemies() { return enemies.filter(function (e) { return e.hp > 0; }); }
+    // 敵の表示位置（1体=中央 / 2体=左右）。死亡後も元の位置を保つ
+    function enemyX(e) {
+      if (enemies.length === 1) return W / 2;
+      return enemies.indexOf(e) === 0 ? W / 2 - 118 : W / 2 + 118;
+    }
     function showMsg(t, fn) { mode = 'msg'; msg = t; after = fn || null; }
     function openMenu() { mode = 'menu'; msg = ''; commands = commandsFor(allies[turnIdx]); if (cursor >= commands.length) cursor = 0; }
     function addPopup(text, x, y, color) { popups.push({ text: text, x: x, y: y, life: 1.0, color: color }); }
-    function hitEnemy(dmg, crit) {
-      enemy.hp -= dmg; if (enemy.hp < 0) enemy.hp = 0;
-      enemy.shake = crit ? 0.5 : 0.3;
+    function hitEnemy(e, dmg, crit) {
+      e.hp -= dmg; if (e.hp < 0) e.hp = 0;
+      e.shake = crit ? 0.5 : 0.3;
       flash = crit ? 0.5 : 0.28;
       if (crit) shake = 7;
-      addPopup((crit ? '会心 ' : '') + dmg, W / 2, 150, crit ? '#ffd43b' : '#fff');
+      addPopup((crit ? '会心 ' : '') + dmg, enemyX(e), 150, crit ? '#ffd43b' : '#fff');
     }
     function hitAlly(a, dmg) {
       a.hp -= dmg; if (a.hp < 0) a.hp = 0;
@@ -2697,7 +2842,7 @@
     }
     // 味方の手番を進める。全員行動したら敵の手番へ。
     function nextTurn() {
-      if (enemy.hp <= 0) { winSequence(); return; }
+      if (aliveEnemies().length === 0) { winSequence(); return; }
       turnIdx++;
       while (turnIdx < allies.length && allies[turnIdx].hp <= 0) turnIdx++;
       if (turnIdx >= allies.length) { turnIdx = 0; enemyTurn(); }
@@ -2707,7 +2852,14 @@
       turnIdx = 0;
       while (turnIdx < allies.length && allies[turnIdx].hp <= 0) turnIdx++;
       if (turnIdx >= allies.length) turnIdx = 0;
+      // クイズゲート: 毎ラウンド冒頭に出題。正解しないと全員行動できない（裏ボス戦用）
+      if (quizGate && quizGate.length && aliveEnemies().length > 0) { startQuiz(); return; }
       openMenu();
+    }
+    function startQuiz() {
+      quiz = quizGate[rnd(0, quizGate.length - 1)];
+      quizSel = 0; quizAnswered = false; quizCorrect = false;
+      mode = 'quiz'; msg = '';
     }
     // ハードのラスボス: 第1形態を倒すと第2形態へ。山が燃える背景にフェードし、いけ・みちが駆けつける
     function startPhase2() {
@@ -2738,8 +2890,12 @@
     function winSequence() {
       if (enemy.phase2) { startPhase2(); return; }
       if (gated) { tutorialDone = true; storyStage = 1; }
-      const reward = enemy.expReward ? rnd(enemy.expReward[0], enemy.expReward[1]) : rnd(5, 8);
-      const goldGain = enemy.goldReward ? rnd(enemy.goldReward[0], enemy.goldReward[1]) : rnd(80, 150);
+      // 報酬は敵ごとに算出して合算（2体なら2体分）
+      let reward = 0, goldGain = 0;
+      enemies.forEach(function (en) {
+        reward += en.expReward ? rnd(en.expReward[0], en.expReward[1]) : rnd(5, 8);
+        goldGain += en.goldReward ? rnd(en.goldReward[0], en.goldReward[1]) : rnd(80, 150);
+      });
       Hero.exp += reward;
       gold += goldGain;
       const seq = [enemy.winMsg, '経験値を ' + reward + '、' + goldGain + '円を 手に入れた！'];
@@ -2759,7 +2915,7 @@
       step();
     }
     function enemyTurn() {
-      if (enemy.hp <= 0) { winSequence(); return; }
+      if (aliveEnemies().length === 0) { winSequence(); return; }
       if (enemy.forcelose) {
         var fdmg = rnd(14, 18); hitAlly(player, fdmg);
         showMsg(enemy.atkLabel + '！\nオダは ' + fdmg + 'の ダメージ！', function () { loseCheck(startRound); });
@@ -2771,47 +2927,63 @@
       const finish = (enemy.roundLimit && rounds >= enemy.roundLimit)
         ? function () { showMsg(enemy.endMsg || '……戦いは、ふいに 終わった。', function () { mode = 'end'; endKind = 'win'; msg = '（Z / タップで つづける）'; }); }
         : function () { loseCheck(startRound); };
-      // acts=2 なら1ターンに2回行動（第2形態）。各行動後に全滅判定を挟む
-      let acted = 0;
-      const nActs = enemy.acts || 1;
+      // 生存している敵が順に行動（acts=2 なら1体で2回）。各行動後に全滅判定を挟む
+      const queue = [];
+      aliveEnemies().forEach(function (en) { for (var k = 0; k < (en.acts || 1); k++) queue.push(en); });
+      let qi = 0;
       function nextAct() {
-        if (acted >= nActs) { finish(); return; }
-        acted++;
-        doOneAct(function () { loseCheck(nextAct); });
+        if (qi >= queue.length) { finish(); return; }
+        const en = queue[qi++];
+        if (en.hp <= 0) { nextAct(); return; } // 行動前に倒された敵はスキップ
+        doOneAct(en, function () { loseCheck(nextAct); });
       }
-      function doOneAct(done) {
+      function doOneAct(en, done) {
         const alive = aliveAllies();
         const target = alive[rnd(0, alive.length - 1)] || player;
-        if (enemy.specials) {
+        // 汎用の全体技（aoe={label,mul,chance}。裏ボス等で使用）
+        if (en.aoe && Math.random() < (en.aoe.chance || 0.2)) {
+          const parts0 = [];
+          for (var aj = 0; aj < alive.length; aj++) {
+            var ab = alive[aj];
+            var d0 = Math.max(1, Math.round(rnd(en.atkLo, en.atkHi) * (en.atkMul || 1) * (en.aoe.mul || 0.62)) - ab.aDef);
+            ab.hp -= d0; if (ab.hp < 0) ab.hp = 0;
+            if (enemy.noKO && ab.hp <= 0) ab.hp = 1;
+            parts0.push(ab.name + 'に' + d0);
+          }
+          shake = 6; flash = 0.32;
+          showMsg(en.name + 'の' + en.aoe.label + '！\n' + parts0.join('、') + ' の ダメージ！', done);
+          return;
+        }
+        if (en.specials) {
           const roll = Math.random();
           if (roll < 0.18) { // 乱れ舞: 全体攻撃
             const parts = [];
             for (var ai = 0; ai < alive.length; ai++) {
               var aa = alive[ai];
-              var d = Math.max(1, Math.round(rnd(enemy.atkLo, enemy.atkHi) * (enemy.atkMul || 1) * 0.62) - aa.aDef);
+              var d = Math.max(1, Math.round(rnd(en.atkLo, en.atkHi) * (en.atkMul || 1) * 0.62) - aa.aDef);
               aa.hp -= d; if (aa.hp < 0) aa.hp = 0;
               if (enemy.noKO && aa.hp <= 0) aa.hp = 1; // イベント戦: 倒れない（hitAlly と同じ扱い）
               parts.push(aa.name + 'に' + d);
             }
             shake = 6; flash = 0.32;
-            showMsg(enemy.name + 'の【乱れ舞】！ 炎の輪が 全員を 薙ぎはらう！\n' + parts.join('、') + ' の ダメージ！', done);
+            showMsg(en.name + 'の【乱れ舞】！ 炎の輪が 全員を 薙ぎはらう！\n' + parts.join('、') + ' の ダメージ！', done);
             return;
           }
           if (roll < 0.30 && !(player.atkDownT > 0)) { // 幻惑の舞: 攻撃力デバフ
             player.atkDownT = 2;
-            showMsg(enemy.name + 'の【幻惑の舞】！ 妖しい 舞に 目が くらむ…！\nみんなの こうげきの力が 下がった！（2ターン）', done);
+            showMsg(en.name + 'の【幻惑の舞】！ 妖しい 舞に 目が くらむ…！\nみんなの こうげきの力が 下がった！（2ターン）', done);
             return;
           }
           if (roll < 0.42) { // 緋の舞: 強力な単体攻撃
-            const d2 = Math.max(1, Math.round(rnd(enemy.atkLo, enemy.atkHi) * (enemy.atkMul || 1) * 1.55) - target.aDef);
+            const d2 = Math.max(1, Math.round(rnd(en.atkLo, en.atkHi) * (en.atkMul || 1) * 1.55) - target.aDef);
             hitAlly(target, d2);
-            showMsg(enemy.name + 'の【緋の舞】！ 燃える袖が ' + target.name + 'を 薙ぐ！\n' + d2 + 'の 大ダメージ！', done);
+            showMsg(en.name + 'の【緋の舞】！ 燃える袖が ' + target.name + 'を 薙ぐ！\n' + d2 + 'の 大ダメージ！', done);
             return;
           }
         }
-        if (Math.random() < (enemy.specials ? 0.12 : 0.22)) { showMsg(enemy.atkLabel + '！\n' + target.name + 'は ひらりと身をかわした！', done); return; }
-        const dmg = Math.max(1, Math.round(rnd(enemy.atkLo, enemy.atkHi) * (enemy.atkMul || 1)) - target.aDef); hitAlly(target, dmg);
-        showMsg(enemy.atkLabel + '！ ' + target.name + 'は ' + dmg + 'のダメージ！', done);
+        if (Math.random() < (en.specials ? 0.12 : 0.22)) { showMsg(en.atkLabel + '！\n' + target.name + 'は ひらりと身をかわした！', done); return; }
+        const dmg = Math.max(1, Math.round(rnd(en.atkLo, en.atkHi) * (en.atkMul || 1)) - target.aDef); hitAlly(target, dmg);
+        showMsg(en.atkLabel + '！ ' + target.name + 'は ' + dmg + 'のダメージ！', done);
       }
       nextAct();
     }
@@ -2822,37 +2994,45 @@
       if (r < 0.82) return 0; return 1;
     }
     function actorTurn(cmdIdx) {
-      const actor = allies[turnIdx];
       const cmd = commands[cmdIdx];
+      // 対象が必要なコマンドで敵が2体以上生きていれば対象選択モードへ
+      if ((cmd === 'たたかう' || cmd === 'みやぶる') && aliveEnemies().length > 1) {
+        pendingCmd = cmd; targetCursor = 0; mode = 'target';
+        return;
+      }
+      execCmd(cmd, aliveEnemies()[0] || enemy);
+    }
+    function execCmd(cmd, tgt) {
+      const actor = allies[turnIdx];
       if (cmd === 'たたかう') {
         if (enemy.forcelose) { showMsg(actor.name + 'の こうげき！\nしかし いけは 軽く 受け流した！', nextTurn); return; }
-        if (!enemy.weakKnown && actor.isOda) { showMsg('オダのこうげき！\nしかし手ごたえがない…！ まず「みやぶる」で 弱点を さがそう。', nextTurn); return; }
+        if (!tgt.weakKnown && actor.isOda) { showMsg('オダのこうげき！\nしかし手ごたえがない…！ まず「みやぶる」で 弱点を さがそう。', nextTurn); return; }
         if (Math.random() < 0.16) { showMsg(actor.name + 'のこうげき！\nしかし攻撃は 空を切った…！', nextTurn); return; }
         let dmg = actor.isOda ? (rnd(5, 8) + actor.atkBonus + actor.wAtk) : rnd(actor.atkLo || 4, actor.atkHi || 7);
         if (player.atkDownT > 0) dmg = Math.max(1, Math.floor(dmg * 0.65)); // 幻惑の舞
-        if (enemy.broken) dmg += 3;
+        if (tgt.broken) dmg += 3;
         const crit = Math.random() < 0.18;
-        if (crit) { dmg = Math.floor(dmg * 1.8); hitEnemy(dmg, true); showMsg(actor.name + 'のこうげき！ 急所に当たった！\n' + dmg + 'の大ダメージ！', nextTurn); }
-        else { hitEnemy(dmg, false); showMsg(actor.name + 'のこうげき！ ' + dmg + 'のダメージ！', nextTurn); }
+        if (crit) { dmg = Math.floor(dmg * 1.8); hitEnemy(tgt, dmg, true); showMsg(actor.name + 'のこうげき！ 急所に当たった！\n' + dmg + 'の大ダメージ！', nextTurn); }
+        else { hitEnemy(tgt, dmg, false); showMsg(actor.name + 'のこうげき！ ' + dmg + 'のダメージ！', nextTurn); }
       } else if (cmd === 'みやぶる') {
         if (enemy.forcelose) { showMsg('オダは 相手を みやぶろうとした！\nしかし いけは まるで 隙を 見せない…！', nextTurn); return; }
-        enemy.broken = true; enemy.weakKnown = true;
+        tgt.broken = true; tgt.weakKnown = true;
         const tier = miyaTier(player.miyaLv);
-        if (enemy.kind === 'enemy') {
+        if (tgt.kind === 'enemy') {
           if (tier === 0) {
             showMsg('オダは敵をみやぶった！\n「この子…戦で散った兵の無念か…」\n弱点が見えた！（守りが下がった）', nextTurn);
           } else if (tier === 1) {
-            const d = 5; hitEnemy(d, false); showMsg('オダの観察眼が冴えた！【みやぶる＋】\n「落武者は“塚”に心を残してる…」\n心の隙を突いた！ ' + d + 'のダメージ！', nextTurn);
+            const d = 5; hitEnemy(tgt, d, false); showMsg('オダの観察眼が冴えた！【みやぶる＋】\n「落武者は“塚”に心を残してる…」\n心の隙を突いた！ ' + d + 'のダメージ！', nextTurn);
           } else {
-            const d = 9; hitEnemy(d, false); showMsg('オダは心眼を開いた！【みやぶる・極】\n「無念は ちゃんと残ってる。もう休んで」\n落武者の心がやわらいだ！ ' + d + 'のダメージ！', nextTurn);
+            const d = 9; hitEnemy(tgt, d, false); showMsg('オダは心眼を開いた！【みやぶる・極】\n「無念は ちゃんと残ってる。もう休んで」\n落武者の心がやわらいだ！ ' + d + 'のダメージ！', nextTurn);
           }
         } else {
           if (tier === 0) {
             showMsg('オダは 相手を みやぶった！\n構えの 隙が 見えた！（守りが下がった）', nextTurn);
           } else if (tier === 1) {
-            const d = 5; hitEnemy(d, false); showMsg('オダの 観察眼が 冴えた！【みやぶる＋】\n隙を 突いた！ ' + d + 'のダメージ！', nextTurn);
+            const d = 5; hitEnemy(tgt, d, false); showMsg('オダの 観察眼が 冴えた！【みやぶる＋】\n隙を 突いた！ ' + d + 'のダメージ！', nextTurn);
           } else {
-            const d = 9; hitEnemy(d, false); showMsg('オダは 心眼を 開いた！【みやぶる・極】\n完全に 見切った！ ' + d + 'のダメージ！', nextTurn);
+            const d = 9; hitEnemy(tgt, d, false); showMsg('オダは 心眼を 開いた！【みやぶる・極】\n完全に 見切った！ ' + d + 'のダメージ！', nextTurn);
           }
         }
       } else if (cmd === 'どうぐ') {
@@ -2886,23 +3066,91 @@
         }
         if (shake > 0) { shake -= dt * 30; if (shake < 0) shake = 0; }
         if (flash > 0) { flash -= dt * 1.6; if (flash < 0) flash = 0; }
-        if (enemy.shake > 0) { enemy.shake -= dt; if (enemy.shake < 0) enemy.shake = 0; }
+        enemies.forEach(function (en) { if (en.shake > 0) { en.shake -= dt; if (en.shake < 0) en.shake = 0; } });
         for (let i = popups.length - 1; i >= 0; i--) { const p = popups[i]; p.y -= dt * 38; p.life -= dt * 1.1; if (p.life <= 0) popups.splice(i, 1); }
         if (mode === 'menu') {
           if (Input.pressed('up')) cursor = (cursor + commands.length - 1) % commands.length;
           if (Input.pressed('down')) cursor = (cursor + 1) % commands.length;
           if (Input.pressed('confirm')) actorTurn(cursor);
+        } else if (mode === 'target') {
+          // 対象選択（複数敵）: 上下で選び、Zで決定、Xで戻る
+          const alive = aliveEnemies();
+          if (Input.pressed('up')) targetCursor = (targetCursor + alive.length - 1) % alive.length;
+          if (Input.pressed('down')) targetCursor = (targetCursor + 1) % alive.length;
+          if (Input.pressed('cancel')) { mode = 'menu'; pendingCmd = null; }
+          else if (Input.pressed('confirm')) {
+            const tgt = alive[targetCursor] || alive[0];
+            const cmd = pendingCmd; pendingCmd = null;
+            execCmd(cmd, tgt);
+          }
+        } else if (mode === 'quiz') {
+          // クイズゲート: 正解で行動可能、不正解でこのターンは全員行動不可
+          if (!quizAnswered) {
+            if (Input.pressed('up')) quizSel = (quizSel + quiz.choices.length - 1) % quiz.choices.length;
+            if (Input.pressed('down')) quizSel = (quizSel + 1) % quiz.choices.length;
+            if (Input.pressed('confirm')) { quizAnswered = true; quizCorrect = (quizSel === quiz.answer); }
+          } else if (Input.pressed('confirm')) {
+            const q = quiz; quiz = null;
+            if (quizCorrect) openMenu();
+            else showMsg('内貴「おしい！ 正解は「' + q.choices[q.answer] + '」です！」\n一同は 講釈に 圧倒されて 動けない…！', function () { enemyTurn(); });
+          }
         } else if (mode === 'msg') {
           if (Input.pressed('confirm')) { const fn = after; after = null; if (fn) fn(); }
         } else if (mode === 'end') {
           if (Input.pressed('confirm')) { if (endKind === 'win') onWin(); else onLose(); }
         }
       },
-      render: function (c) { drawBattle(c, enemy, allies, turnIdx, commands, cursor, mode, msg, shake, flash, popups); drawParts(c); },
+      render: function (c) {
+        drawBattle(c, enemies, allies, turnIdx, commands, cursor, mode, msg, shake, flash, popups, targetCursor, aliveEnemies());
+        drawParts(c);
+        if (mode === 'quiz' && quiz) drawBattleQuiz(c, quiz, quizSel, quizAnswered, quizCorrect);
+      },
     };
   }
-  function drawBattle(c, enemy, allies, turnIdx, commands, cursor, mode, msg, shake, flash, popups) {
+  // クイズゲートの出題パネル（裏ボス戦: 正解しないと行動できない）
+  function drawBattleQuiz(c, q, sel, answered, correct) {
+    c.save();
+    c.fillStyle = 'rgba(4,8,18,0.9)'; c.fillRect(0, 212, W, H - 212);
+    c.strokeStyle = '#ffd43b'; c.lineWidth = 2; roundRect(c, 14, 218, W - 28, 44, 8); c.stroke(); c.lineWidth = 1;
+    c.textAlign = 'left';
+    c.fillStyle = '#ffd43b'; c.font = 'bold 12px "Hiragino Sans",sans-serif';
+    c.fillText('内貴の歴史クイズ！（正解しないと 行動できない）', 24, 236);
+    c.fillStyle = '#f1f3f5'; c.font = '13px "Hiragino Sans",sans-serif';
+    const ql = wrapText(c, q.q, W - 60);
+    let qy = 254; for (let i = 0; i < ql.length && i < 1; i++) { c.fillText(ql[i], 24, qy); }
+    let y = 284;
+    for (let i = 0; i < q.choices.length; i++) {
+      const isSel = i === sel, isAns = i === q.answer;
+      let fg = '#e9ecef';
+      if (answered) { if (isAns) fg = '#b2f2bb'; else if (isSel) fg = '#ffc9c9'; }
+      else if (isSel) fg = '#ffd43b';
+      c.fillStyle = fg; c.font = (isSel && !answered ? 'bold ' : '') + '14px "Hiragino Sans",sans-serif';
+      let mark = (!answered && isSel) ? '▶ ' : '　 ';
+      if (answered && isAns) mark = '○ ';
+      else if (answered && isSel && !isAns) mark = '× ';
+      c.fillText(mark + q.choices[i], 30, y);
+      y += 22;
+    }
+    if (answered) {
+      c.fillStyle = correct ? '#b2f2bb' : '#ffc9c9'; c.font = 'bold 14px "Hiragino Sans",sans-serif';
+      c.fillText(correct ? '正解！ みんな 動ける！' : '不正解…！', 30, y + 4);
+      if (q.note) {
+        c.fillStyle = '#ced4da'; c.font = '11px "Hiragino Sans",sans-serif';
+        const nl = wrapText(c, q.note, W - 70);
+        let ny = y + 22; for (let i = 0; i < nl.length && i < 2; i++) { c.fillText(nl[i], 30, ny); ny += 15; }
+      }
+      if (tick % 56 < 34) { c.fillStyle = '#cdd9ff'; c.font = '11px "Hiragino Sans",sans-serif'; c.textAlign = 'center'; c.fillText('Z / タップで つづける ▶', W / 2, H - 8); c.textAlign = 'left'; }
+    } else {
+      c.fillStyle = '#868e96'; c.font = '11px "Hiragino Sans",sans-serif'; c.textAlign = 'center';
+      c.fillText('↑ ↓ 選択　　Z 決定', W / 2, H - 8); c.textAlign = 'left';
+    }
+    c.restore();
+  }
+  function drawBattle(c, enemies, allies, turnIdx, commands, cursor, mode, msg, shake, flash, popups, targetCursor, aliveList) {
     const player = allies[0];
+    const enemy = enemies[0]; // 主敵（背景演出・イベント戦フラグは主敵基準）
+    const nEn = enemies.length;
+    function enemyDrawX(i) { return nEn === 1 ? W / 2 : (i === 0 ? W / 2 - 118 : W / 2 + 118); }
     var g = c.createLinearGradient(0, 0, 0, H);
     g.addColorStop(0, '#100818'); g.addColorStop(0.35, '#1a0f22'); g.addColorStop(0.7, '#150e1c'); g.addColorStop(1, '#0c0a14');
     c.fillStyle = g; c.fillRect(0, 0, W, H);
@@ -3009,21 +3257,34 @@
     ebl.addColorStop(0, 'rgba(80,40,120,0.08)'); ebl.addColorStop(1, 'rgba(0,0,0,0)');
     c.fillStyle = ebl; c.beginPath(); c.arc(W / 2, 130, 60, 0, Math.PI * 2); c.fill();
     c.restore();
-    var ex = (enemy.shake && enemy.shake > 0) ? (Math.random() * 2 - 1) * 6 : 0;
-    var battleImg = (enemy.kind === 'odoriko' && ODORIKO_BATTLE_IMG) ? ODORIKO_BATTLE_IMG
-                  : ((enemy.kind || 'enemy') === 'enemy' && ENEMY_BATTLE_IMG) ? ENEMY_BATTLE_IMG
-                  : null;
-    if (battleImg) {
-      var eih = 220, eiw = eih * (battleImg.width / battleImg.height);
-      var eFloat = Math.sin(tick * 0.05) * 4;
-      var eix = W / 2 - eiw / 2 + ex, eiy = 25 + eFloat;
-      var auraColor = enemy.kind === 'odoriko' ? ((enemy.fireT || 0) > 0.3 ? 'rgba(220,80,20,' : 'rgba(100,60,140,') : 'rgba(60,20,100,';
-      var aura = c.createRadialGradient(W / 2 + ex, eiy + eih * 0.45, 0, W / 2 + ex, eiy + eih * 0.45, eih * 0.6);
-      aura.addColorStop(0, auraColor + '0.25)'); aura.addColorStop(0.6, auraColor + '0.1)'); aura.addColorStop(1, 'rgba(0,0,0,0)');
-      c.fillStyle = aura; c.beginPath(); c.arc(W / 2 + ex, eiy + eih * 0.45, eih * 0.6, 0, Math.PI * 2); c.fill();
-      c.drawImage(battleImg, eix, eiy, eiw, eih);
-    } else {
-      drawActor(c, W / 2 + ex, 150, enemy.kind || 'enemy', 'down', 2.4);
+    // 敵の描画（1体=中央大 / 2体=左右にやや小さく）
+    for (var eni = 0; eni < nEn; eni++) {
+      var en = enemies[eni];
+      if (en.hp <= 0 && nEn > 1) continue; // 倒した敵は消える
+      var ecx = enemyDrawX(eni);
+      var ex = (en.shake && en.shake > 0) ? (Math.random() * 2 - 1) * 6 : 0;
+      var battleImg = (en.kind === 'odoriko' && ODORIKO_BATTLE_IMG) ? ODORIKO_BATTLE_IMG
+                    : ((en.kind || 'enemy') === 'enemy' && ENEMY_BATTLE_IMG) ? ENEMY_BATTLE_IMG
+                    : null;
+      if (battleImg) {
+        var eih = nEn === 1 ? 220 : 168, eiw = eih * (battleImg.width / battleImg.height);
+        var eFloat = Math.sin(tick * 0.05 + eni * 1.4) * 4;
+        var eix = ecx - eiw / 2 + ex, eiy = (nEn === 1 ? 25 : 60) + eFloat;
+        var auraColor = en.kind === 'odoriko' ? ((en.fireT || 0) > 0.3 ? 'rgba(220,80,20,' : 'rgba(100,60,140,') : 'rgba(60,20,100,';
+        var aura = c.createRadialGradient(ecx + ex, eiy + eih * 0.45, 0, ecx + ex, eiy + eih * 0.45, eih * 0.6);
+        aura.addColorStop(0, auraColor + '0.25)'); aura.addColorStop(0.6, auraColor + '0.1)'); aura.addColorStop(1, 'rgba(0,0,0,0)');
+        c.fillStyle = aura; c.beginPath(); c.arc(ecx + ex, eiy + eih * 0.45, eih * 0.6, 0, Math.PI * 2); c.fill();
+        c.drawImage(battleImg, eix, eiy, eiw, eih);
+      } else {
+        drawActor(c, ecx + ex, nEn === 1 ? 150 : 158, en.kind || 'enemy', 'down', nEn === 1 ? 2.4 : 2.0);
+      }
+      // 対象選択中: 選択カーソル（▼）を頭上に表示
+      if (mode === 'target' && aliveList && aliveList[targetCursor] === en && tick % 40 < 26) {
+        c.textAlign = 'center';
+        c.fillStyle = '#ffd43b'; c.font = 'bold 20px sans-serif';
+        c.fillText('▼', ecx, nEn === 1 ? 34 : 66);
+        c.textAlign = 'left';
+      }
     }
     c.restore();
     // Ground fog
@@ -3040,9 +3301,15 @@
       c.globalAlpha = 1;
     }
     c.textAlign = 'center';
-    c.fillStyle = '#f1f3f5'; c.font = 'bold 18px "Hiragino Sans",sans-serif';
-    c.fillText(enemy.name, W / 2, 208);
-    if (!enemy.forcelose && !enemy.hideHp) drawHPBar(c, W / 2 - 80, 216, 160, enemy.hp, enemy.maxhp, '#e8590c');
+    for (var enj = 0; enj < nEn; enj++) {
+      var en2 = enemies[enj];
+      if (en2.hp <= 0 && nEn > 1) continue;
+      var ncx = enemyDrawX(enj);
+      var hl = (mode === 'target' && aliveList && aliveList[targetCursor] === en2);
+      c.fillStyle = hl ? '#ffd43b' : '#f1f3f5'; c.font = 'bold ' + (nEn === 1 ? 18 : 15) + 'px "Hiragino Sans",sans-serif';
+      c.fillText(en2.name, ncx, nEn === 1 ? 208 : 206);
+      if (!en2.forcelose && !en2.hideHp) drawHPBar(c, ncx - (nEn === 1 ? 80 : 62), nEn === 1 ? 216 : 212, nEn === 1 ? 160 : 124, en2.hp, en2.maxhp, '#e8590c');
+    }
     c.textAlign = 'left';
     if (player.atkDownT > 0) {
       // 敵HPバー（中央）と重ならないよう右寄せ・短縮表記
@@ -3083,6 +3350,18 @@
         let label = commands[i];
         if (commands[i] === 'みやぶる') label += ' Lv' + player.miyaLv;
         c.fillText((i === cursor ? '▶ ' : '　 ') + label, cx + 16, cy + 32 + i * 30);
+      }
+    } else if (mode === 'target') {
+      // 対象選択メニュー（複数敵）
+      drawTextbox(c, '', 'どちらを ねらう？', false, true);
+      const tl = aliveList || [];
+      const tx = W - 196, ty = 286, tw2 = 184, th2 = 24 + tl.length * 30;
+      c.fillStyle = 'rgba(8,16,40,0.97)'; roundRect(c, tx, ty, tw2, th2, 10); c.fill();
+      c.strokeStyle = '#ffd43b'; c.lineWidth = 2; roundRect(c, tx + 2, ty + 2, tw2 - 4, th2 - 4, 8); c.stroke(); c.lineWidth = 1;
+      c.font = '17px "Hiragino Sans",sans-serif';
+      for (let i = 0; i < tl.length; i++) {
+        c.fillStyle = i === targetCursor ? '#ffd43b' : '#f1f3f5';
+        c.fillText((i === targetCursor ? '▶ ' : '　 ') + tl[i].name, tx + 14, ty + 32 + i * 30);
       }
     } else {
       drawTextbox(c, '', msg, mode === 'msg' || mode === 'end', true);
@@ -4321,8 +4600,10 @@
         '所持金　　' + gold + ' 円',
         'どうぐ　　おにぎり×' + bag.onigiri + '　長久手茶×' + bag.cha + '　兵糧丸×' + bag.hyorogan,
       ];
+      if (iwasakiCleared) lines.push('称号　　　両市公認・歴史の語り部');
       let y = cy + 32;
-      for (let i = 0; i < lines.length; i++) { c.fillText(lines[i], cx + 22, y); y += 32; }
+      const lstep = lines.length > 11 ? 29 : 32; // 称号追加時も枠に収める
+      for (let i = 0; i < lines.length; i++) { c.fillText(lines[i], cx + 22, y); y += lstep; }
     } else if (tab === 1) {
       const slots = [['武器', Hero.weapon], ['防具', Hero.armor]];
       c.font = '17px "Hiragino Sans",sans-serif';
