@@ -1367,6 +1367,8 @@
     FACE_IMG[cacheKey] = img;
     return img;
   }
+  // 最初の会話で旧図形ポートレートが一瞬見えないよう、オダの4表情を起動時に先読みする。
+  ['neutral', 'serious', 'angry', 'happy'].forEach(function (face) { getFaceImg('oda', face); });
   function dialogueFace(name, text, explicitFace) {
     if (explicitFace) return explicitFace;
     if (name !== 'オダ') return null;
@@ -1583,15 +1585,26 @@
     return pat;
   }
   // HD_DECO_DEF / HD_BLD_DEF（装飾・建物の配置データ）は maps.js に分離した
-  // 顔ウィンドウ（画像があれば表情別に描画。無ければ図形ポートレート）
+  // 顔ウィンドウ（画像があれば表情別に描画。オダは読込完了まで枠ごと表示しない）
   function drawPortrait(c, kind, face, x, y, s) {
+    const img = getFaceImg(kind, face);
+    const imageReady = img && img.complete && img.naturalWidth > 0;
+    // 読み込み中に旧ダミーが一瞬表示されるのを防ぐ。枠も画像と同時に出す。
+    if (kind === 'oda' && !imageReady) return false;
     c.fillStyle = 'rgba(0,0,0,0.35)'; roundRect(c, x + 3, y + 3, s, s, 8); c.fill();
     c.fillStyle = '#0a1430'; roundRect(c, x, y, s, s, 8); c.fill();
     c.save();
     roundRect(c, x + 3, y + 3, s - 6, s - 6, 6); c.clip();
-    const img = getFaceImg(kind, face);
-    if (img && img.complete && img.naturalWidth > 0) {
-      c.drawImage(img, x + 3, y + 3, s - 6, s - 6);
+    if (imageReady) {
+      if (kind === 'oda') {
+        // 元画像の上側56%を正方形に切り出し、頭頂と肩が残る顔アップにする。
+        var cropSize = Math.min(img.naturalWidth, img.naturalHeight) * 0.56;
+        var cropX = (img.naturalWidth - cropSize) / 2;
+        var cropY = img.naturalHeight * 0.02;
+        c.drawImage(img, cropX, cropY, cropSize, cropSize, x + 3, y + 3, s - 6, s - 6);
+      } else {
+        c.drawImage(img, x + 3, y + 3, s - 6, s - 6);
+      }
     } else {
       const cx = x + s / 2, cy = y + s * 0.6, pal = PAL[kind] || PAL.oda;
       c.fillStyle = '#16213f'; c.fillRect(x + 3, y + 3, s - 6, s - 6);
@@ -1616,6 +1629,7 @@
     c.restore();
     c.strokeStyle = 'rgba(100,130,200,0.4)'; c.lineWidth = 1; roundRect(c, x + 1, y + 1, s - 2, s - 2, 7); c.stroke();
     c.strokeStyle = '#cdd9ff'; c.lineWidth = 1.5; roundRect(c, x + 3, y + 3, s - 6, s - 6, 6); c.stroke(); c.lineWidth = 1;
+    return true;
   }
   function drawTextbox(c, name, text, arrow, compact, explicitFace) {
     const h = compact ? 111 : 138;
