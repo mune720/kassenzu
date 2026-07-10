@@ -24,8 +24,9 @@ Vanilla JS + HTML5 Canvas、ビルド不要、`file://` でも動作。
 
 ## ファイル構成
 
-- `prototype/index.html` — ゲーム本体のHTML（キャッシュバスター `?v=` はコード変更時に更新する）
+- `prototype/index.html` — ゲーム本体のHTML（キャッシュバスター `?v=` はコード変更時に更新する。読み込み順: dialogue.js → maps.js → game.js）
 - `prototype/game.js` — ゲームロジック（Canvas描画・シーン管理・戦闘・ミニゲーム等。内部解像度は2倍で描画）
+- `prototype/maps.js` — マップデータ専用ファイル（タイル行列・MAP_DEFS・HD_DECO_DEF/HD_BLD_DEF・リニモ定義 LINIMO_STATIONS/LINIMO_TRACK）
 - `prototype/dialogue.js` — 全セリフデータ（DIALOGUE オブジェクト。**新キーは必ずトップレベルに追加**——localStorage のマージがトップレベルキー単位のため）
 - `prototype/editor.html` — ブラウザ上のセリフエディター（新しいセリフキーは SECTIONS / SCENE_LABELS に登録する）
 - `prototype/test.html` — テスター用シーンセレクト（本編からはリンクしない。セーブは自動退避される）
@@ -33,13 +34,15 @@ Vanilla JS + HTML5 Canvas、ビルド不要、`file://` でも動作。
 - `prototype/assets/` — 画像アセット（差し替え一覧は `docs/ASSETS.md`）
 - `docs/DESIGN.md` — 拡張版の設計書・原作シーン台帳
 - `docs/ASSETS.md` — アセット差し替え一覧（導入状態つき）
-- `docs/asset_prompts.md` — ChatGPT用の画像生成プロンプト集（第1〜3弾）
+- `docs/asset_prompts.md` — ChatGPT用の画像生成プロンプト集（第1〜4弾）
 
 ## 実装メモ
 
 - セーブは2ファイル制（`kassenzu_save_v2_f1` / `_f2`）。セーブポイントと「つづきから」でファイルを選ぶ。旧単一セーブは初回起動時にファイル1へ自動移行
 - 戦闘は複数敵対応（`startBattle({ enemies: [...] })`）。従来の `enemy:` 指定も1体として動く
 - マップ行は全行同じ幅であること（検証スクリプトの前例: `/tmp/claude/checkmaps.py` 方式で幅チェック）
+- 街の配置は実際の長久手市に準拠（方角込み）。ゾーン構成: 北西D（文化の家・図書館・桧ヶ根）／北C（岩作: 色金山・市役所・医大・武蔵塚・一蘭）／西B（杁ヶ池・御旗山）／中央A（古戦場公園=GR北・イオン=GR南・県道57=公園東）／東F（芸大通: トヨタ博物館・県芸大）／東G（公園西: IKEA・こども塾）／東端E（モリコロ・Gと地続き）。グリーンロードは全ゾーン rows21-22 で貫通し、リニモが上空を走る（駅で路線図移動）
+- ストーリーイベントは zoneA 公園内（rows 2〜19）の座標に依存する。**zoneA のこの範囲のレイアウトを動かすときは game.js のシーン座標（sceneActors / walkTo / スポーン）との整合を必ず確認**
 - Bash ヒアドキュメント内の `!` は破損するため、`!` を含むスクリプトはファイルに書いてから実行する
 
 ## 公開先
