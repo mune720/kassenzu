@@ -11,7 +11,7 @@ html, body {
   font-size: 24px; text-align: center; margin: 6px 0 10px; color: #ffd43b;
 }
 #apptitle small { font-size: 13px; color: #adb5bd; font-family: inherit; }
-#stage { width: 100%; max-width: 512px; margin: 0 auto; }
+#stage { width: 100%; max-width: 512px; margin: 0 auto; position: relative; } /* 上映オーバーレイの基準 */
 canvas#game {
   width: 100%; height: auto; display: block;
   background: #000; border-radius: 8px;

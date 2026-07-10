@@ -202,6 +202,7 @@
     civ6: { body: '#3b4a63', legs: '#252c3a', skin: '#ffd8a8', hair: '#212529', short: true },  // 職員・スーツ
     civ7: { body: '#4dabf7', legs: '#1c3d5a', skin: '#ffd8a8', hair: '#2b2b2b' },               // 学生
     civ8: { body: '#e8590c', legs: '#343a40', skin: '#ffd8a8', hair: '#4a3423', short: true },  // 店員エプロン
+    kurono: { body: '#2b2b33', legs: '#1a1a22', skin: '#ffd8a8', hair: '#141414', short: true }, // 文化の家職員・黒野
     sakamoto: { body: '#7048a8', legs: '#3d2a55', skin: '#ffd8a8', hair: '#2b2b2b', short: true },
     naiki: { body: '#2e5e4e', legs: '#243c34', skin: '#ffd8a8', hair: '#1d1d1d', short: true },
   };
@@ -645,14 +646,99 @@
         c.fillStyle = '#8a6a3b'; c.fillRect(x + 3, y + T / 2 - 1, T - 6, 2); c.fillRect(x + T / 2 - 1, y + 2, 2, T - 4);
         c.fillStyle = '#d4aa40'; c.beginPath(); c.arc(x + T - 8, y + T / 2, 2.5, 0, Math.PI * 2); c.fill();
         c.fillStyle = '#f0c850'; c.beginPath(); c.arc(x + T - 8.5, y + T / 2 - 0.5, 1, 0, Math.PI * 2); c.fill();
-      } else if (ch === 'U') {
-        // 階段
+      } else if (ch === 'U' || ch === 'W') {
+        // 階段（U=上り ▲ / W=下り ▼）
         c.fillStyle = '#4a5058'; c.fillRect(x + 2, y + 2, T - 4, T - 4);
         for (var st2 = 0; st2 < 4; st2++) {
           c.fillStyle = st2 % 2 === 0 ? '#6b7280' : '#5a626b';
           c.fillRect(x + 4, y + 4 + st2 * 6, T - 8, 5);
         }
-        c.fillStyle = '#ffd43b'; c.font = 'bold 10px sans-serif'; c.fillText('2F', x + T / 2 - 6, y + T - 5);
+        c.fillStyle = '#ffd43b'; c.font = 'bold 10px sans-serif'; c.fillText(ch === 'U' ? '▲' : '▼', x + T / 2 - 5, y + T - 5);
+      } else if (ch >= '1' && ch <= '8') {
+        // 部屋のドア（番号プレート付き・文化の家の廊下用）
+        c.fillStyle = '#7a5a30'; c.fillRect(x, y, T, T);
+        c.fillStyle = '#6a4a20'; c.fillRect(x + 3, y + 2, T - 6, T - 4);
+        c.fillStyle = '#8a6a3b'; c.fillRect(x + 3, y + T / 2 - 1, T - 6, 2);
+        c.fillStyle = '#d4aa40'; c.beginPath(); c.arc(x + T - 8, y + T / 2 + 3, 2.5, 0, Math.PI * 2); c.fill();
+        c.fillStyle = '#e8e4da'; c.fillRect(x + T / 2 - 6, y + 4, 12, 9);
+        c.fillStyle = '#3a3a3a'; c.font = 'bold 8px sans-serif'; c.fillText(ch, x + T / 2 - 2, y + 11);
+      } else if (ch === '9') {
+        // 閲覧台（アーツライブラリーの読書スポット）
+        c.fillStyle = '#8a6a3b'; c.fillRect(x + 6, y + 10, T - 12, T - 14);
+        c.fillStyle = '#f5efdc'; c.fillRect(x + 8, y + 6, T - 16, 8);
+        c.fillStyle = '#c0392b'; c.fillRect(x + 8, y + 6, 3, 8);
+        c.fillStyle = '#5a3a15'; c.fillRect(x + 8, y + T - 6, 3, 4); c.fillRect(x + T - 11, y + T - 6, 3, 4);
+      } else if (ch === 'v') {
+        // 大型スクリーン（200インチ・光のホールなど）
+        c.fillStyle = '#3a4050'; c.fillRect(x, y, T, T);
+        c.fillStyle = '#f2f4f8'; c.fillRect(x + 1, y + 3, T - 2, T - 8);
+        c.fillStyle = 'rgba(160,190,230,0.25)'; c.fillRect(x + 1, y + 3, T - 2, 6);
+        c.fillStyle = '#2b313b'; c.fillRect(x, y + T - 4, T, 4);
+      } else if (ch === 'i') {
+        // ホールの客席列（段状の赤い椅子）
+        c.fillStyle = '#4a2a30'; c.fillRect(x, y + 4, T, T - 8);
+        for (var si2 = 0; si2 < 3; si2++) {
+          c.fillStyle = '#a03040'; roundRect(c, x + 2 + si2 * 10, y + 7, 8, 12, 2); c.fill();
+          c.fillStyle = '#c0506a'; c.fillRect(x + 2 + si2 * 10, y + 7, 8, 4);
+        }
+        c.fillStyle = '#d8cdb2'; c.fillRect(x, y + T - 6, T, 3);
+      } else if (ch === 'M') {
+        // 鏡張りの壁＋バレエバー（舞踊室）
+        c.fillStyle = '#5a626b'; c.fillRect(x, y, T, T);
+        c.fillStyle = '#cfe3ee'; c.fillRect(x + 2, y + 2, T - 4, T - 8);
+        c.fillStyle = 'rgba(255,255,255,0.55)';
+        c.beginPath(); c.moveTo(x + 5, y + T - 6); c.lineTo(x + 12, y + 2); c.lineTo(x + 17, y + 2); c.lineTo(x + 10, y + T - 6); c.closePath(); c.fill();
+        c.fillStyle = '#b8935a'; c.fillRect(x, y + T - 10, T, 3);
+      } else if (ch === 'P') {
+        // グランドピアノ
+        c.fillStyle = '#1a1a1e'; c.beginPath();
+        c.moveTo(x + 4, y + T - 6); c.lineTo(x + 4, y + 10); c.quadraticCurveTo(x + 8, y + 3, x + 18, y + 4);
+        c.lineTo(x + T - 4, y + 8); c.lineTo(x + T - 4, y + T - 10); c.lineTo(x + 18, y + T - 6);
+        c.closePath(); c.fill();
+        c.fillStyle = '#f5f5f5'; c.fillRect(x + 5, y + T - 10, 12, 4);
+        c.fillStyle = 'rgba(255,255,255,0.14)'; c.fillRect(x + 8, y + 7, 12, 4);
+      } else if (ch === 'u') {
+        // アップライトピアノ・電子ピアノ
+        c.fillStyle = '#2b2018'; c.fillRect(x + 3, y + 3, T - 6, T - 8);
+        c.fillStyle = '#f5f5f5'; c.fillRect(x + 5, y + T - 12, T - 10, 4);
+        c.fillStyle = '#1a1410'; c.fillRect(x + 5, y + 6, T - 10, 8);
+        c.fillStyle = '#5a3a15'; c.fillRect(x + 4, y + T - 5, 3, 3); c.fillRect(x + T - 7, y + T - 5, 3, 3);
+      } else if (ch === 'd') {
+        // ドラムセット（音楽スタジオ）
+        c.fillStyle = '#c0392b'; c.beginPath(); c.arc(x + T / 2, y + T - 10, 9, 0, Math.PI * 2); c.fill();
+        c.fillStyle = '#e8d8b8'; c.beginPath(); c.arc(x + T / 2, y + T - 10, 7, 0, Math.PI * 2); c.fill();
+        c.fillStyle = '#d4aa40'; c.beginPath(); c.ellipse(x + 7, y + 8, 6, 3, -0.4, 0, Math.PI * 2); c.fill();
+        c.fillStyle = '#e8c860'; c.beginPath(); c.ellipse(x + T - 7, y + 8, 6, 3, 0.4, 0, Math.PI * 2); c.fill();
+        c.strokeStyle = '#8a8a8a'; c.beginPath(); c.moveTo(x + 7, y + 10); c.lineTo(x + 9, y + T - 8); c.stroke();
+        c.beginPath(); c.moveTo(x + T - 7, y + 10); c.lineTo(x + T - 9, y + T - 8); c.stroke();
+      } else if (ch === 'a') {
+        // アンプ・スピーカー
+        c.fillStyle = '#1e1e24'; c.fillRect(x + 4, y + 4, T - 8, T - 8);
+        c.fillStyle = '#3a3a44'; c.fillRect(x + 6, y + 6, T - 12, 10);
+        c.fillStyle = '#666'; c.beginPath(); c.arc(x + T / 2, y + T - 11, 5, 0, Math.PI * 2); c.fill();
+        c.fillStyle = '#222'; c.beginPath(); c.arc(x + T / 2, y + T - 11, 3, 0, Math.PI * 2); c.fill();
+        c.fillStyle = '#d4aa40'; c.fillRect(x + 7, y + 7, 2, 2); c.fillRect(x + 11, y + 7, 2, 2);
+      } else if (ch === 'E') {
+        // イーゼル・譜面台
+        c.strokeStyle = '#8a6a3b'; c.lineWidth = 2;
+        c.beginPath(); c.moveTo(x + T / 2, y + 4); c.lineTo(x + 6, y + T - 4); c.stroke();
+        c.beginPath(); c.moveTo(x + T / 2, y + 4); c.lineTo(x + T - 6, y + T - 4); c.stroke();
+        c.beginPath(); c.moveTo(x + T / 2, y + 10); c.lineTo(x + T / 2, y + T - 6); c.stroke();
+        c.lineWidth = 1;
+        c.fillStyle = '#f5efdc'; c.fillRect(x + 8, y + 8, T - 16, 12);
+        c.fillStyle = '#c8b890'; c.fillRect(x + 8, y + 18, T - 16, 2);
+      } else if (ch === 'n') {
+        // 現像バット（暗室）
+        c.fillStyle = '#3a3a44'; c.fillRect(x + 2, y + 8, T - 4, T - 14);
+        c.fillStyle = '#5a2a2a'; c.fillRect(x + 4, y + 10, T - 8, T - 18);
+        c.fillStyle = 'rgba(255,120,120,0.25)'; c.fillRect(x + 4, y + 10, T - 8, 5);
+        c.fillStyle = '#e8e4da'; c.fillRect(x + 8, y + 12, 8, 6);
+      } else if (ch === 'F') {
+        // ふすま（和室の仕切り）
+        c.fillStyle = '#e8e0d0'; c.fillRect(x + 2, y, T - 4, T);
+        c.strokeStyle = '#8a6a3b'; c.lineWidth = 2; c.strokeRect(x + 2, y, T - 4, T); c.lineWidth = 1;
+        c.fillStyle = 'rgba(160,140,100,0.3)'; c.fillRect(x + 4, y + 8, T - 8, 10);
+        c.fillStyle = '#5a3a15'; c.fillRect(x + T / 2 - 1, y + T / 2 - 4, 2, 8);
       } else if (ch === 'V') {
         // 森のホールへの扉（赤）
         c.fillStyle = '#7a2a30'; c.fillRect(x, y, T, T);
@@ -1198,7 +1284,11 @@
   }
   // スクリーンパス: 画面座標のオーバーレイ（カメラ translate の外側）
   function drawFieldAtmoScreen(c, map) {
-    if (map.tileset === 'museum') {
+    if (map.key === 'bk_anshitsu') {
+      // 暗室: 赤色灯の下の暗がり（セーフライト演出）
+      c.save(); c.globalAlpha = 0.34; c.fillStyle = '#3a0a10'; c.fillRect(0, 0, W, H); c.restore();
+      c.save(); c.globalAlpha = 0.10; c.fillStyle = '#ff3040'; c.fillRect(0, 0, W, H); c.restore();
+    } else if (map.tileset === 'museum') {
       c.save(); c.globalAlpha = 0.04; c.fillStyle = '#ffc070'; c.fillRect(0, 0, W, H); c.restore();
     } else if (map.key === 'zoneA') {
       drawFogBand(c, H - 100, 80, 'rgba(120,130,175,0.06)');
@@ -1236,6 +1326,7 @@
     if (name === '坂元') return 'sakamoto';
     if (name === '内貴') return 'naiki';
     if (name === '通行人') return 'civ1';
+    if (name === '黒野') return 'kurono';
     return null;
   }
   // 立ち絵画像の差し替え用キャッシュ（assets/face/<kind>.png があれば自動で使う）
@@ -1262,6 +1353,91 @@
   // 色金山・展望台の写真（assets/view/irogane_view.png を置くと展望台で実写を表示。無ければテキストの眺望）
   var IROGANE_VIEW_IMG = null;
   loadImg('assets/view/irogane_view.png', function (i) { IROGANE_VIEW_IMG = i; });
+  // ===================== 効果音（Web Audio・音声ファイル不要の合成音） =====================
+  let _actx = null;
+  function actx() {
+    if (!_actx) { try { _actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { _actx = null; } }
+    if (_actx && _actx.state === 'suspended') _actx.resume();
+    return _actx;
+  }
+  // 太鼓・ピアノ風のシンプルな合成音。type: don(大太鼓)/ka(締太鼓)/up/down/left/right(小太鼓)
+  function playTone(type) {
+    var a = actx(); if (!a) return;
+    var t0 = a.currentTime;
+    function osc(freq, dur, kind, vol, slide) {
+      var o = a.createOscillator(), gn = a.createGain();
+      o.type = kind || 'sine'; o.frequency.setValueAtTime(freq, t0);
+      if (slide) o.frequency.exponentialRampToValueAtTime(slide, t0 + dur);
+      gn.gain.setValueAtTime(vol || 0.25, t0);
+      gn.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+      o.connect(gn); gn.connect(a.destination);
+      o.start(t0); o.stop(t0 + dur);
+    }
+    if (type === 'don') { osc(150, 0.3, 'sine', 0.5, 52); }
+    else if (type === 'ka') { osc(900, 0.08, 'square', 0.1); osc(1350, 0.05, 'square', 0.06); }
+    else if (type === 'up') osc(587, 0.15, 'triangle', 0.3);
+    else if (type === 'down') osc(392, 0.15, 'triangle', 0.3);
+    else if (type === 'left') osc(440, 0.15, 'triangle', 0.3);
+    else if (type === 'right') osc(494, 0.15, 'triangle', 0.3);
+  }
+  // ピアノのアルペジオ（音楽室・小音楽室の調べ用）
+  function playPianoArp() {
+    var a = actx(); if (!a) return;
+    [523.25, 659.25, 783.99].forEach(function (f, i) {
+      var o = a.createOscillator(), gn = a.createGain();
+      var st = a.currentTime + i * 0.14;
+      o.type = 'triangle'; o.frequency.value = f;
+      gn.gain.setValueAtTime(0.22, st); gn.gain.exponentialRampToValueAtTime(0.001, st + 0.7);
+      o.connect(gn); gn.connect(a.destination); o.start(st); o.stop(st + 0.7);
+    });
+  }
+  // ===================== 光のホール: 本編映像のオーバーレイ再生 =====================
+  // ゲーム画面(#stage)の上に YouTube 埋め込みを重ねて表示（別タブは開かない）。
+  // 映像は 16:9 の横長で表示（スマホ縦持ちでも横長のまま）。✕で途中でも閉じられる。
+  // 再生中は scene.update を停止する（メインループで videoOverlay を参照）
+  let videoOverlay = false;
+  function showVideoOverlay(embedUrl) {
+    var stage = document.getElementById('stage');
+    if (!stage || videoOverlay) return;
+    videoOverlay = true;
+    var wrap = document.createElement('div');
+    wrap.id = 'videoOverlay';
+    wrap.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(4,6,14,0.97);z-index:20;display:flex;align-items:center;justify-content:center;';
+    var box = document.createElement('div');
+    box.style.cssText = 'position:relative;width:100%;aspect-ratio:16/9;max-height:82%;';
+    var ifr = document.createElement('iframe');
+    ifr.src = embedUrl;
+    ifr.allow = 'autoplay; encrypted-media; fullscreen; picture-in-picture';
+    ifr.setAttribute('allowfullscreen', '');
+    ifr.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;border:0;background:#000;';
+    var close = document.createElement('button');
+    close.textContent = '✕ とじる';
+    close.style.cssText = 'position:absolute;top:6px;right:8px;z-index:21;padding:8px 16px;border:none;border-radius:8px;background:rgba(20,24,40,0.9);color:#ffd43b;font-size:14px;font-weight:bold;cursor:pointer;';
+    close.addEventListener('click', function () {
+      videoOverlay = false;
+      wrap.remove();
+    });
+    box.appendChild(ifr);
+    wrap.appendChild(box);
+    wrap.appendChild(close);
+    stage.appendChild(wrap);
+  }
+  // ===================== 文化の家: 館内テーブル =====================
+  // マップ初入場時のナレーション（enteredFlavor でセッション内1回だけ）
+  const BUNKA_ENTER = {
+    bunka1: 'bunka_galleria', bunka2: 'bunka_2f', bunka3: 'bunka_3f', mori: 'bunka_mori',
+    bk_kaze: 'enter_bk_kaze', bk_hikari: 'enter_bk_hikari', bk_tenji: 'enter_bk_tenji', bk_shoon: 'enter_bk_shoon',
+    bk_tamoku: 'enter_bk_tamoku', bk_kougi: 'enter_bk_kougi', bk_shoku: 'enter_bk_shoku', bk_bijutsu: 'enter_bk_bijutsu',
+    bk_studio: 'enter_bk_studio', bk_anshitsu: 'enter_bk_anshitsu', bk_ongaku: 'enter_bk_ongaku', bk_buyou: 'enter_bk_buyou',
+    bk_kaigi: 'enter_bk_kaigi', bk_washitsu: 'enter_bk_washitsu',
+  };
+  // 各部屋から廊下へ戻るときの出口座標（ドアの1マス内側）
+  const BK_RETURN = {
+    bk_kaze: ['bunka1', 8, 2], bk_hikari: ['bunka1', 11, 2], bk_tenji: ['bunka1', 14, 2], bk_shoon: ['bunka1', 16, 2],
+    bk_tamoku: ['bunka2', 5, 2], bk_kougi: ['bunka2', 8, 2], bk_shoku: ['bunka2', 11, 2], bk_bijutsu: ['bunka2', 14, 2],
+    bk_studio: ['bunka2', 17, 2], bk_anshitsu: ['bunka2', 5, 12], bk_ongaku: ['bunka2', 9, 12], bk_buyou: ['bunka2', 13, 12],
+    bk_kaigi: ['bunka3', 7, 2], bk_washitsu: ['bunka3', 12, 2],
+  };
   // 敵バトル絵（assets/enemy/<kind>_battle.png を置くと自動で差し替わる。無い間はもののけ描画）
   const ENEMY_IMG = {};
   const MONSTER_KINDS = {};
@@ -1320,7 +1496,7 @@
       if (maxX > minX && maxY > minY) HD_SPRITE_BOX[kind] = { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
     } catch (e) { /* 解析不可なら全セル描画のまま */ }
   }
-  ['oda', 'ike', 'michi', 'kancho', 'odoriko', 'sakamoto', 'naiki', 'civ1', 'civ2', 'civ3', 'civ4', 'civ5', 'civ6', 'civ7', 'civ8'].forEach(function (k) {
+  ['oda', 'ike', 'michi', 'kancho', 'odoriko', 'sakamoto', 'naiki', 'civ1', 'civ2', 'civ3', 'civ4', 'civ5', 'civ6', 'civ7', 'civ8', 'kurono'].forEach(function (k) {
     var img = new Image();
     img.onload = function () { HD_SPRITE[k] = img; sheetContentBox(k, img); };
     img.onerror = function () {};
@@ -2035,10 +2211,36 @@
       }
       else if (id === 'bunka_in') { unlockZukan('bunka'); gotoField('bunka1'); }
       else if (id === 'bunka_exit') gotoField('zoneD', { col: 19, row: 13 });
-      else if (id === 'bunka_up') gotoField('bunka2', { col: 2, row: 2 });
-      else if (id === 'bunka_down') gotoField('bunka1', { col: 2, row: 2 });
+      else if (id === 'bunka_up') gotoField('bunka2', { col: 3, row: 2 });
+      else if (id === 'bunka_down') gotoField('bunka1', { col: 3, row: 2 });
+      else if (id === 'bunka_up3') gotoField('bunka3', { col: 3, row: 2 });
+      else if (id === 'bunka_down3') gotoField('bunka2', { col: 20, row: 2 });
       else if (id === 'mori_in') gotoField('mori');
-      else if (id === 'mori_exit') gotoField('bunka1', { col: 13, row: 2 });
+      else if (id === 'mori_exit') gotoField('bunka1', { col: 5, row: 2 });
+      // ===== 文化の家: 各部屋への出入り・調べポイント・光のホール上映 =====
+      else if (id && id.indexOf('bk_') === 0 && id.slice(-3) === '_in' && MAP_DEFS[id.slice(0, -3)]) {
+        gotoField(id.slice(0, -3));
+      }
+      else if (id === 'bk_room_exit') {
+        var bkRet = BK_RETURN[mapKey];
+        if (bkRet) gotoField(bkRet[0], { col: bkRet[1], row: bkRet[2] });
+      }
+      else if (id === 'kurono') {
+        // 光のホール: 職員・黒野。本編（YouTube）の上映をオーバーレイで再生する
+        Dialog.start(DIALOGUE.kurono_talk, function () {
+          Choice.start('黒野「もうすぐ『合戦ズ』の 上映が 始まります。見ていきますか？」', ['はい', 'また 今度'], function (pick) {
+            if (pick === 0) {
+              Dialog.start(DIALOGUE.kurono_start, function () {
+                showVideoOverlay('https://www.youtube.com/embed/n47mm_56wKc?autoplay=1&playsinline=1&rel=0');
+              });
+            }
+          });
+        });
+      }
+      else if (id === 'arts_library') setScene(makeArtsLibrary(backHere()));
+      else if (id === 'bk_studio_drum') { playTone('don'); Dialog.start(DIALOGUE.bk_studio_drum); }
+      else if (id === 'bk_grand_piano' || id === 'bk_upright' || id === 'bk_studio_piano') { playPianoArp(); Dialog.start(DIALOGUE[id]); }
+      else if (id && (id.indexOf('bk_') === 0 || id.indexOf('bunka_map') === 0) && DIALOGUE[id]) Dialog.start(DIALOGUE[id]);
       else if (id === 'sakamoto') {
         // ハードクリア後: 岩崎城への誘い（裏イベント）
         if (difficulty === 'hard' && chapter === 'post' && !iwasakiCleared) {
@@ -2508,9 +2710,9 @@
               } else { ch3rusu = true; saveGame(); }
             });
           });
-        } else if ((mapKey === 'bunka1' || mapKey === 'bunka2' || mapKey === 'mori') && !enteredFlavor.has(mapKey)) {
+        } else if (BUNKA_ENTER[mapKey] && !enteredFlavor.has(mapKey) && DIALOGUE[BUNKA_ENTER[mapKey]]) {
           enteredFlavor.add(mapKey);
-          Dialog.start(mapKey === 'bunka1' ? DIALOGUE.bunka_galleria : (mapKey === 'bunka2' ? DIALOGUE.bunka_2f : DIALOGUE.bunka_mori));
+          Dialog.start(DIALOGUE[BUNKA_ENTER[mapKey]]);
         } else if (mapKey === 'iwasaki' && !enteredFlavor.has('iwasaki')) {
           enteredFlavor.add('iwasaki');
           Dialog.start(iwasakiCleared ? DIALOGUE.iwasaki_arrive_again : DIALOGUE.iwasaki_arrive);
@@ -3783,43 +3985,165 @@
 
   // ===================== ミニゲーム: ドラムサークル（文化の家・森のホール） =====================
   // 収束する輪が太鼓に重なった瞬間に Z。16拍中の的中数でランク。
-  function makeDrumCircle(onReturn) {
-    const hard = difficulty === 'hard';
-    const PERIOD = hard ? 26 : 36;
-    const WINDOW = hard ? 4 : 6;
-    const TOTAL = 16;
-    let beats = 0, hits = 0, judged = false, flashT = 0, missT = 0, phase = 'play', doneT = 0, lastPhase = 0;
+  // ===================== アーツライブラリー（文化の家2階・読み物） =====================
+  // 本のデータは dialogue.js の arts_book1〜4（1行目=タイトル・2行目以降=1ページずつ。エディターで編集可）
+  const ARTS_BOOK_KEYS = ['arts_book1', 'arts_book2', 'arts_book3', 'arts_book4'];
+  function makeArtsLibrary(onReturn) {
+    const books = ARTS_BOOK_KEYS.map(function (k) { return DIALOGUE[k]; }).filter(function (b) { return b && b.length >= 2; });
+    let cur = 0, reading = -1, page = 0;
     return {
       enter: function () {},
       update: function (dt) {
-        if (flashT > 0) flashT -= dt;
-        if (missT > 0) missT -= dt;
-        if (phase === 'result') {
-          doneT += dt;
-          if (doneT > 1.6 || Input.pressed('confirm')) {
-            var reward = mgDone.drum ? 100 : (hits >= 13 ? 400 : 250);
-            mgDone.drum = true; gold += reward; saveGame();
-            onReturn();
+        if (reading >= 0) {
+          if (Input.pressed('confirm')) {
+            page++;
+            if (page >= books[reading].length - 1) { reading = -1; page = 0; }
           }
+          if (Input.pressed('cancel')) { reading = -1; page = 0; }
           return;
         }
-        var ph = tick % PERIOD;
-        if (ph < lastPhase) {
-          judged = false;
-          beats++;
-          if (beats > TOTAL) {
-            if (hard && hits < 9) { setScene(makeGameOver('リズムが 合わなかった…。（的中 ' + hits + '/' + TOTAL + '・9以上で 成功）')); return; }
-            phase = 'result'; doneT = 0;
+        var n = books.length + 1;
+        if (Input.pressed('up')) cur = (cur + n - 1) % n;
+        if (Input.pressed('down')) cur = (cur + 1) % n;
+        if (Input.pressed('cancel')) { onReturn(); return; }
+        if (Input.pressed('confirm')) {
+          if (cur < books.length) { reading = cur; page = 0; }
+          else onReturn();
+        }
+      },
+      render: function (c) {
+        var g = c.createLinearGradient(0, 0, 0, H);
+        g.addColorStop(0, '#1d2433'); g.addColorStop(1, '#2b3447');
+        c.fillStyle = g; c.fillRect(0, 0, W, H);
+        c.textAlign = 'center';
+        c.fillStyle = '#ffd43b'; c.font = 'bold 20px "Hiragino Mincho ProN",serif';
+        c.fillText('アーツライブラリー', W / 2, 40);
+        c.fillStyle = '#9db4e8'; c.font = '12px "Hiragino Sans",sans-serif';
+        c.fillText('文化と 芸術の 本が 自由に 読める、オープンな 読書コーナー', W / 2, 62);
+        if (reading >= 0) {
+          var bk = books[reading];
+          c.fillStyle = '#f5efdc'; roundRect(c, 40, 80, W - 80, 296, 8); c.fill();
+          c.fillStyle = '#3a2f22'; c.font = 'bold 17px "Hiragino Mincho ProN",serif';
+          c.fillText(bk[0].text, W / 2, 112);
+          c.strokeStyle = 'rgba(90,70,40,0.35)'; c.beginPath(); c.moveTo(70, 124); c.lineTo(W - 70, 124); c.stroke();
+          c.font = '15px "Hiragino Mincho ProN",serif'; c.textAlign = 'left';
+          var pl = wrapText(c, bk[Math.min(page + 1, bk.length - 1)].text, W - 176);
+          var py = 152;
+          for (var i = 0; i < pl.length; i++) { c.fillText(pl[i], 88, py); py += 24; }
+          c.textAlign = 'center';
+          c.fillStyle = '#8a7a60'; c.font = '12px "Hiragino Sans",sans-serif';
+          c.fillText((page + 1) + ' / ' + (bk.length - 1) + ' ページ　　Z つぎへ　　X とじる', W / 2, 362);
+        } else {
+          var y = 92;
+          for (var i2 = 0; i2 <= books.length; i2++) {
+            var sel = i2 === cur;
+            var label = i2 < books.length ? '『' + books[i2][0].text + '』' : '本棚を はなれる';
+            c.fillStyle = sel ? 'rgba(255,212,59,0.16)' : 'rgba(255,255,255,0.06)';
+            roundRect(c, 60, y, W - 120, 44, 8); c.fill();
+            if (sel) { c.strokeStyle = '#ffd43b'; c.lineWidth = 2; roundRect(c, 60, y, W - 120, 44, 8); c.stroke(); c.lineWidth = 1; }
+            c.fillStyle = sel ? '#ffd43b' : '#e8dcc0'; c.font = 'bold 15px "Hiragino Mincho ProN",serif';
+            c.fillText(label, W / 2, y + 28);
+            y += 54;
+          }
+          c.fillStyle = '#868e96'; c.font = '12px "Hiragino Sans",sans-serif';
+          c.fillText('↑ ↓ えらぶ　　Z ひらく　　X もどる', W / 2, H - 14);
+        }
+        drawVignette(c);
+        c.textAlign = 'left';
+      },
+    };
+  }
+
+  // ===================== ミニゲーム: ドラムサークル（リズム復唱） =====================
+  // お手本のリズム（光と音）を聴いて、同じ順番・同じ拍で叩き返す。
+  // A(Z)=ドン（大太鼓）・B(X)=カッ（締太鼓）。ハードは ↑↓←→ の小太鼓も混ざり、テンポも速い。
+  // 判定: 正しいボタン ＋ 拍タイミング±35%以内（半分以内なら PERFECT）。
+  // ミスはお手本から聴き直し。イージー=ミス5回で不合格（低報酬）／ハード=ミス3回でゲームオーバー
+  function makeDrumCircle(onReturn) {
+    const hard = difficulty === 'hard';
+    const KEYS_EASY = ['confirm', 'cancel'];
+    const KEYS_HARD = ['confirm', 'cancel', 'up', 'down', 'left', 'right'];
+    const ROUNDS = hard ? [4, 5, 6, 7, 8] : [3, 4, 5, 6];
+    const MAXMISS = hard ? 2 : 4;
+    const LABEL = { confirm: 'ドン', cancel: 'カッ', up: '↑', down: '↓', left: '←', right: '→' };
+    let round = 0, pattern = [], idx = 0, misses = 0, score = 0;
+    let phase = 'intro'; // intro → listen → play →（全ラウンドで result）
+    let t = 0, listenIdx = 0, expectT = 0, judgeText = '', judgeT = 0, litKey = null, litT = 0, doneT = 0, failed = false;
+    function beatSec() { return (hard ? 0.48 : 0.62) - round * 0.02; }
+    function keyPool() {
+      // 序盤はA/Bのみ→ラウンドが進むと混在が濃くなる。ハードは2ラウンド目から矢印も
+      return (hard && round >= 1) ? KEYS_HARD : KEYS_EASY;
+    }
+    function newPattern() {
+      var pool = keyPool();
+      pattern = [];
+      for (var i = 0; i < ROUNDS[round]; i++) pattern.push(pool[rnd(0, pool.length - 1)]);
+      idx = 0; listenIdx = 0; t = 0;
+    }
+    function hitLight(k) { litKey = k; litT = 0.2; playTone(k === 'confirm' ? 'don' : (k === 'cancel' ? 'ka' : k)); }
+    function retryRound(msg) {
+      misses++;
+      judgeText = msg; judgeT = 0.7;
+      if (misses > MAXMISS) {
+        if (hard) { setScene(makeGameOver('リズムが 乱れてしまった…。（ハードは ミス' + (MAXMISS + 1) + '回で 失敗）')); return; }
+        failed = true; phase = 'result'; doneT = 0; return;
+      }
+      phase = 'listen'; listenIdx = 0; t = 0; idx = 0;
+    }
+    return {
+      enter: function () { actx(); },
+      update: function (dt) {
+        if (litT > 0) litT -= dt;
+        if (judgeT > 0) judgeT -= dt;
+        updateParts(dt);
+        var bs = beatSec();
+        if (phase === 'intro') {
+          t += dt;
+          if (t > 1.0 || Input.pressed('confirm')) { newPattern(); phase = 'listen'; t = 0; }
+        } else if (phase === 'listen') {
+          t += dt;
+          if (listenIdx < pattern.length && t >= (listenIdx + 1) * bs) {
+            hitLight(pattern[listenIdx]); listenIdx++;
+          }
+          if (listenIdx >= pattern.length && t >= (pattern.length + 1.6) * bs) {
+            phase = 'play'; t = 0; idx = 0; expectT = bs;
+          }
+        } else if (phase === 'play') {
+          t += dt;
+          var win = bs * 0.35;
+          var pool2 = hard ? KEYS_HARD : KEYS_EASY;
+          var pressedKey = null;
+          for (var pi = 0; pi < pool2.length; pi++) { if (Input.pressed(pool2[pi])) { pressedKey = pool2[pi]; break; } }
+          if (pressedKey) {
+            var dtm = Math.abs(t - expectT);
+            if (pressedKey === pattern[idx] && dtm <= win) {
+              hitLight(pressedKey);
+              var perfect = dtm <= win * 0.5;
+              score += perfect ? 100 : 60;
+              judgeText = perfect ? 'PERFECT！' : 'GOOD'; judgeT = 0.5;
+              emitP(W / 2, 250, (Math.random() - 0.5) * 80, -60, 0.6, perfect ? '#ffd43b' : '#a8d8ff', 3, 60);
+              idx++; expectT += bs;
+              if (idx >= pattern.length) {
+                round++;
+                if (round >= ROUNDS.length) { phase = 'result'; doneT = 0; }
+                else { newPattern(); phase = 'listen'; t = 0; }
+              }
+            } else {
+              playTone('ka');
+              retryRound(pressedKey === pattern[idx] ? 'タイミングが ズレた…！' : 'ちがう 太鼓…！');
+            }
+          } else if (t > expectT + win) {
+            retryRound('おくれた…！');
+          }
+        } else if (phase === 'result') {
+          doneT += dt;
+          if (doneT > 1.6 || Input.pressed('confirm')) {
+            var reward = failed ? 50 : (mgDone.drum ? 100 : (misses === 0 ? 400 : 250));
+            if (!failed) mgDone.drum = true;
+            gold += reward; saveGame();
+            onReturn();
           }
         }
-        lastPhase = ph;
-        if (Input.pressed('confirm') && !judged && beats >= 1 && phase === 'play') {
-          judged = true;
-          var dist = Math.min(ph, PERIOD - ph);
-          if (dist <= WINDOW) { hits++; flashT = 0.25; emitP(W / 2, 240, (Math.random() - 0.5) * 80, -50, 0.6, '#ffd43b', 3, 60); }
-          else missT = 0.4;
-        }
-        updateParts(dt);
       },
       render: function (c) {
         var g = c.createLinearGradient(0, 0, 0, H);
@@ -3828,30 +4152,52 @@
         c.fillStyle = 'rgba(255,220,150,0.06)'; c.fillRect(0, 0, W, 90);
         c.textAlign = 'center';
         c.fillStyle = '#ffd43b'; c.font = 'bold 22px "Hiragino Mincho ProN",serif';
-        c.fillText('ドラムサークル', W / 2, 46);
+        c.fillText('ドラムサークル', W / 2, 44);
         c.fillStyle = '#d8c8a8'; c.font = '13px "Hiragino Sans",sans-serif';
-        c.fillText('輪が いちばん 小さくなった 瞬間に Z / タップ！', W / 2, 72);
+        c.fillText('お手本と 同じ 順番・同じ 拍で 叩き返そう！', W / 2, 68);
         if (hard) {
-          c.fillStyle = '#ff8787'; c.font = 'bold 13px "Hiragino Sans",sans-serif';
-          c.fillText('【ハード】的中9未満で ゲームオーバー！', W / 2, 94);
+          c.fillStyle = '#ff8787'; c.font = 'bold 12px "Hiragino Sans",sans-serif';
+          c.fillText('【ハード】矢印の 小太鼓も 混ざる・ミス' + (MAXMISS + 1) + '回で ゲームオーバー', W / 2, 88);
         }
-        var ph = tick % PERIOD, ratio = ph / PERIOD;
-        c.fillStyle = '#5a3a20'; c.beginPath(); c.arc(W / 2, 250, 70, 0, Math.PI * 2); c.fill();
-        c.fillStyle = flashT > 0 ? '#ffe9b0' : '#e8d8b8';
-        c.beginPath(); c.arc(W / 2, 250, 58, 0, Math.PI * 2); c.fill();
-        c.strokeStyle = '#3b2a18'; c.lineWidth = 3; c.beginPath(); c.arc(W / 2, 250, 58, 0, Math.PI * 2); c.stroke(); c.lineWidth = 1;
-        var ringR = 58 + (1 - ratio) * 120;
-        c.strokeStyle = 'rgba(255,212,59,' + (0.35 + ratio * 0.5) + ')'; c.lineWidth = 3;
-        c.beginPath(); c.arc(W / 2, 250, ringR, 0, Math.PI * 2); c.stroke(); c.lineWidth = 1;
+        // 太鼓の配置: 中央=ドン(A)・右=カッ(B)、ハードは上下左右の小太鼓
+        function drum(x, y, r, key, col, colLit) {
+          var lit = litKey === key && litT > 0;
+          c.fillStyle = '#5a3a20'; c.beginPath(); c.arc(x, y, r + 8, 0, Math.PI * 2); c.fill();
+          c.fillStyle = lit ? colLit : col; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill();
+          c.strokeStyle = '#3b2a18'; c.lineWidth = 3; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.stroke(); c.lineWidth = 1;
+          c.fillStyle = '#3b2a18'; c.font = 'bold ' + (r >= 40 ? 16 : 13) + 'px "Hiragino Sans",sans-serif';
+          c.fillText(LABEL[key], x, y + 5);
+        }
+        drum(W / 2 - 60, 250, 46, 'confirm', '#e8d8b8', '#ffe9b0');
+        drum(W / 2 + 60, 250, 34, 'cancel', '#f2e6cf', '#fff3cf');
+        if (hard) {
+          drum(W / 2, 172, 24, 'up', '#d8c8b0', '#ffe9b0');
+          drum(W / 2, 330, 24, 'down', '#d8c8b0', '#ffe9b0');
+          drum(W / 2 - 150, 250, 24, 'left', '#d8c8b0', '#ffe9b0');
+          drum(W / 2 + 150, 250, 24, 'right', '#d8c8b0', '#ffe9b0');
+        }
+        // フェーズ表示
+        c.font = 'bold 16px "Hiragino Sans",sans-serif';
+        if (phase === 'listen') { c.fillStyle = '#a8d8ff'; c.fillText('♪ よく 聴いて……（' + pattern.length + '拍）', W / 2, 128); }
+        else if (phase === 'play') {
+          c.fillStyle = '#ffd43b'; c.fillText('たたけ！（' + idx + ' / ' + pattern.length + '）', W / 2, 128);
+        }
+        else if (phase === 'intro') { c.fillStyle = '#d8c8a8'; c.fillText('太鼓の 輪に 加わった……', W / 2, 128); }
+        if (judgeT > 0) {
+          c.fillStyle = judgeText.indexOf('PERFECT') >= 0 ? '#ffd43b' : (judgeText === 'GOOD' ? '#a8d8ff' : '#ff8787');
+          c.font = 'bold 20px "Hiragino Sans",sans-serif';
+          c.fillText(judgeText, W / 2, 386);
+        }
         drawParts(c);
-        if (missT > 0) { c.fillStyle = 'rgba(255,140,140,' + Math.min(1, missT * 2) + ')'; c.font = 'bold 16px "Hiragino Sans",sans-serif'; c.fillText('ズレた…！', W / 2, 356); }
-        c.fillStyle = '#f5ead0'; c.font = 'bold 15px "Hiragino Sans",sans-serif';
-        c.fillText('的中 ' + hits + '（全 ' + TOTAL + ' 拍）', W / 2, 396);
+        c.fillStyle = '#f5ead0'; c.font = 'bold 14px "Hiragino Sans",sans-serif';
+        c.fillText('ラウンド ' + Math.min(round + 1, ROUNDS.length) + ' / ' + ROUNDS.length + '　　スコア ' + score + '　　ミス ' + misses + ' / ' + MAXMISS, W / 2, 416);
         if (phase === 'result') {
           c.fillStyle = 'rgba(0,0,0,0.55)'; c.fillRect(0, 0, W, H);
-          var rankTxt = hits >= 13 ? 'すばらしい！' : (hits >= 9 ? 'いいリズム！' : 'また あそぼう！');
-          c.fillStyle = '#ffd43b'; c.font = 'bold 28px "Hiragino Mincho ProN",serif';
-          c.fillText(rankTxt + '　的中 ' + hits + '/' + TOTAL, W / 2, 220);
+          var rankTxt = failed ? 'また あそぼう！' : (misses === 0 ? 'ノーミス！ 完璧な リズム！' : 'いいリズム！');
+          c.fillStyle = '#ffd43b'; c.font = 'bold 26px "Hiragino Mincho ProN",serif';
+          c.fillText(rankTxt, W / 2, 210);
+          c.font = 'bold 18px "Hiragino Sans",sans-serif';
+          c.fillText('スコア ' + score, W / 2, 246);
         }
         drawVignette(c);
         c.textAlign = 'left';
@@ -5349,7 +5695,7 @@
   let tick = 0, last = performance.now();
   function frame(now) {
     const dt = Math.min(0.05, (now - last) / 1000); last = now; tick++;
-    if (!trans.active && scene && scene.update) scene.update(dt);
+    if (!trans.active && !videoOverlay && scene && scene.update) scene.update(dt); // 上映中は停止
     updateTransition(dt);
     ctx.setTransform(RES, 0, 0, RES, 0, 0); // HD解像度スケール（論理座標にリセット）
     ctx.clearRect(0, 0, W, H);

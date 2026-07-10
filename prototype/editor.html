@@ -73,7 +73,7 @@ main{max-width:900px;margin:0 auto;padding:20px}
 <main id="main"></main>
 <div class="toast" id="toast"></div>
 
-<script src="dialogue.js?v=20260710p20"></script>
+<script src="dialogue.js?v=20260710p21"></script>
 <script>
 (function () {
   'use strict';
@@ -98,6 +98,7 @@ main{max-width:900px;margin:0 auto;padding:20px}
     { title: '長久手の街（おまけ）', keys: ['omake_locked', 'omake_unlock', 'station_first', 'station_ride', 'aeon_welcome', 'aeon_first', 'ramen_event', 'cityhall_talk', 'kodomo_talk', 'library_talk', 'higane_event', 'higane_done', 'expo1_talk', 'expo2_talk', 'expo3_talk', 'wheel_talk', 'sakamoto_talk', 'bunka_galleria', 'bunka_2f', 'bunka_mori', 'kentei_intro', 'kentei_quiz', 'hyorogan_intro', 'lib_intro', 'drum_intro', 'epi_bond', 'post_pray', 'post_kanehira', 'post_kancho_join', 'post_boss_intro', 'post_win', 'hard_patrol_hint', 'flavor_iriga', 'flavor_toyota', 'flavor_geidai', 'flavor_ikea', 'flavor_aidai'] },
     { title: '岩崎城（裏イベント）', keys: ['iwasaki_invite', 'iwasaki_arrive', 'iwasaki_arrive_again', 'naiki_intro', 'iwasaki_quiz', 'iwasaki_win', 'naiki_after', 'iwasaki_sakamoto_after', 'iwasaki_saka_field', 'iwasaki_saka_field_after', 'tenshu_view', 'iwasaki_kinenkan_talk'] },
     { title: '施設の中', keys: ['aeon_clerk_talk', 'aeon_info', 'enter_ramen', 'ramen_ticket', 'ramen_board', 'enter_cityhall', 'cityhall_info_talk', 'cityhall_ticket', 'cityhall_post', 'enter_library', 'library_kid_talk', 'lib_zuroku', 'enter_tearoom', 'tearoom_toko', 'tearoom_ro', 'tearoom_mizuya', 'enter_kodomo', 'kodomo_kamado', 'enter_iwkin', 'iwkin_clerk_talk', 'iwkin_case', 'iwkin_diorama', 'iwkin_dressup', 'iwkin_panel', 'enter_tenshu', 'tenshu_scope', 'tenshu_map', 'station_sign', 'irogane_gate', 'irogane_view_text'] },
+    { title: '文化の家（館内・部屋・上映・本）', keys: ['bunka_3f', 'bunka_map1', 'bunka_map2', 'bunka_map3', 'kurono_talk', 'kurono_start', 'enter_bk_kaze', 'enter_bk_hikari', 'enter_bk_tenji', 'enter_bk_shoon', 'enter_bk_tamoku', 'enter_bk_kougi', 'enter_bk_shoku', 'enter_bk_bijutsu', 'enter_bk_studio', 'enter_bk_anshitsu', 'enter_bk_ongaku', 'enter_bk_buyou', 'enter_bk_kaigi', 'enter_bk_washitsu', 'bk_seats', 'bk_kaze_piano', 'bk_kaze_stage', 'bk_kaze_light', 'bk_hikari_screen', 'bk_hikari_proj', 'bk_tenji_works', 'bk_tenji_table', 'bk_easel', 'bk_stand', 'bk_upright', 'bk_grand_piano', 'bk_tamoku_desk', 'bk_whiteboard', 'bk_kougi_screen', 'bk_kougi_desk', 'bk_shoku_daidokoro', 'bk_shoku_table', 'bk_shoku_counter', 'bk_bijutsu_desk', 'bk_bijutsu_sink', 'bk_studio_drum', 'bk_studio_amp', 'bk_studio_piano', 'bk_studio_mixer', 'bk_anshitsu_enlarger', 'bk_anshitsu_bat', 'bk_anshitsu_dryer', 'bk_buyou_mirror', 'bk_buyou_speaker', 'bk_buyou_locker', 'bk_kaigi_desk', 'bk_washitsu_toko', 'bk_washitsu_ro', 'bk_washitsu_mizuya', 'bk_washitsu_zataku', 'bk_washitsu_fusuma', 'bk_mob_kougi', 'bk_mob_bijutsu', 'bk_mob_ongaku', 'bk_mob_buyou', 'bk_mob_washitsu', 'arts_book1', 'arts_book2', 'arts_book3', 'arts_book4'] },
     { title: 'モブ会話（街の人）', keys: ['mob_sanpo_quest', 'mob_sanpo_post', 'mob_jog_quest', 'mob_jog_night', 'mob_jog_post', 'mob_kanko_quest', 'mob_kanko_post', 'mob_guide_quest', 'mob_guide_post', 'mob_keibi_night', 'mob_yatai_post', 'mob_inu_quest', 'mob_inu_post', 'mob_hiker_quest', 'mob_hiker_post', 'mob_shufu_quest', 'mob_shufu_post', 'mob_nofu_quest', 'mob_nofu_post', 'mob_shokuin_quest', 'mob_shokuin_night', 'mob_shokuin_post', 'mob_gyoretsu_quest', 'mob_gyoretsu_night', 'mob_gyoretsu_post', 'mob_gakki_quest', 'mob_gakki_post', 'mob_ehon_quest', 'mob_ehon_post', 'mob_geidaisei_quest', 'mob_geidaisei_post', 'mob_kuruma_quest', 'mob_kuruma_post', 'mob_kaimono_quest', 'mob_kaimono_post', 'mob_yamakid_quest', 'mob_yamakid_post'] },
   ];
 
@@ -148,6 +149,15 @@ main{max-width:900px;margin:0 auto;padding:20px}
     enter_tenshu: '模擬天守：入館', tenshu_scope: '展望室：望遠鏡', tenshu_map: '展望室：縄張り図',
     station_sign: '駅ホーム：行先案内',
     ch4_tutorial_intro: '四章：みやぶる稽古（前）', ch4_tutorial_win: '四章：みやぶる稽古（後）',
+    bunka_3f: '文化の家：3階', bunka_map1: '文化の家：案内板1F', bunka_map2: '文化の家：案内板2F', bunka_map3: '文化の家：案内板3F',
+    kurono_talk: '光のホール：黒野', kurono_start: '光のホール：上映開始',
+    enter_bk_kaze: '風のホール：入室', enter_bk_hikari: '光のホール：入室', enter_bk_tenji: '展示室：入室', enter_bk_shoon: '小音楽室：入室',
+    enter_bk_tamoku: '多目的室：入室', enter_bk_kougi: '講義室：入室', enter_bk_shoku: '食文化室：入室', enter_bk_bijutsu: '美術室：入室',
+    enter_bk_studio: '音楽スタジオ：入室', enter_bk_anshitsu: '暗室：入室', enter_bk_ongaku: '音楽室：入室', enter_bk_buyou: '舞踊室：入室',
+    enter_bk_kaigi: '会議室：入室', enter_bk_washitsu: '和室：入室',
+    arts_book1: 'アーツライブラリー：本1', arts_book2: 'アーツライブラリー：本2', arts_book3: 'アーツライブラリー：本3', arts_book4: 'アーツライブラリー：本4',
+    bk_mob_kougi: '館内モブ：受講生', bk_mob_bijutsu: '館内モブ：絵を描く人', bk_mob_ongaku: '館内モブ：練習中の学生',
+    bk_mob_buyou: '館内モブ：ダンサー', bk_mob_washitsu: '館内モブ：お茶の先生',
     irogane_gate: '色金山：登山口', irogane_view_text: '色金山：展望台の眺め', lib_zuroku: '図書館：もののけ図録',
     mob_sanpo_quest: 'モブ：おばあちゃん（取材中）', mob_sanpo_post: 'モブ：おばあちゃん（クリア後）',
     mob_jog_quest: 'モブ：ジョガー（取材中）', mob_jog_night: 'モブ：ジョガー（前夜）', mob_jog_post: 'モブ：ジョガー（クリア後）',
