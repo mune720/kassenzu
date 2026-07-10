@@ -196,6 +196,12 @@
     odoriko: { body: '#e8dff0', legs: '#c9b8d8', skin: '#ffd8a8', hair: '#3d2a55' },
     civ1: { body: '#c98747', legs: '#5a4632', skin: '#ffd8a8', hair: '#4a3423', short: true },
     civ2: { body: '#5b8c5a', legs: '#33502f', skin: '#ffd8a8', hair: '#6b4a35' },
+    civ3: { body: '#9775a8', legs: '#5e4670', skin: '#ffd8a8', hair: '#cfd4da', short: true },  // 年配の女性
+    civ4: { body: '#f59f00', legs: '#2b8a3e', skin: '#ffd8a8', hair: '#343a40', short: true },  // 子ども
+    civ5: { body: '#e64980', legs: '#212529', skin: '#ffd8a8', hair: '#495057', short: true },  // ジョガー
+    civ6: { body: '#3b4a63', legs: '#252c3a', skin: '#ffd8a8', hair: '#212529', short: true },  // 職員・スーツ
+    civ7: { body: '#4dabf7', legs: '#1c3d5a', skin: '#ffd8a8', hair: '#2b2b2b' },               // 学生
+    civ8: { body: '#e8590c', legs: '#343a40', skin: '#ffd8a8', hair: '#4a3423', short: true },  // 店員エプロン
     sakamoto: { body: '#7048a8', legs: '#3d2a55', skin: '#ffd8a8', hair: '#2b2b2b', short: true },
     naiki: { body: '#2e5e4e', legs: '#243c34', skin: '#ffd8a8', hair: '#1d1d1d', short: true },
   };
@@ -503,7 +509,7 @@
       c.beginPath(); c.ellipse(cx, footY - 2, dw * 0.34, dw * 0.12, 0, 0, Math.PI * 2); c.fill();
       c.drawImage(sheet, col * cw + box.x, row * chh + box.y, box.w, box.h, cx - dw / 2, footY - dh, dw, dh);
     }
-    else if (kind === 'enemy') { drawGhost(c, cx, cy, scale); }
+    else if (kind === 'enemy' || (typeof MONSTER_KINDS !== 'undefined' && MONSTER_KINDS[kind])) { drawGhost(c, cx, cy, scale); }
     else { drawHumanoid(c, cx, cy, scale, PAL[kind] || PAL.oda, facing || 'down', moving); }
     if (alpha != null && alpha < 1) c.restore();
   }
@@ -513,6 +519,45 @@
   // ゾーン端のシームレス接続が解放されているか（四章の現地取材クエスト以降）
   function omakeUnlocked() {
     return (chapter === 'main2' && stageP3 >= 1) || chapter === 'post';
+  }
+  // モブNPCのフェーズ（null=登場しない）: quest=取材クエスト中〜, night=ラスボス前夜, post=クリア後
+  function mobPhase() {
+    if (chapter === 'post') return 'post';
+    if (chapter === 'main2' && stageP3 === 9) return 'night';
+    if (omakeUnlocked()) return 'quest';
+    return null;
+  }
+  // ===================== エンカウント生成（ENEMY_DEFS / ENCOUNTER_TABLES） =====================
+  function enemyFromDef(id) {
+    var d = ENEMY_DEFS[id];
+    return {
+      name: d.name, kind: d.kind, hp: d.hp, atkLo: d.atkLo, atkHi: d.atkHi,
+      atkLabel: d.atkLabel || null,
+      appearMsg: d.appearMsg || (d.name + 'が 現れた！'),
+      expReward: [d.exp[0], d.exp[1]], goldReward: [d.gold[0], d.gold[1]],
+      miyaLv: d.miyaLv || 1, lore: d.lore || null,
+    };
+  }
+  // ゾーン別テーブルから敵編成を作る。レア（兜がね3%・こばん狐5%）は全域共通の先行抽選。
+  // nightWatch（ハードの見回り章・クリア後）は65%で夜行のもののけ（40%で影とペア）
+  function genEncounter(zoneKey, nightWatch) {
+    var r = Math.random();
+    if (r < 0.03) return [enemyFromDef('kabuto')];
+    if (r < 0.08) return [enemyFromDef('koban')];
+    if (nightWatch && Math.random() < 0.65) {
+      return Math.random() < 0.4 ? [enemyFromDef('yako'), enemyFromDef('yako_kage')] : [enemyFromDef('yako')];
+    }
+    var table = ENCOUNTER_TABLES[zoneKey] || ENCOUNTER_TABLES.field;
+    var tot = 0;
+    table.forEach(function (e) { tot += e.w; });
+    var pick = Math.random() * tot, ent = table[0];
+    for (var i = 0; i < table.length; i++) {
+      pick -= table[i].w;
+      if (pick <= 0) { ent = table[i]; break; }
+    }
+    var list = [enemyFromDef(ent.id)];
+    if (ent.mate && Hero.lv >= 4 && Math.random() < (ent.mateW || 0.3)) list.push(enemyFromDef(ent.mate));
+    return list;
   }
   // 現地取材クエスト（四章: 戦トークの仕込み）の対象5史跡
   const JUNBI_SITES = ['irogane', 'mihata', 'chinoike', 'musashi', 'ansho'];
@@ -620,6 +665,121 @@
         c.fillStyle = '#4d3828'; c.fillRect(x, y + 2, T, T - 8);
         c.fillStyle = 'rgba(255,220,150,0.08)'; c.fillRect(x, y + 4, T, 4);
         c.fillStyle = '#2a1c14'; c.fillRect(x, y + T - 4, T, 4);
+      } else if (ch === 'c') {
+        // カウンター（受付・レジ・貸出）
+        c.fillStyle = '#6a4a25'; c.fillRect(x, y + 6, T, T - 6);
+        c.fillStyle = '#8a6a3b'; c.fillRect(x, y + 6, T, 5);
+        c.fillStyle = '#5a3a15'; c.fillRect(x, y + T - 4, T, 4);
+      } else if (ch === 'y') {
+        // 券売機・番号札発券機
+        c.fillStyle = '#37415a'; c.fillRect(x + 5, y + 2, T - 10, T - 6);
+        c.fillStyle = '#a8d8ff'; c.fillRect(x + 8, y + 5, T - 16, 8);
+        c.fillStyle = '#ffd43b'; c.fillRect(x + 9, y + 16, 5, 3);
+        c.fillStyle = '#e8590c'; c.fillRect(x + 17, y + 16, 5, 3);
+        c.fillStyle = '#222'; c.fillRect(x + 8, y + 22, T - 16, 3);
+      } else if (ch === 'h') {
+        // 棚・書架（本の色は座標で変える）
+        c.fillStyle = '#5a3a1a'; c.fillRect(x + 1, y + 1, T - 2, T - 2);
+        for (var sh = 0; sh < 3; sh++) {
+          c.fillStyle = '#7a5a30'; c.fillRect(x + 3, y + 3 + sh * 9, T - 6, 7);
+          for (var bkx = 0; bkx < 5; bkx++) {
+            c.fillStyle = ['#b04a4a', '#4a7ab0', '#4aa06a', '#c08a3a', '#8a5ab0'][(bkx + sh + tc + tr) % 5];
+            c.fillRect(x + 4 + bkx * 5, y + 4 + sh * 9, 4, 5);
+          }
+        }
+      } else if (ch === 't') {
+        // テーブル・作業台
+        c.fillStyle = '#8a6a3b'; roundRect(c, x + 2, y + 4, T - 4, T - 10, 3); c.fill();
+        c.fillStyle = '#a8874f'; c.fillRect(x + 4, y + 6, T - 8, 4);
+        c.fillStyle = '#5a3a15'; c.fillRect(x + 4, y + T - 7, 3, 5); c.fillRect(x + T - 7, y + T - 7, 3, 5);
+      } else if (ch === 'g') {
+        // ガラス展示ケース
+        c.fillStyle = '#3a4050'; c.fillRect(x + 2, y + T - 8, T - 4, 8);
+        c.fillStyle = 'rgba(160,200,230,0.35)'; c.fillRect(x + 3, y + 2, T - 6, T - 10);
+        c.strokeStyle = '#aac8dd'; c.lineWidth = 1; c.strokeRect(x + 3, y + 2, T - 6, T - 10);
+        c.fillStyle = '#d4aa40'; c.fillRect(x + T / 2 - 3, y + T - 16, 6, 6);
+      } else if (ch === 'j') {
+        // ジオラマ台（パネルがカシャカシャ動く）
+        c.fillStyle = '#4a3a28'; c.fillRect(x, y + 8, T, T - 8);
+        c.fillStyle = '#5f8a4a'; c.fillRect(x + 2, y + 4, T - 4, 8);
+        c.fillStyle = '#7aa85f'; c.fillRect(x + 4, y + 5, 6, 4); c.fillRect(x + 16, y + 6, 8, 3);
+        c.fillStyle = '#b0b6c0'; c.fillRect(x + 10 + ((tick / 20 | 0) % 2) * 6, y + 6, 3, 3);
+      } else if (ch === 'z') {
+        // 畳（歩行可）
+        c.fillStyle = '#a8b06a'; c.fillRect(x, y, T, T);
+        c.fillStyle = 'rgba(140,150,80,0.4)';
+        for (var zi = 0; zi < 4; zi++) c.fillRect(x, y + 2 + zi * 8, T, 1);
+        c.strokeStyle = '#6a7040'; c.lineWidth = 1; c.strokeRect(x + 0.5, y + 0.5, T - 1, T - 1);
+      } else if (ch === 'Z') {
+        // 床の間（掛け軸と花）
+        c.fillStyle = '#7a5a30'; c.fillRect(x, y, T, T);
+        c.fillStyle = '#f0e8d8'; c.fillRect(x + 8, y + 3, T - 16, T - 12);
+        c.fillStyle = '#8a3a3a'; c.fillRect(x + 12, y + 6, 8, 10);
+        c.fillStyle = '#4a6a3a'; c.fillRect(x + 5, y + T - 8, 6, 5);
+      } else if (ch === 'x') {
+        // 炉（茶室）
+        c.fillStyle = '#3a3530'; c.fillRect(x + 4, y + 4, T - 8, T - 8);
+        c.fillStyle = '#1a1512'; c.fillRect(x + 7, y + 7, T - 14, T - 14);
+        c.fillStyle = '#e8590c'; c.beginPath(); c.arc(x + T / 2, y + T / 2, 3 + Math.sin(tick * 0.1), 0, Math.PI * 2); c.fill();
+      } else if (ch === 'w') {
+        // 大きな窓（外光）
+        c.fillStyle = '#5a626b'; c.fillRect(x, y, T, T);
+        c.fillStyle = '#bfe3f5'; c.fillRect(x + 2, y + 3, T - 4, T - 10);
+        c.fillStyle = 'rgba(255,255,255,0.5)'; c.fillRect(x + 3, y + 4, 6, T - 14);
+        c.strokeStyle = '#49525c'; c.beginPath(); c.moveTo(x + T / 2, y + 3); c.lineTo(x + T / 2, y + T - 7); c.stroke();
+      } else if (ch === 'q') {
+        // 味集中カウンター（仕切り＋赤のれん＋どんぶり）
+        c.fillStyle = '#6a4a25'; c.fillRect(x, y + T - 10, T, 10);
+        c.fillStyle = '#8a2a2a'; c.fillRect(x + 1, y, 3, T - 8); c.fillRect(x + T - 4, y, 3, T - 8);
+        c.fillStyle = '#c0392b'; c.fillRect(x + 5, y + 2, T - 10, 8);
+        c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(x + 6, y + 3, T - 12, 2);
+        c.fillStyle = '#e8d8b8'; c.beginPath(); c.arc(x + T / 2, y + T - 12, 4, 0, Math.PI * 2); c.fill();
+      } else if (ch === 'k') {
+        // 厨房・かまど
+        c.fillStyle = '#7a7f88'; c.fillRect(x, y + 4, T, T - 4);
+        c.fillStyle = '#4a4f58'; c.fillRect(x + 3, y + 7, T - 6, 8);
+        c.fillStyle = '#e8590c'; c.fillRect(x + 6, y + 9, 4, 3); c.fillRect(x + 14, y + 9, 4, 3);
+        c.fillStyle = '#b8bdc6'; c.fillRect(x, y + 4, T, 3);
+      } else if (ch === 'p') {
+        // 案内板・解説パネル
+        c.fillStyle = '#5a4a35'; c.fillRect(x + T / 2 - 2, y + T - 8, 4, 8);
+        c.fillStyle = '#e8e4da'; c.fillRect(x + 3, y + 3, T - 6, T - 14);
+        c.fillStyle = '#8a93a8'; c.fillRect(x + 5, y + 6, T - 12, 2); c.fillRect(x + 5, y + 10, T - 14, 2); c.fillRect(x + 5, y + 14, T - 10, 2);
+      } else if (ch === 'o') {
+        // 望遠鏡（展望室）
+        c.fillStyle = '#3a4050'; c.fillRect(x + T / 2 - 2, y + 12, 4, T - 14);
+        c.save(); c.translate(x + T / 2, y + 12); c.rotate(-0.5);
+        c.fillStyle = '#c0c6d0'; c.fillRect(-3, -10, 6, 14);
+        c.fillStyle = '#8a93a8'; c.fillRect(-4, -12, 8, 4);
+        c.restore();
+      } else if (ch === 'f') {
+        // 金網の展望窓（360度展望台）
+        c.fillStyle = '#9fc6e0'; c.fillRect(x, y, T, T);
+        c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(x, y + 3, T, 5);
+        c.strokeStyle = 'rgba(60,70,80,0.55)'; c.lineWidth = 1;
+        for (var fg = 4; fg < T; fg += 6) {
+          c.beginPath(); c.moveTo(x + fg, y); c.lineTo(x + fg, y + T); c.stroke();
+          c.beginPath(); c.moveTo(x, y + fg); c.lineTo(x + T, y + fg); c.stroke();
+        }
+      } else if (ch === 'e') {
+        // 可動式ホーム柵（ハーフハイト）
+        c.fillStyle = '#dfe3e8'; c.fillRect(x, y + 8, T, T - 14);
+        c.fillStyle = '#4dabf7'; c.fillRect(x, y + 10, T, 3);
+        c.fillStyle = '#adb5bd'; c.fillRect(x, y + 8, 2, T - 14); c.fillRect(x + T - 2, y + 8, 2, T - 14);
+      } else if (ch === 'r') {
+        // リニモの軌道（ホーム階から見た線路）
+        c.fillStyle = '#3f4652'; c.fillRect(x, y, T, T);
+        c.fillStyle = '#6b7280'; c.fillRect(x, y + 6, T, 4); c.fillRect(x, y + T - 10, T, 4);
+        c.fillStyle = '#2b313b'; c.fillRect(x, y + T / 2 - 2, T, 4);
+      } else if (ch === 'b') {
+        // ベンチ・待合ソファ
+        c.fillStyle = '#4a7ab0'; roundRect(c, x + 2, y + 8, T - 4, T - 14, 3); c.fill();
+        c.fillStyle = '#6a9ad0'; c.fillRect(x + 3, y + 9, T - 6, 4);
+        c.fillStyle = '#3a3a3a'; c.fillRect(x + 4, y + T - 7, 3, 4); c.fillRect(x + T - 7, y + T - 7, 3, 4);
+      } else if (ch === 'm') {
+        // 体験コーナーのマット（歩行可）
+        c.fillStyle = '#b04a4a'; c.fillRect(x + 2, y + 2, T - 4, T - 4);
+        c.fillStyle = 'rgba(255,255,255,0.2)'; c.fillRect(x + 4, y + 4, T - 8, 3);
       }
     } else {
       // HD-2D: 地面テクスチャがあればパターン敷き、無ければ従来のプロシージャル
@@ -889,6 +1049,22 @@
           c.fillStyle = 'rgba(60,80,110,0.5)'; c.fillRect(x + 9, y + 10, T - 18, 10);
           c.fillStyle = 'rgba(255,240,190,0.4)'; c.fillRect(x + 10, y + 11, (T - 20) / 2, 8);
         }
+      } else if (ch === '8' || ch === '9') {
+        // 色金山の石段（8=上り 9=下り）
+        c.fillStyle = '#6b6258'; c.fillRect(x + 2, y + 2, T - 4, T - 4);
+        for (var sti = 0; sti < 4; sti++) {
+          c.fillStyle = sti % 2 === 0 ? '#8a8074' : '#776d61';
+          c.fillRect(x + 4, y + 4 + sti * 6, T - 8, 5);
+        }
+        c.fillStyle = '#ffd43b'; c.font = 'bold 12px sans-serif'; c.textAlign = 'center';
+        c.fillText(ch === '8' ? '▲' : '▼', x + T / 2, y + T - 8);
+        c.textAlign = 'left';
+      } else if (ch === '=') {
+        // 山頂の展望デッキ（木の床・歩行可）
+        c.fillStyle = '#9a7448'; c.fillRect(x, y, T, T);
+        c.strokeStyle = 'rgba(90,60,30,0.5)'; c.lineWidth = 1;
+        for (var dki = 0; dki < 4; dki++) { c.beginPath(); c.moveTo(x, y + 4 + dki * 8); c.lineTo(x + T, y + 4 + dki * 8); c.stroke(); }
+        c.fillStyle = 'rgba(255,255,255,0.07)'; c.fillRect(x, y + 1, T, 2);
       }
     }
   }
@@ -1083,6 +1259,18 @@
   loadImg('assets/enemy/ochimusha_mononoke_battle_512.png', function (i) { ENEMY_BATTLE_IMG = i; });
   var ODORIKO_BATTLE_IMG = null;
   loadImg('assets/enemy/odoriko_battle.png', function (i) { ODORIKO_BATTLE_IMG = i; });
+  // 色金山・展望台の写真（assets/view/irogane_view.png を置くと展望台で実写を表示。無ければテキストの眺望）
+  var IROGANE_VIEW_IMG = null;
+  loadImg('assets/view/irogane_view.png', function (i) { IROGANE_VIEW_IMG = i; });
+  // 敵バトル絵（assets/enemy/<kind>_battle.png を置くと自動で差し替わる。無い間はもののけ描画）
+  const ENEMY_IMG = {};
+  const MONSTER_KINDS = {};
+  Object.keys(ENEMY_DEFS).forEach(function (id) {
+    var kind = ENEMY_DEFS[id].kind;
+    if (kind === 'enemy' || MONSTER_KINDS[kind]) { MONSTER_KINDS[kind] = true; return; }
+    MONSTER_KINDS[kind] = true;
+    loadImg('assets/enemy/' + kind + '_battle.png', function (i) { ENEMY_IMG[kind] = i; });
+  });
   var LOGO_IMG = null;
   loadImg('assets/logo/bunkalogo.png', function (i) { LOGO_IMG = i; });
   var TITLE_LOGO_IMG = null;
@@ -1132,7 +1320,7 @@
       if (maxX > minX && maxY > minY) HD_SPRITE_BOX[kind] = { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
     } catch (e) { /* 解析不可なら全セル描画のまま */ }
   }
-  ['oda', 'ike', 'michi', 'kancho', 'odoriko', 'sakamoto', 'naiki', 'civ1', 'civ2'].forEach(function (k) {
+  ['oda', 'ike', 'michi', 'kancho', 'odoriko', 'sakamoto', 'naiki', 'civ1', 'civ2', 'civ3', 'civ4', 'civ5', 'civ6', 'civ7', 'civ8'].forEach(function (k) {
     var img = new Image();
     img.onload = function () { HD_SPRITE[k] = img; sheetContentBox(k, img); };
     img.onerror = function () {};
@@ -1416,7 +1604,21 @@
   let storyStage = 0;
   let activeField = null;
   function expToNext(lv) { return 8 + (lv - 1) * 6; }
-  function miyaLvFromLv(lv) { return Math.min(3, Math.ceil(lv / 2)); }
+  // みやぶるレベル: オダのLvに連動（Lv10でLv2・Lv18でLv3）。
+  // ハードでは敵ごとの必要レベル（ENEMY_DEFS.miyaLv）に届かないと見破れない。イージーはLv1で全敵OK
+  function miyaLvFromLv(lv) { return lv >= 18 ? 3 : lv >= 10 ? 2 : 1; }
+  // クイズの選択肢をシャッフルして answer を追従させる（全クイズ共通）。
+  // nChoices を指定すると「正解＋ランダムな誤答」でその数に絞る（イージーの3択用）
+  function shuffleQuiz(q, nChoices) {
+    var idx = q.choices.map(function (_, i) { return i; });
+    if (nChoices && nChoices < q.choices.length) {
+      var wrongs = idx.filter(function (i) { return i !== q.answer; });
+      for (var wi = wrongs.length - 1; wi > 0; wi--) { var wj = rnd(0, wi); var wt = wrongs[wi]; wrongs[wi] = wrongs[wj]; wrongs[wj] = wt; }
+      idx = [q.answer].concat(wrongs.slice(0, nChoices - 1));
+    }
+    for (var k = idx.length - 1; k > 0; k--) { var m = rnd(0, k); var t2 = idx[k]; idx[k] = idx[m]; idx[m] = t2; }
+    return { q: q.q, choices: idx.map(function (i) { return q.choices[i]; }), answer: idx.indexOf(q.answer), note: q.note };
+  }
 
   // ===================== 難易度（イージー / ハード） =====================
   // enemyHp/enemyAtk: 敵のHP・攻撃倍率、encRate: エンカウント率倍率（バランスは P6 で調整）
@@ -1446,6 +1648,8 @@
   let kanchoEv = {};                  // 好感度イベントの発火記録
   const visitedSites = new Set();     // 本編で現地を訪れた史跡（史跡めぐりの解放条件）
   let stationUsed = false;            // リニモ初回ネタ用（セッション内）
+  let iroganeGateSeen = false;        // 色金山登山口の看板ナレーション（セッション内・初回のみ）
+  let stationAt = null;               // いまいる駅（station_home 用。直接起動時は古戦場扱い）
   const enteredFlavor = new Set();    // 施設の入場ナレーションを一度だけ出す用
   // main2（四章〜エピローグ）の直列進行。各値は「これから行うこと」:
   // 0=四章導入＋現地取材の決意 1=現地取材クエスト（5史跡を踏破・街解放） 2=戦トーク
@@ -1562,6 +1766,16 @@
   // ===================== Field scene =====================
   function makeField(mapKey, spawnOverride, introLines) {
     const map = parseMap(mapKey);
+    // モブNPC: ストーリーフェーズに応じて配置（位置・人数・会話が変わる）
+    var mp = mobPhase();
+    if (mp) {
+      MOB_DEFS.forEach(function (m) {
+        if (m.map !== mapKey) return;
+        var spot = m.spots[mp];
+        if (!spot) return;
+        map.npcs.push({ col: spot.col, row: spot.row, kind: m.kind, id: m.id });
+      });
+    }
     let proTriggered = false;
     // spawnOverride はタイル {col,row} と ピクセル {x,y} の両対応（ゾーン間シームレス切替用）
     const sp = spawnOverride || map.spawn;
@@ -1660,33 +1874,53 @@
       else if (id === 'museum_exit') {
         gotoField('zoneA', { col: 25, row: 7 });
       }
+      // ===== 施設: 外の入口 → 店内マップへ。買い物・ミニゲームは店内の店員に話しかけて発動 =====
       else if (id === 'aeon') {
         // いけと出会う前（プロローグ・一章）は、いけに言及しないセリフにする
         var aeonLines = (chapter === 'pro' || chapter === 'ch1') ? DIALOGUE.aeon_first : DIALOGUE.aeon_welcome;
-        Dialog.start(aeonLines, function () {
-          setScene(makeShop(function () { gotoField(mapKey, { x: player.x, y: player.y }); }));
-        });
+        Dialog.start(aeonLines, function () { gotoField('aeon_in'); });
       }
+      else if (id === 'aeon_clerk') {
+        Dialog.start(DIALOGUE.aeon_clerk_talk, function () { setScene(makeShop(backHere())); });
+      }
+      else if (id === 'aeon_exit') gotoField('zoneA', { col: 16, row: 23 });
+      else if (id === 'aeon_info') Dialog.start(DIALOGUE.aeon_info);
       else if (id === 'station') {
-        // リニモ路線図: 現在駅以外から行き先を選ぶ。街解放前は古戦場↔モリコロのみ（従来挙動）
-        var here = null, destNames = [], dests = [];
+        // 駅の外の入口 → ホーム階へ上がる（乗車はホームのホームドア前で）
         for (var si = 0; si < LINIMO_STATIONS.length; si++) {
-          var stn = LINIMO_STATIONS[si];
-          if (stn.map === mapKey) { here = stn; continue; }
+          if (LINIMO_STATIONS[si].map === mapKey) { stationAt = LINIMO_STATIONS[si]; break; }
+        }
+        var goHome = function () { gotoField('station_home'); };
+        if (stationUsed) goHome();
+        else { stationUsed = true; Dialog.start(DIALOGUE.station_first, goHome); }
+      }
+      else if (id === 'station_board') {
+        // ホームで乗車: 路線図から行き先を選ぶ。街解放前は古戦場↔モリコロのみ（従来挙動）
+        var destNames = [], dests = [];
+        for (var sj = 0; sj < LINIMO_STATIONS.length; sj++) {
+          var stn = LINIMO_STATIONS[sj];
+          if (stationAt && stn.id === stationAt.id) continue;
           if (!omakeUnlocked() && stn.map !== 'zoneA' && stn.map !== 'zoneE') continue;
           destNames.push(stn.name); dests.push(stn);
         }
-        Choice.start('リニモ ' + (here ? here.name + '駅' : '') + '　どこへ 行く？', destNames.concat(['やめる']), function (pick) {
+        Choice.start('リニモ ' + (stationAt ? stationAt.name + '駅' : '') + '　どこへ 行く？', destNames.concat(['やめる']), function (pick) {
           if (pick >= dests.length) return;
           var dest = dests[pick];
-          var stLines = stationUsed ? DIALOGUE.station_ride : DIALOGUE.station_first;
-          stationUsed = true;
-          Dialog.start(stLines, function () {
-            gotoField(dest.map, { col: dest.col, row: dest.row });
+          Dialog.start(DIALOGUE.station_ride, function () {
+            stationAt = dest;
+            gotoField('station_home');
           });
         });
       }
+      else if (id === 'station_exit') {
+        if (!stationAt) stationAt = LINIMO_STATIONS[1]; // 直接起動時の保険（長久手古戦場）
+        gotoField(stationAt.map, { col: stationAt.col, row: stationAt.row });
+      }
+      else if (id === 'station_sign') Dialog.start(DIALOGUE.station_sign);
       else if (id === 'ramen') {
+        Dialog.start(DIALOGUE.enter_ramen, function () { gotoField('ramen_in'); });
+      }
+      else if (id === 'ramen_clerk') {
         if (gold >= 950) {
           gold -= 950;
           Dialog.start(DIALOGUE.ramen_event, function () {
@@ -1703,24 +1937,44 @@
         }
         else Dialog.start([{ name: 'オダ', text: '（一杯 950円…。いまは 持ち合わせが 足りない。もののけ退治で 稼いでこよう）' }]);
       }
+      else if (id === 'ramen_exit') gotoField('zoneC', { col: 20, row: 21 });
+      else if (id === 'ramen_ticket') Dialog.start(DIALOGUE.ramen_ticket);
+      else if (id === 'ramen_board') Dialog.start(DIALOGUE.ramen_board);
       else if (id === 'cityhall') {
+        Dialog.start(DIALOGUE.enter_cityhall, function () { gotoField('cityhall_in'); });
+      }
+      else if (id === 'cityhall_clerk') {
         var chBack = backHere();
         Dialog.start(DIALOGUE.cityhall_talk, function () {
           Dialog.start(DIALOGUE.kentei_intro, function () { setScene(makeKentei(chBack)); });
         });
       }
+      else if (id === 'cityhall_info') Dialog.start(DIALOGUE.cityhall_info_talk);
+      else if (id === 'cityhall_ticket') Dialog.start(DIALOGUE.cityhall_ticket);
+      else if (id === 'cityhall_post') Dialog.start(DIALOGUE.cityhall_post);
+      else if (id === 'cityhall_exit') gotoField('zoneC', { col: 32, row: 13 });
       else if (id === 'kodomo') {
+        Dialog.start(DIALOGUE.enter_kodomo, function () { gotoField('kodomo_in'); });
+      }
+      else if (id === 'kodomo_staff') {
         var kdBack = backHere();
         Dialog.start(DIALOGUE.kodomo_talk, function () {
           Dialog.start(DIALOGUE.hyorogan_intro, function () { setScene(makeHyorogan(kdBack)); });
         });
       }
+      else if (id === 'kodomo_kamado') Dialog.start(DIALOGUE.kodomo_kamado);
+      else if (id === 'kodomo_exit') gotoField('zoneG', { col: 30, row: 8 });
       else if (id === 'library') {
+        Dialog.start(DIALOGUE.enter_library, function () { gotoField('library_in'); });
+      }
+      else if (id === 'library_clerk') {
         var lbBack = backHere();
         Dialog.start(DIALOGUE.library_talk, function () {
           Dialog.start(DIALOGUE.lib_intro, function () { setScene(makeLibPuzzle(lbBack)); });
         });
       }
+      else if (id === 'library_kid') Dialog.start(DIALOGUE.library_kid_talk);
+      else if (id === 'library_exit') gotoField('zoneD', { col: 34, row: 21 });
       else if (id === 'shateki') {
         var stBack = backHere();
         setScene(makeShateki(stBack));
@@ -1738,11 +1992,31 @@
         } else Dialog.start(DIALOGUE.higane_done);
       }
       else if (id === 'tearoom') {
+        Dialog.start(DIALOGUE.enter_tearoom, function () { gotoField('tearoom_in'); });
+      }
+      else if (id === 'tea_host') {
         if (gold >= 500) {
           // 500円はここでは保存しない（ハードで失敗＝ゲームオーバー時に、他ミニゲーム同様セーブ地点まで巻き戻すため。成功時は結果画面の saveGame で確定する）
           gold -= 500;
-          setScene(makeTeaRoom(function () { gotoField('zoneC', { col: 17, row: 13 }); }));
+          setScene(makeTeaRoom(function () { gotoField('tearoom_in', { col: 11, row: 6 }); }));
         } else Dialog.start([{ name: 'オダ', text: '（抹茶体験は 500円。……いまは 持ち合わせが 足りない）' }]);
+      }
+      else if (id === 'tearoom_toko') Dialog.start(DIALOGUE.tearoom_toko);
+      else if (id === 'tearoom_ro') Dialog.start(DIALOGUE.tearoom_ro);
+      else if (id === 'tearoom_mizuya') Dialog.start(DIALOGUE.tearoom_mizuya);
+      else if (id === 'tearoom_exit') gotoField('zoneC', { col: 17, row: 13 });
+      // ===== 色金山ダンジョン（登山道〜山頂） =====
+      else if (id === 'irogane_in') {
+        if (iroganeGateSeen) gotoField('irogane1');
+        else { iroganeGateSeen = true; Dialog.start(DIALOGUE.irogane_gate, function () { gotoField('irogane1'); }); }
+      }
+      else if (id === 'irogane_up') gotoField('irogane2');
+      else if (id === 'irogane_down') gotoField('irogane1', { col: 20, row: 3 });
+      else if (id === 'irogane_exit') gotoField('zoneC', { col: 17, row: 5 });
+      else if (id === 'irogane_view') {
+        // 展望台: 写真素材（assets/view/irogane_view.png）があれば全画面表示、なければテキストの眺望
+        if (IROGANE_VIEW_IMG) setScene(makePhotoView(IROGANE_VIEW_IMG, '展望台から 望む 長久手の まち', backHere()));
+        else Dialog.start(DIALOGUE.irogane_view_text);
       }
       else if (id && id.indexOf('site_') === 0) {
         var site = siteById(id.slice(5));
@@ -1753,6 +2027,12 @@
         }
       }
       else if (id && id.indexOf('flavor_') === 0 && DIALOGUE[id]) Dialog.start(DIALOGUE[id]);
+      else if (id && id.indexOf('mob_') === 0) {
+        // モブNPC: フェーズ別のセリフ（無ければ quest にフォールバック）
+        var mph = mobPhase() || 'quest';
+        var mobLines = DIALOGUE[id + '_' + mph] || DIALOGUE[id + '_quest'];
+        if (mobLines) Dialog.start(mobLines);
+      }
       else if (id === 'bunka_in') { unlockZukan('bunka'); gotoField('bunka1'); }
       else if (id === 'bunka_exit') gotoField('zoneD', { col: 19, row: 13 });
       else if (id === 'bunka_up') gotoField('bunka2', { col: 2, row: 2 });
@@ -1811,8 +2091,22 @@
         });
       }
       else if (id === 'sakamoto_iw') Dialog.start(iwasakiCleared ? DIALOGUE.iwasaki_saka_field_after : DIALOGUE.iwasaki_saka_field);
-      else if (id === 'tenshu') Dialog.start(DIALOGUE.tenshu_view);
-      else if (id === 'iwasaki_kinenkan') Dialog.start(DIALOGUE.iwasaki_kinenkan_talk);
+      else if (id === 'tenshu') {
+        Dialog.start(DIALOGUE.enter_tenshu, function () { gotoField('tenshu_in'); });
+      }
+      else if (id === 'tenshu_kanamori') Dialog.start(DIALOGUE.tenshu_view);
+      else if (id === 'tenshu_scope') Dialog.start(DIALOGUE.tenshu_scope);
+      else if (id === 'tenshu_map') Dialog.start(DIALOGUE.tenshu_map);
+      else if (id === 'tenshu_exit') gotoField('iwasaki', { col: 19, row: 10 });
+      else if (id === 'iwasaki_kinenkan') {
+        Dialog.start(DIALOGUE.enter_iwkin, function () { gotoField('iwkin_in'); });
+      }
+      else if (id === 'iwkin_clerk') Dialog.start(DIALOGUE.iwkin_clerk_talk);
+      else if (id === 'iwkin_case') Dialog.start(DIALOGUE.iwkin_case);
+      else if (id === 'iwkin_diorama') Dialog.start(DIALOGUE.iwkin_diorama);
+      else if (id === 'iwkin_dressup') Dialog.start(DIALOGUE.iwkin_dressup);
+      else if (id === 'iwkin_panel') Dialog.start(DIALOGUE.iwkin_panel);
+      else if (id === 'iwkin_exit') gotoField('iwasaki', { col: 30, row: 19 });
       else if (id === 'iwasaki_gate') {
         Choice.start('長久手へ 帰る？', ['帰る', 'まだ 見て回る'], function (pick) {
           if (pick === 0) gotoField('bunka1');
@@ -2052,9 +2346,27 @@
       if (stageP3 === 0) {
         Dialog.start(DIALOGUE.ch4_intro, function () {
           unlockMeikan('hideyoshi'); unlockMeikan('ieyasu');
-          // 現地取材クエストへ（原作セリフの間に挿入。5史跡を踏破すると戦トークが始まる）
-          Dialog.start(DIALOGUE.ch4_junbi, function () {
-            stageP3 = 1; saveGame();
+          // チュートリアルバトル: 自由行動の前に「みやぶる」の稽古（たたかう→いけの助言→みやぶる）
+          Dialog.start(DIALOGUE.ch4_tutorial_intro, function () {
+            var te = enemyFromDef('hagure');
+            te.hp = 16;
+            te.appearMsg = 'いけ「来たぞ！ はぐれの もののけじゃ！\nまずは 好きに 打ちかかって みよ！」';
+            te.fleeMsg = 'いけ「こら！ 稽古から 逃げるでない！」';
+            startBattle({
+              enemies: [te], tutorial: true,
+              onWin: function () {
+                // フィールドへ戻ってから会話（戦闘画面のままだと Dialog が表示されない）
+                startTransition(function () {
+                  setScene(activeField);
+                  Dialog.start(DIALOGUE.ch4_tutorial_win, function () {
+                    // 現地取材クエストへ（原作セリフの間に挿入。5史跡を踏破すると戦トークが始まる）
+                    Dialog.start(DIALOGUE.ch4_junbi, function () {
+                      stageP3 = 1; saveGame();
+                    });
+                  });
+                });
+              },
+            });
           });
         });
       } else if (stageP3 === 1) {
@@ -2263,11 +2575,12 @@
             }
           }
         }
-        // ハードの稼ぎ場: ラスボス前の見回り（stageP3=9）とクリア後は、街の各ゾーンでも夜行のもののけが出る
-        const patrolEnc = !map.def.encounter && difficulty === 'hard'
-          && (mapKey === 'zoneA' || mapKey === 'zoneB' || mapKey === 'zoneC' || mapKey === 'zoneD' || mapKey === 'zoneF' || mapKey === 'zoneG')
-          && ((chapter === 'main2' && stageP3 === 9) || chapter === 'post') ? { rate: 0.05 } : null;
-        const encDef = map.def.encounter || patrolEnc;
+        // エンカウント: ゾーン別テーブル（街は解放後のみ）。ハードの見回り章・クリア後は
+        // 夜行のもののけが混ざり、出現率も上がる（第2形態・裏ボスに向けたレベル上げ用）
+        const nightWatch = difficulty === 'hard' && ((chapter === 'main2' && stageP3 === 9) || chapter === 'post');
+        var encDef = map.def.encounter || null;
+        if (encDef && encDef.afterUnlock && !omakeUnlocked()) encDef = null;
+        if (nightWatch && ENCOUNTER_TABLES[mapKey]) encDef = { rate: Math.max(encDef ? encDef.rate : 0, 0.05) };
         if ((dx !== 0 || dy !== 0) && tutorialDone && encDef && encCooldown <= 0) {
           stepAcc += sp;
           if (stepAcc > 40) {
@@ -2278,20 +2591,7 @@
             if ((t === '.' || t === ',') && Math.random() < encRate) {
               encCooldown = 3.5;
               startTransition(function () {
-                if (mapKey === 'iwasaki') {
-                  // 岩崎城: 強めの落武者。6割で2体同時（Lv20に向けた鍛錬用）
-                  var iwA = { name: '岩崎の 落武者', hp: 30, atkLo: 7, atkHi: 11, expReward: [22, 30], goldReward: [130, 190] };
-                  var iwB = { name: '岩崎の 物見', hp: 24, atkLo: 6, atkHi: 9, expReward: [16, 22], goldReward: [90, 140] };
-                  startBattle(Math.random() < 0.6 ? { gated: false, enemies: [iwA, iwB] } : { gated: false, enemy: iwA });
-                } else if (patrolEnc) {
-                  // 夜行のもののけは経験値・報酬が多め（第2形態に向けたレベル上げ用）。4割で2体
-                  var pe = { name: '夜行の もののけ', hp: 36, atkLo: 6, atkHi: 10, expReward: [16, 22], goldReward: [180, 260] };
-                  var pe2 = { name: '夜行の 影', hp: 28, atkLo: 5, atkHi: 8, expReward: [12, 16], goldReward: [120, 180] };
-                  startBattle(Math.random() < 0.4 ? { gated: false, enemies: [pe, pe2] } : { gated: false, enemy: pe });
-                } else {
-                  // 草原: Lv5以降は たまに物見のもののけが加勢して2体になる
-                  startBattle((Hero.lv >= 5 && Math.random() < 0.3) ? { gated: false, enemies: [{}, { name: '物見の もののけ', hp: 16, atkLo: 2, atkHi: 5 }] } : { gated: false });
-                }
+                startBattle({ canFlee: true, enemies: genEncounter(mapKey, nightWatch) });
               });
               return;
             }
@@ -2341,7 +2641,7 @@
             }
             if (nearW) {
               var waitLines = (nearW.id === 'ike' ? DIALOGUE.ch4_wait_ike : DIALOGUE.ch4_wait_michi)
-                .concat([{ name: '', text: '（現地取材: ' + junbiCount() + ' / 5 史跡を 踏破。色金山・血の池・武蔵塚・安昌寺は 北の 岩作エリアに。御旗山は 西の 市街地の 南に）' }]);
+                .concat([{ name: '', text: '（現地取材: ' + junbiCount() + ' / 5 史跡を 踏破。武蔵塚・安昌寺は 北の 岩作エリア、色金山は その 奥の 山の 頂上に。血の池は 公園の 南西、御旗山は 西エリアの 北東に）' }]);
               Dialog.start(waitLines);
               return;
             }
@@ -2455,8 +2755,12 @@
     const defs = (opts.enemies && opts.enemies.length) ? opts.enemies : [opts.enemy || {}];
     const enemies = defs.map(function (e) {
       const hp = Math.max(1, Math.round((e.hp || 22) * dm.enemyHp));
+      // もののけ系（MONSTER_KINDS）は「みやぶる」まで弱点不明＝オダの攻撃が通らない
+      const isMononoke = !!MONSTER_KINDS[e.kind || 'enemy'];
       return {
-        name: e.name || '落武者のもののけ', hp: hp, maxhp: hp, broken: false, weakKnown: !gated, shake: 0,
+        name: e.name || '落武者のもののけ', hp: hp, maxhp: hp, broken: false, weakKnown: !(gated || isMononoke), shake: 0,
+        // みやぶる必要レベル（ハードのみ判定）と図録の解説
+        miyaLv: e.miyaLv || 1, lore: e.lore || null,
         kind: e.kind || 'enemy', spar: !!opts.spar, forcelose: !!e.forcelose,
         atkLabel: e.atkLabel || DIALOGUE.battle.random.atkLabel, winMsg: e.winMsg || DIALOGUE.battle.random.winMsg,
         loseMsg: e.loseMsg || null, appearMsg: e.appearMsg || null,
@@ -2483,9 +2787,11 @@
     setScene(makeBattle(enemies, allies, gated,
       opts.onWin || function () { startTransition(function () { setScene(activeField); }); },
       opts.onLose || function () { startTransition(function () { setScene(makeTitle()); }); },
-      opts.quizGate || null));
+      opts.quizGate || null,
+      { canFlee: !!opts.canFlee, tutorial: !!opts.tutorial }));
   }
-  function makeBattle(enemies, allies, gated, onWin, onLose, quizGate) {
+  function makeBattle(enemies, allies, gated, onWin, onLose, quizGate, bopts) {
+    bopts = bopts || {};
     const player = allies[0]; // オダ（forcelose/spar/みやぶる はオダ基準）
     const enemy = enemies[0]; // 主敵（spar/forcelose/roundLimit/phase2/背景演出は主敵基準）
     function commandsFor(a) {
@@ -2562,7 +2868,7 @@
       var qi = rnd(0, quizGate.length - 1);
       if (quizGate.length > 1 && qi === lastQuizIdx) qi = (qi + 1) % quizGate.length;
       lastQuizIdx = qi;
-      quiz = quizGate[qi];
+      quiz = shuffleQuiz(quizGate[qi]); // 選択肢はシャッフルして出題
       quizSel = 0; quizAnswered = false; quizCorrect = false;
       mode = 'quiz'; msg = '';
     }
@@ -2704,7 +3010,12 @@
       const actor = allies[turnIdx];
       if (cmd === 'たたかう') {
         if (enemy.forcelose) { showMsg(actor.name + 'の こうげき！\nしかし いけは 軽く 受け流した！', nextTurn); return; }
-        if (!tgt.weakKnown && actor.isOda) { showMsg('オダのこうげき！\nしかし手ごたえがない…！ まず「みやぶる」で 弱点を さがそう。', nextTurn); return; }
+        if (!tgt.weakKnown && actor.isOda) {
+          showMsg(bopts.tutorial
+            ? 'オダのこうげき！ しかし 手ごたえがない…！\nいけ「もののけに ただの 攻撃は すり抜ける！\nその めがね……『みやぶる』で 正体を 暴くのじゃ！」'
+            : 'オダのこうげき！\nしかし手ごたえがない…！ まず「みやぶる」で 弱点を さがそう。', nextTurn);
+          return;
+        }
         if (Math.random() < 0.16) { showMsg(actor.name + 'のこうげき！\nしかし攻撃は 空を切った…！', nextTurn); return; }
         let dmg = actor.isOda ? (rnd(5, 8) + actor.atkBonus + actor.wAtk) : rnd(actor.atkLo || 4, actor.atkHi || 7);
         if (player.atkDownT > 0) dmg = Math.max(1, Math.floor(dmg * 0.65)); // 幻惑の舞
@@ -2714,23 +3025,30 @@
         else { hitEnemy(tgt, dmg, false); showMsg(actor.name + 'のこうげき！ ' + dmg + 'のダメージ！', nextTurn); }
       } else if (cmd === 'みやぶる') {
         if (enemy.forcelose) { showMsg('オダは 相手を みやぶろうとした！\nしかし いけは まるで 隙を 見せない…！', nextTurn); return; }
+        // ハード: 敵の格（必要みやぶるレベル）が上だと見破れない。イージーはLv1で全敵OK
+        if (difficulty === 'hard' && tgt.miyaLv > player.miyaLv) {
+          showMsg('オダは みやぶろうとした…！ だが 格が 上だ！\n正体が つかめない…！（みやぶる Lv' + tgt.miyaLv + ' が 必要）\n「にげる」なら 必ず 成功する。', nextTurn);
+          return;
+        }
         tgt.broken = true; tgt.weakKnown = true;
+        // もののけ図録（図書館の謎解き報酬）を持っていると由来がわかる
+        const loreLine = (mgDone.zuroku && tgt.lore) ? '\n図録『' + tgt.lore + '』' : '';
         const tier = miyaTier(player.miyaLv);
         if (tgt.kind === 'enemy') {
           if (tier === 0) {
-            showMsg('オダは敵をみやぶった！\n「この子…戦で散った兵の無念か…」\n弱点が見えた！（守りが下がった）', nextTurn);
+            showMsg('オダは敵をみやぶった！\n「この子…戦で散った兵の無念か…」\n弱点が見えた！（守りが下がった）' + loreLine, nextTurn);
           } else if (tier === 1) {
-            const d = 5; hitEnemy(tgt, d, false); showMsg('オダの観察眼が冴えた！【みやぶる＋】\n「落武者は“塚”に心を残してる…」\n心の隙を突いた！ ' + d + 'のダメージ！', nextTurn);
+            const d = 5; hitEnemy(tgt, d, false); showMsg('オダの観察眼が冴えた！【みやぶる＋】\n「落武者は“塚”に心を残してる…」\n心の隙を突いた！ ' + d + 'のダメージ！' + loreLine, nextTurn);
           } else {
-            const d = 9; hitEnemy(tgt, d, false); showMsg('オダは心眼を開いた！【みやぶる・極】\n「無念は ちゃんと残ってる。もう休んで」\n落武者の心がやわらいだ！ ' + d + 'のダメージ！', nextTurn);
+            const d = 9; hitEnemy(tgt, d, false); showMsg('オダは心眼を開いた！【みやぶる・極】\n「無念は ちゃんと残ってる。もう休んで」\n落武者の心がやわらいだ！ ' + d + 'のダメージ！' + loreLine, nextTurn);
           }
         } else {
           if (tier === 0) {
-            showMsg('オダは 相手を みやぶった！\n構えの 隙が 見えた！（守りが下がった）', nextTurn);
+            showMsg('オダは 相手を みやぶった！\n構えの 隙が 見えた！（守りが下がった）' + loreLine, nextTurn);
           } else if (tier === 1) {
-            const d = 5; hitEnemy(tgt, d, false); showMsg('オダの 観察眼が 冴えた！【みやぶる＋】\n隙を 突いた！ ' + d + 'のダメージ！', nextTurn);
+            const d = 5; hitEnemy(tgt, d, false); showMsg('オダの 観察眼が 冴えた！【みやぶる＋】\n隙を 突いた！ ' + d + 'のダメージ！' + loreLine, nextTurn);
           } else {
-            const d = 9; hitEnemy(tgt, d, false); showMsg('オダは 心眼を 開いた！【みやぶる・極】\n完全に 見切った！ ' + d + 'のダメージ！', nextTurn);
+            const d = 9; hitEnemy(tgt, d, false); showMsg('オダは 心眼を 開いた！【みやぶる・極】\n完全に 見切った！ ' + d + 'のダメージ！' + loreLine, nextTurn);
           }
         }
       } else if (cmd === 'どうぐ') {
@@ -2748,7 +3066,14 @@
         actor.hp += healed;
         showMsg('オダは ' + GOODS[useKey].name + 'を つかった！\nHPが ' + healed + ' 回復した！', nextTurn);
       } else {
-        showMsg(enemy.fleeMsg || (enemy.spar ? 'いけ「逃げるな、オダ！ これも 修行だ！」' : 'みち「逃げるな、お前！ ここで覚えるんだよ！」'), nextTurn);
+        // にげる: 通常エンカウント（canFlee）は必ず成功。
+        // また、ハードで「みやぶれない格上」が いる戦闘は どこでも必ず逃げられる（詰み防止）
+        const mustEscape = difficulty === 'hard' && aliveEnemies().some(function (e2) { return e2.miyaLv > player.miyaLv; });
+        if (bopts.canFlee || mustEscape) {
+          showMsg('オダたちは うまく 逃げ切った！', function () { startTransition(function () { setScene(activeField); }); });
+        } else {
+          showMsg(enemy.fleeMsg || (enemy.spar ? 'いけ「逃げるな、オダ！ これも 修行だ！」' : 'みち「逃げるな、お前！ ここで覚えるんだよ！」'), nextTurn);
+        }
       }
     }
 
@@ -2962,6 +3287,7 @@
       var ecx = enemyDrawX(eni);
       var ex = (en.shake && en.shake > 0) ? (Math.random() * 2 - 1) * 6 : 0;
       var battleImg = (en.kind === 'odoriko' && ODORIKO_BATTLE_IMG) ? ODORIKO_BATTLE_IMG
+                    : ENEMY_IMG[en.kind] ? ENEMY_IMG[en.kind]
                     : ((en.kind || 'enemy') === 'enemy' && ENEMY_BATTLE_IMG) ? ENEMY_BATTLE_IMG
                     : null;
       if (battleImg) {
@@ -3259,12 +3585,14 @@
     let qcur = 0, answered = false, correct = false;
     let morale = 0;
     const TALKS = [DIALOGUE.ch4_talk1, DIALOGUE.ch4_talk2, DIALOGUE.ch4_talk3];
+    // 合いの手クイズ: 選択肢をシャッフルしてから使う
+    const SQUIZ = DIALOGUE.sen_quiz.map(function (qq) { return shuffleQuiz(qq); });
     function startSeg() { Dialog.start(TALKS[seg], function () { phase = 'quiz'; qcur = 0; answered = false; }); }
     return {
       enter: function () { startSeg(); },
       update: function (dt) {
         if (phase === 'talk') { if (Dialog.active) Dialog.update(dt); return; }
-        const q = DIALOGUE.sen_quiz[seg];
+        const q = SQUIZ[seg];
         if (!answered) {
           if (Input.pressed('up')) qcur = (qcur + q.choices.length - 1) % q.choices.length;
           if (Input.pressed('down')) qcur = (qcur + 1) % q.choices.length;
@@ -3309,9 +3637,9 @@
         c.fillText('士気 ' + stars, W / 2, 70);
         c.textAlign = 'left';
         if (phase === 'talk') { if (Dialog.active) Dialog.render(c); }
-        else if (phase === 'quiz' && DIALOGUE.sen_quiz[seg]) {
+        else if (phase === 'quiz' && SQUIZ[seg]) {
           // 合いの手クイズ
-          const q = DIALOGUE.sen_quiz[seg];
+          const q = SQUIZ[seg];
           c.fillStyle = 'rgba(6,10,22,0.55)'; c.fillRect(0, 80, W, H - 80);
           c.fillStyle = 'rgba(8,16,40,0.95)'; roundRect(c, 24, 96, W - 48, 58, 10); c.fill();
           c.strokeStyle = '#cdd9ff'; c.lineWidth = 2; roundRect(c, 26, 98, W - 52, 54, 8); c.stroke(); c.lineWidth = 1;
@@ -3644,9 +3972,13 @@
         if (mode === 'result') {
           doneT += dt;
           if (doneT > 1.6 || Input.pressed('confirm')) {
-            var reward = mgDone.lib ? 100 : 500;
-            mgDone.lib = true; gold += reward; saveGame();
+            var firstLib = !mgDone.lib;
+            var reward = firstLib ? 500 : 100;
+            mgDone.lib = true;
+            if (firstLib) mgDone.zuroku = true; // 初回クリアで「もののけ図録」（みやぶるの解説が詳しくなる）
+            gold += reward; saveGame();
             onReturn();
+            if (firstLib) Dialog.start(DIALOGUE.lib_zuroku);
           }
           return;
         }
@@ -3754,7 +4086,13 @@
 
   // ===================== ミニゲーム: 長久手検定（市役所） =====================
   function makeKentei(onReturn) {
-    const QUIZ = DIALOGUE.kentei_quiz;
+    // イージー: 普通問題12問から5問・3択 / ハード: マニア問題込みの全20問から10問・4択。
+    // 出題順も選択肢もシャッフルされる
+    const hard = difficulty === 'hard';
+    const pool = hard ? DIALOGUE.kentei_quiz.slice() : DIALOGUE.kentei_quiz.filter(function (qq) { return !qq.mania; });
+    for (var pi = pool.length - 1; pi > 0; pi--) { var pj = rnd(0, pi); var pt = pool[pi]; pool[pi] = pool[pj]; pool[pj] = pt; }
+    const QUIZ = pool.slice(0, hard ? 10 : 5).map(function (qq) { return shuffleQuiz(qq, hard ? 4 : 3); });
+    const passLine = 6; // ハード: 10問中6問未満でゲームオーバー
     let idx = 0, qcur = 0, answered = false, correct = false, score = 0, phase = 'quiz', doneT = 0;
     return {
       enter: function () {},
@@ -3762,7 +4100,7 @@
         if (phase === 'result') {
           doneT += dt;
           if (doneT > 1.6 || Input.pressed('confirm')) {
-            var reward = (score >= QUIZ.length && !mgDone.kentei) ? 1000 : score * 100;
+            var reward = (score >= QUIZ.length && !mgDone.kentei) ? (hard ? 2000 : 1000) : score * 100;
             if (score >= QUIZ.length) mgDone.kentei = true;
             gold += reward; saveGame();
             onReturn();
@@ -3777,7 +4115,7 @@
         } else if (Input.pressed('confirm')) {
           idx++;
           if (idx >= QUIZ.length) {
-            if (difficulty === 'hard' && score < 3) { setScene(makeGameOver('長久手検定、不合格…。（正解 ' + score + '/' + QUIZ.length + '・3問以上で 合格）')); return; }
+            if (hard && score < passLine) { setScene(makeGameOver('長久手検定、不合格…。（正解 ' + score + '/' + QUIZ.length + '・' + passLine + '問以上で 合格）')); return; }
             phase = 'result'; doneT = 0; return;
           }
           qcur = 0; answered = false;
@@ -3798,7 +4136,7 @@
           drawVignette(c); c.textAlign = 'left'; return;
         }
         c.fillStyle = '#8fa8c8'; c.font = '13px "Hiragino Sans",sans-serif';
-        c.fillText('第 ' + (idx + 1) + ' 問 / 全 ' + QUIZ.length + ' 問　　正解 ' + score + (difficulty === 'hard' ? '　　【ハード】3問未満で ゲームオーバー' : ''), W / 2, 70);
+        c.fillText('第 ' + (idx + 1) + ' 問 / 全 ' + QUIZ.length + ' 問　　正解 ' + score + (hard ? '　　【ハード】' + passLine + '問未満で ゲームオーバー' : ''), W / 2, 70);
         const q = QUIZ[idx];
         c.fillStyle = 'rgba(8,16,40,0.9)'; roundRect(c, 24, 88, W - 48, 58, 10); c.fill();
         c.strokeStyle = '#cdd9ff'; c.lineWidth = 2; roundRect(c, 26, 90, W - 52, 54, 8); c.stroke(); c.lineWidth = 1;
@@ -4886,23 +5224,43 @@
     c.textAlign = 'left';
   }
 
+  // 写真ビューア（展望台など）。画面いっぱいに表示して Z / X で戻る
+  function makePhotoView(img, caption, onBack) {
+    return {
+      enter: function () {},
+      update: function (dt) { if (Input.pressed('confirm') || Input.pressed('cancel')) onBack(); },
+      render: function (c) {
+        c.fillStyle = '#000'; c.fillRect(0, 0, W, H);
+        var sc = Math.max(W / img.width, H / img.height);
+        var dw = img.width * sc, dh = img.height * sc;
+        c.drawImage(img, (W - dw) / 2, (H - dh) / 2, dw, dh);
+        c.fillStyle = 'rgba(0,0,0,0.55)'; c.fillRect(0, H - 44, W, 44);
+        c.fillStyle = '#f1f3f5'; c.font = '14px "Hiragino Sans",sans-serif'; c.textAlign = 'center';
+        c.fillText(caption, W / 2, H - 26);
+        if (tick % 56 < 34) { c.fillStyle = '#cdd9ff'; c.font = '12px "Hiragino Sans",sans-serif'; c.fillText('Z / X で もどる', W / 2, H - 8); }
+        c.textAlign = 'left';
+      },
+    };
+  }
+
   function makeSiteVisit(site, onReturn) {
     // onReturn 省略時は史跡めぐり一覧へ（タイトルモード互換）
     const back = onReturn || function () { startTransition(function () { setScene(makeSiteTour()); }); };
     let phase = 'episode'; // episode → quiz → 戦闘 → 踏破
     let qcur = 0, answered = false, correct = false;
+    const quiz = shuffleQuiz(site.quiz); // 選択肢はシャッフルして出題
     return {
       enter: function () { Dialog.start(site.episode, function () { phase = 'quiz'; }); },
       update: function (dt) {
         if (Dialog.active) { Dialog.update(dt); return; }
         if (phase === 'episode') return;
         // quiz
-        const ch = site.quiz.choices;
+        const ch = quiz.choices;
         if (!answered) {
           if (Input.pressed('cancel')) { back(); return; }
           if (Input.pressed('up')) qcur = (qcur + ch.length - 1) % ch.length;
           if (Input.pressed('down')) qcur = (qcur + 1) % ch.length;
-          if (Input.pressed('confirm')) { answered = true; correct = (qcur === site.quiz.answer); if (correct) gold += 50; }
+          if (Input.pressed('confirm')) { answered = true; correct = (qcur === quiz.answer); if (correct) gold += 50; }
         } else {
           if (Input.pressed('confirm')) {
             // 学び → クイズ → もののけ戦。勝つと踏破
@@ -4920,7 +5278,7 @@
       render: function (c) {
         drawSiteBg(c, site);
         if (phase === 'episode') { if (Dialog.active) Dialog.render(c); }
-        else { drawQuiz(c, site, qcur, answered, correct); if (Dialog.active) Dialog.render(c); }
+        else { drawQuiz(c, quiz, qcur, answered, correct); if (Dialog.active) Dialog.render(c); }
       },
     };
   }
@@ -4944,8 +5302,8 @@
     c.fillStyle = '#e9ecef'; c.font = '12px "Hiragino Sans",sans-serif'; c.fillText(site.sub, W / 2, 61);
     c.textAlign = 'left';
   }
-  function drawQuiz(c, site, qcur, answered, correct) {
-    const q = site.quiz;
+  function drawQuiz(c, quizObj, qcur, answered, correct) {
+    const q = quizObj;
     // 背景（空・山）が明るく文字が読みにくいので、クイズ中は暗幕を一枚かける
     c.fillStyle = 'rgba(6,10,22,0.5)'; c.fillRect(0, 78, W, H - 78);
     c.fillStyle = 'rgba(8,16,40,0.92)'; roundRect(c, 24, 92, W - 48, 60, 10); c.fill();
