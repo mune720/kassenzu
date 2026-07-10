@@ -350,6 +350,229 @@ const MORIHALL = [
   '#..............#',
   '#######DD#######',
 ];
+// イオンモール長久手・店内（w=フードコートの大窓, t=テーブル, h=イオンスタイル売場の棚,
+// c/8=レジと店員, b=ベンチ, p=館内案内板）
+const AEON_IN = [
+  '################',
+  '#wwwwwwwwwwwwww#',
+  '#.tt..tt..tt...#',
+  '#.tt..tt..tt...#',
+  '#..............#',
+  '#hh.hh...cc8cc.#',
+  '#hh.hh.........#',
+  '#hh.hh....b.b..#',
+  '#..............#',
+  '#hh.hh....p....#',
+  '#hh.hh.........#',
+  '#..............#',
+  '#......@.......#',
+  '#######DD#######',
+];
+// 一蘭 長久手店・店内（k=厨房, q=味集中カウンター(27席), 8=店員, y=食券機, p=空席案内板）
+const RAMEN_IN = [
+  '################',
+  '#kkkkkkkkkkkkkk#',
+  '#qqqqqqqqqqqqqq#',
+  '#.......8......#',
+  '#..............#',
+  '#qqqqqqqqqqqqq.#',
+  '#..............#',
+  '#..............#',
+  '#..............#',
+  '#..............#',
+  '#..............#',
+  '#.y.........p..#',
+  '#......@.......#',
+  '#######DD#######',
+];
+// 長久手市役所・1階ロビー（c=窓口カウンター, 8=市民課職員(長久手検定), 9=総合案内,
+// y=番号札発券機, b=待合ソファ, p=掲示板）
+const CITYHALL_IN = [
+  '################',
+  '#ppp......ppp..#',
+  '#..............#',
+  '#cc8cc...cc9cc.#',
+  '#..............#',
+  '#.y............#',
+  '#..b..b..b.....#',
+  '#..b..b..b.....#',
+  '#..............#',
+  '#..............#',
+  '#..............#',
+  '#..............#',
+  '#......@.......#',
+  '#######DD#######',
+];
+// 長久手市中央図書館・1階（h=書架(右=一般・左下=児童), c/8=貸出カウンターと司書,
+// 9=絵本コーナーの子, t=閲覧席）
+const LIBRARY_IN = [
+  '################',
+  '#hhhh.hhhh.hhhh#',
+  '#..............#',
+  '#hhhh.hhhh.hhhh#',
+  '#..............#',
+  '#.....cc8cc....#',
+  '#..............#',
+  '#tt..........hh#',
+  '#tt....9.....hh#',
+  '#..............#',
+  '#hh.hh....tt...#',
+  '#..............#',
+  '#......@.......#',
+  '#######DD#######',
+];
+// 色金山歴史公園・茶室「胡牀庵」（如庵写し。z=畳, Z=床の間, x=炉, t=立礼席,
+// 8=亭主(抹茶体験500円), k=水屋, w=庭の見える窓）
+const TEAROOM_IN = [
+  '################',
+  '#ZZzzz....www..#',
+  '#zzzzz.........#',
+  '#zzxzz...tt.tt.#',
+  '#zzzzz...tt.tt.#',
+  '#zzzzz.....8...#',
+  '#..............#',
+  '#.....k........#',
+  '#..............#',
+  '#..............#',
+  '#..............#',
+  '#..............#',
+  '#......@.......#',
+  '#######DD#######',
+];
+// 平成こども塾「丸太の家」・内部（東濃ひのきの大空間。t=作業台, h=作品棚,
+// k=かまどコーナー, 8=スタッフ(兵糧丸づくり)）
+const KODOMO_IN = [
+  '################',
+  '#hhhh......kk..#',
+  '#..........kk..#',
+  '#..............#',
+  '#..tttt..tttt..#',
+  '#..tttt..tttt..#',
+  '#..............#',
+  '#......8.......#',
+  '#hh............#',
+  '#..............#',
+  '#..............#',
+  '#..............#',
+  '#......@.......#',
+  '#######DD#######',
+];
+// 岩崎城歴史記念館・展示室（g=展示ケース(甲冑・采配・出土品), j=動くジオラマ(三河中入),
+// m=甲冑試着コーナー, c/8=受付(御城印), p=解説パネル）
+const IWKIN_IN = [
+  '################',
+  '#p.ggg.ggg...p.#',
+  '#..............#',
+  '#....jjj.......#',
+  '#....jjj.......#',
+  '#..............#',
+  '#.mm...........#',
+  '#..............#',
+  '#..............#',
+  '#....cc8cc.....#',
+  '#..............#',
+  '#..............#',
+  '#......@.......#',
+  '#######DD#######',
+];
+// 岩崎城 模擬天守・展望室（f=金網の展望窓(360度), o=望遠鏡, p=縄張り解説パネル,
+// D=階段(下りる)）
+const TENSHU_IN = [
+  '################',
+  '#ffffffffffffff#',
+  '#f............f#',
+  '#f............f#',
+  '#....o.....o...#',
+  '#..............#',
+  '#..............#',
+  '#.....pp.......#',
+  '#..............#',
+  '#f............f#',
+  '#f............f#',
+  '#ffffff..ffffff#',
+  '#......@.......#',
+  '#######DD#######',
+];
+// リニモ駅・ホーム階（島式1面2線・全駅共通。r=線路, e=可動式ホーム柵(乗車はここでZ),
+// p=行先案内サイン, D=階段(改札へ下りる)。どの駅にいるかは game.js の stationAt が保持）
+const STATION_HOME = [
+  '################',
+  '#rrrrrrrrrrrrrr#',
+  '#eeeeeeeeeeeeee#',
+  '#..............#',
+  '#..p.......p...#',
+  '#..............#',
+  '#......DD......#',
+  '#......@.......#',
+  '#..p.......p...#',
+  '#..............#',
+  '#eeeeeeeeeeeeee#',
+  '#rrrrrrrrrrrrrr#',
+  '#..............#',
+  '################',
+];
+// 色金山ダンジョン・登山道（つづら折り。v=下山口(zoneCへ), 5=山頂への石段, J=岩壁）
+const IROGANE1 = [
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'T......................................T',
+  'T.......T...........8.......T..........T',
+  'T............T......,,,,R,,,,,,,b,,,...T',
+  'T..................................,...T',
+  'TJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJ..JJJT',
+  'TJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJ..JJJT',
+  'T...,.........T.........T......T...,...T',
+  'T...,,,,,,,R,,,,,,,,,,,,,,,R,,b,,,,,...T',
+  'T...,..................................T',
+  'TJJJ..JJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJT',
+  'TJJJ..JJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJT',
+  'T...,....T..........T.......T......,...T',
+  'T...,,,,,,,,,,,b,,,,,,,,,,,,,,,,,R,,...T',
+  'T.................R................,...T',
+  'TJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJ..JJJT',
+  'TJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJ..JJJT',
+  'T...,.......T...........T.....T....,...T',
+  'T...,,,,,,,,,,,,,,,,,,,,,b,,,,,,,,,,...T',
+  'T...,..R.....................R.........T',
+  'TJJJ..JJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJT',
+  'TJJJ..JJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJT',
+  'T...,..................................T',
+  'T...,....T................T.........T..T',
+  'T...,,,,,,,,,b,,,,....R........T.......T',
+  'T................@.....................T',
+  'T................9.....................T',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+];
+// 色金山ダンジョン・山頂（R=床机石(史跡クイズ＋戦闘), o=展望盤(展望台), ==木デッキ, P=セーブ篝火, v=下山口）
+const IROGANE2 = [
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJT',
+  'TJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJT',
+  'TJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJT',
+  'TJJJJJJ..........................JJJJJJT',
+  'TJJJJJJ.T.............T..........JJJJJJT',
+  'TJJJJJJ.....R...........=======..JJJJJJT',
+  'TJJJJJJ.....,...........===o===..JJJJJJT',
+  'TJJJJJJ.....,...........=======..JJJJJJT',
+  'TJJJJJJ.....,...........=======..JJJJJJT',
+  'TJJJJJJ.................=======..JJJJJJT',
+  'TJJJJJJ..........................JJJJJJT',
+  'TJJJJJJ.........P................JJJJJJT',
+  'TJJJJJJ............,.............JJJJJJT',
+  'TJJJJJJ............,.............JJJJJJT',
+  'TJJJJJJ..T.........,.........T...JJJJJJT',
+  'TJJJJJJ............,.....b.......JJJJJJT',
+  'TJJJJJJ.......b....,.............JJJJJJT',
+  'TJJJJJJ..T.........,..........T..JJJJJJT',
+  'TJJJJJJ............@.............JJJJJJT',
+  'TJJJJJJ............9.............JJJJJJT',
+  'TJJJJJJ..........................JJJJJJT',
+  'TJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJT',
+  'TJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJT',
+  'TJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJT',
+  'TJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJT',
+  'TJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJT',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+];
 // マップレジストリ。新マップは rows＋この定義を追加するだけで動く。
 //  kind: outdoor はカメラスクロール対象（画面より大きい場合）、indoor は固定画面
 //  tileset: drawTile の描画スタイル（museum / outdoor。将来 mall / library 等を追加）
@@ -376,7 +599,7 @@ const MAP_DEFS = {
     npcs: {},
     acts: { M: 'mound', N: 'shokuro', R: 'rock', D: 'museum_enter', P: 'save', 4: 'aeon', e: 'station', a: 'site_chinoike' },
     edges: { west: 'zoneB', north: 'zoneC', east: 'zoneF' },
-    encounter: null,
+    encounter: { rate: 0.03, afterUnlock: true },
   },
   zoneB: {
     rows: ZONEB, kind: 'outdoor', tileset: 'outdoor', playerFloor: '.',
@@ -384,15 +607,15 @@ const MAP_DEFS = {
     npcs: {},
     acts: { N: 'site_mihata', a: 'flavor_iriga', e: 'station' },
     edges: { east: 'zoneA', north: 'zoneD' },
-    encounter: null,
+    encounter: { rate: 0.04, afterUnlock: true },
   },
   zoneC: {
     rows: ZONEC, kind: 'outdoor', tileset: 'outdoor', playerFloor: '.',
     solid: ['T', 'M', 'R', 'J', 'W', '^', '1', '2', 'x', 'Y', '4', 'h'],
     npcs: {},
-    acts: { R: 'site_irogane', 1: 'tearoom', 2: 'cityhall', 4: 'ramen', o: 'site_ansho', M: 'site_musashi', x: 'shateki', h: 'flavor_aidai' },
+    acts: { R: 'irogane_in', 1: 'tearoom', 2: 'cityhall', 4: 'ramen', o: 'site_ansho', M: 'site_musashi', x: 'shateki', h: 'flavor_aidai' },
     edges: { south: 'zoneA', west: 'zoneD' },
-    encounter: null,
+    encounter: { rate: 0.045, afterUnlock: true },
   },
   zoneD: {
     rows: ZONED, kind: 'outdoor', tileset: 'outdoor', playerFloor: '.',
@@ -400,7 +623,7 @@ const MAP_DEFS = {
     npcs: {},
     acts: { 1: 'bunka_in', 2: 'library', a: 'higane' },
     edges: { east: 'zoneC', south: 'zoneB' },
-    encounter: null,
+    encounter: { rate: 0.04, afterUnlock: true },
   },
   zoneE: {
     rows: ZONEE, kind: 'outdoor', tileset: 'outdoor', playerFloor: '.',
@@ -420,7 +643,7 @@ const MAP_DEFS = {
     npcs: {},
     acts: { t: 'flavor_toyota', g: 'flavor_geidai', e: 'station' },
     edges: { west: 'zoneA', east: 'zoneG' },
-    encounter: null,
+    encounter: { rate: 0.05, afterUnlock: true },
   },
   zoneG: {
     rows: ZONEG, kind: 'outdoor', tileset: 'outdoor', playerFloor: '.',
@@ -428,6 +651,89 @@ const MAP_DEFS = {
     npcs: {},
     acts: { 3: 'kodomo', f: 'flavor_ikea', e: 'station' },
     edges: { west: 'zoneF', east: 'zoneE' },
+    encounter: { rate: 0.05, afterUnlock: true },
+  },
+  aeon_in: {
+    rows: AEON_IN, kind: 'indoor', tileset: 'museum', playerFloor: '.',
+    solid: ['#', 'w', 't', 'h', 'c', 'b', 'p', 'D'],
+    npcs: { 8: { kind: 'civ8', id: 'aeon_clerk', floor: '.' } },
+    acts: { D: 'aeon_exit', p: 'aeon_info' },
+    encounter: null,
+  },
+  ramen_in: {
+    rows: RAMEN_IN, kind: 'indoor', tileset: 'museum', playerFloor: '.',
+    solid: ['#', 'k', 'q', 'y', 'p', 'D'],
+    npcs: { 8: { kind: 'civ8', id: 'ramen_clerk', floor: '.' } },
+    acts: { D: 'ramen_exit', y: 'ramen_ticket', p: 'ramen_board' },
+    encounter: null,
+  },
+  cityhall_in: {
+    rows: CITYHALL_IN, kind: 'indoor', tileset: 'museum', playerFloor: '.',
+    solid: ['#', 'c', 'y', 'b', 'p', 'D'],
+    npcs: {
+      8: { kind: 'civ6', id: 'cityhall_clerk', floor: '.' },
+      9: { kind: 'civ3', id: 'cityhall_info', floor: '.' },
+    },
+    acts: { D: 'cityhall_exit', y: 'cityhall_ticket', p: 'cityhall_post' },
+    encounter: null,
+  },
+  library_in: {
+    rows: LIBRARY_IN, kind: 'indoor', tileset: 'museum', playerFloor: '.',
+    solid: ['#', 'h', 'c', 't', 'D'],
+    npcs: {
+      8: { kind: 'civ2', id: 'library_clerk', floor: '.' },
+      9: { kind: 'civ4', id: 'library_kid', floor: '.' },
+    },
+    acts: { D: 'library_exit' },
+    encounter: null,
+  },
+  tearoom_in: {
+    rows: TEAROOM_IN, kind: 'indoor', tileset: 'museum', playerFloor: '.',
+    solid: ['#', 'Z', 'x', 'w', 't', 'k', 'D'],
+    npcs: { 8: { kind: 'civ3', id: 'tea_host', floor: '.' } },
+    acts: { D: 'tearoom_exit', Z: 'tearoom_toko', x: 'tearoom_ro', k: 'tearoom_mizuya' },
+    encounter: null,
+  },
+  kodomo_in: {
+    rows: KODOMO_IN, kind: 'indoor', tileset: 'museum', playerFloor: '.',
+    solid: ['#', 'h', 't', 'k', 'D'],
+    npcs: { 8: { kind: 'civ8', id: 'kodomo_staff', floor: '.' } },
+    acts: { D: 'kodomo_exit', k: 'kodomo_kamado' },
+    encounter: null,
+  },
+  iwkin_in: {
+    rows: IWKIN_IN, kind: 'indoor', tileset: 'museum', playerFloor: '.',
+    solid: ['#', 'g', 'j', 'c', 'p', 'D'],
+    npcs: { 8: { kind: 'civ2', id: 'iwkin_clerk', floor: '.' } },
+    acts: { D: 'iwkin_exit', g: 'iwkin_case', j: 'iwkin_diorama', m: 'iwkin_dressup', p: 'iwkin_panel' },
+    encounter: null,
+  },
+  tenshu_in: {
+    rows: TENSHU_IN, kind: 'indoor', tileset: 'museum', playerFloor: '.',
+    solid: ['#', 'f', 'o', 'p', 'D'],
+    npcs: {},
+    acts: { D: 'tenshu_exit', f: 'tenshu_kanamori', o: 'tenshu_scope', p: 'tenshu_map' },
+    encounter: null,
+  },
+  station_home: {
+    rows: STATION_HOME, kind: 'indoor', tileset: 'museum', playerFloor: '.',
+    solid: ['#', 'r', 'e', 'p', 'D'],
+    npcs: {},
+    acts: { D: 'station_exit', e: 'station_board', p: 'station_sign' },
+    encounter: null,
+  },
+  irogane1: {
+    rows: IROGANE1, kind: 'outdoor', tileset: 'outdoor', playerFloor: '.',
+    solid: ['T', 'J', 'R', 'b', '8', '9'],
+    npcs: {},
+    acts: { 8: 'irogane_up', 9: 'irogane_exit' },
+    encounter: { rate: 0.06 },
+  },
+  irogane2: {
+    rows: IROGANE2, kind: 'outdoor', tileset: 'outdoor', playerFloor: '.',
+    solid: ['T', 'J', 'R', 'b', 'o', 'P', '8', '9'],
+    npcs: {},
+    acts: { R: 'site_irogane', 9: 'irogane_down', o: 'irogane_view', P: 'save' },
     encounter: null,
   },
   bunka1: {
@@ -502,6 +808,7 @@ const HD_BLD_DEF = {
     { key: 'ikea', c0: 5, r0: 12, w: 10, h: 6 },
     { key: 'kodomo', c0: 28, r0: 5, w: 5, h: 3 },
   ],
+  irogane1: [{ id: 'chagama', w: 35 }, { id: 'sabiyari', w: 35 }, { id: 'hagure', w: 30, mate: 'monomi' }],
   iwasaki: [
     { key: 'iwasaki_tenshu', c0: 17, r0: 6, w: 5, h: 4 },
     { key: 'iwasaki_kinenkan', c0: 28, r0: 16, w: 6, h: 3 },
@@ -525,3 +832,109 @@ const LINIMO_TRACK = {
   zoneG: { c0: 0, c1: 39, row: 21.5 },
   zoneE: { c0: 0, c1: 9, row: 21.5 },
 };
+
+// ===================== 敵データ（通常10種＋レア2種） =====================
+// kind はバトル絵のキー: assets/enemy/<kind>_battle.png を置くと自動で差し替わる
+// （無い間は紫のもののけ描画）。exp/gold は [下限, 上限]。ハードのHP補正は戦闘側で掛かる。
+// 権利面: すべて創作名（実在キャラ・商標は使わない）。モチーフは長久手の史跡・伝承。
+const ENEMY_DEFS = {
+  // --- 全域（序盤〜） ---
+  hagure:    { name: '落武者の もののけ', kind: 'enemy', hp: 22, atkLo: 3, atkHi: 6, exp: [5, 8], gold: [80, 150], lore: '戦で 散った兵の 無念が 形に なったもの。塚に 心を 残している', },
+  monomi:    { name: '物見の もののけ', kind: 'monomi', hp: 16, atkLo: 2, atkHi: 5, exp: [4, 6], gold: [60, 100],
+               atkLabel: '遠眼鏡なげつけ', lore: '偵察兵の 霊。遠眼鏡を いまも 手放せない', },
+  yako:      { name: '夜行の もののけ', kind: 'yako', hp: 36, atkLo: 6, atkHi: 10, exp: [16, 22], gold: [180, 260],
+               atkLabel: '提灯の 鬼火', miyaLv: 2, lore: '夜の 行列から はぐれた 武者。提灯の 火は 魂そのもの', },
+  yako_kage: { name: '夜行の 影', kind: 'yako', hp: 28, atkLo: 5, atkHi: 8, exp: [12, 16], gold: [120, 180],
+               atkLabel: '影のびの 一撃', miyaLv: 2, lore: '夜行の もののけの 影が 実体を 持ったもの', },
+  // --- ゾーンA: 古戦場公園（陣火・血の池伝承） ---
+  onibi:     { name: '鬼火の子', kind: 'onibi', hp: 14, atkLo: 2, atkHi: 4, exp: [3, 5], gold: [50, 90],
+               atkLabel: '火の粉とばし', lore: '陣火の 残り火の 精。いたずら好きだが 悪気は ない', },
+  chigaeru:  { name: '血の池がえる', kind: 'chigaeru', hp: 20, atkLo: 3, atkHi: 6, exp: [5, 8], gold: [70, 120],
+               atkLabel: 'のしかかり体当たり', lore: '武具を 洗った 池の ぬし。赤いのは 血ではなく 錆の色', },
+  // --- ゾーンB: 杁ヶ池・御旗山 ---
+  mizuchi:   { name: '杁ヶ池の みずち', kind: 'mizuchi', hp: 26, atkLo: 4, atkHi: 7, exp: [8, 12], gold: [90, 150],
+               atkLabel: '水しぶき', lore: '杁ヶ池の 若い 水霊。池の 水位を 守っている', },
+  hatahira:  { name: '旗指しひらり', kind: 'hatahira', hp: 24, atkLo: 4, atkHi: 7, exp: [8, 12], gold: [90, 150],
+               atkLabel: '旗の目くらまし', lore: '戦場に 忘れられた 旗指物の 付喪神。風が 友だち', },
+  // --- ゾーンC: 岩作（茶会・戦場の忘れ物） ---
+  chagama:   { name: '茶がまだぬき', kind: 'chagama', hp: 30, atkLo: 5, atkHi: 8, exp: [10, 15], gold: [110, 170],
+               atkLabel: '熱い湯気ふき', lore: '茶釜に 化けそこねた 狸。湯加減には 自信がある', },
+  sabiyari:  { name: '錆槍の 付喪神', kind: 'sabiyari', hp: 34, atkLo: 6, atkHi: 10, exp: [13, 18], gold: [120, 180],
+               atkLabel: '錆の槍ぶすま', lore: '置き去りに された 槍の 付喪神。手入れされた 日々を 探している', },
+  // --- 東エリア: 里山 ---
+  tagakashi: { name: '田がかし武者', kind: 'tagakashi', hp: 38, atkLo: 7, atkHi: 11, exp: [15, 21], gold: [130, 200],
+               atkLabel: '竹竿ぶんまわし', miyaLv: 2, lore: '田を 守る 誓いを 立てた 落武者の 魂。夜だけ 動く', },
+  // --- 岩崎城（既存の強敵・絵は落武者/物見と共通） ---
+  iw_ochi:   { name: '岩崎の 落武者', kind: 'enemy', hp: 30, atkLo: 7, atkHi: 11, exp: [22, 30], gold: [130, 190], miyaLv: 2, lore: '岩崎城の 戦いで 散った 兵。城への 忠義が いまも 残る', },
+  iw_monomi: { name: '岩崎の 物見', kind: 'monomi', hp: 24, atkLo: 6, atkHi: 9, exp: [16, 22], gold: [90, 140],
+               atkLabel: '遠眼鏡なげつけ', miyaLv: 2, lore: '岩崎城の 物見櫓を 守っていた 兵の 霊', },
+  // --- レア敵（全域・低確率） ---
+  koban:     { name: 'こばん狐', kind: 'koban', hp: 18, atkLo: 1, atkHi: 3, exp: [6, 10], gold: [800, 1500],
+               atkLabel: 'すばしっこい体当たり',
+               appearMsg: 'きらりと 光る こばん狐が あらわれた！ 大金の 気配……！', miyaLv: 3, lore: '小判を 集める 金運の 狐。倒した者に 福を 分ける', },
+  kabuto:    { name: '黄金の 兜がね', kind: 'kabuto', hp: 46, atkLo: 2, atkHi: 4, exp: [70, 100], gold: [100, 200],
+               atkLabel: '角の一突き',
+               appearMsg: '黄金に かがやく 兜がねが あらわれた！ 経験の 大チャンス！', miyaLv: 3, lore: '名将の 兜が 甲虫に なった 付喪神。経験の かたまり', },
+};
+
+// ゾーン別の出現テーブル（w=重み, mate=お供が付く敵, mateW=お供の確率・既定0.3）
+// レア敵はテーブルの前に共通で抽選される（兜がね3%・こばん狐5%）
+const ENCOUNTER_TABLES = {
+  field:   [{ id: 'hagure', w: 70, mate: 'monomi' }, { id: 'onibi', w: 30 }],
+  zoneA:   [{ id: 'onibi', w: 40 }, { id: 'chigaeru', w: 35 }, { id: 'hagure', w: 25, mate: 'monomi' }],
+  zoneB:   [{ id: 'mizuchi', w: 45 }, { id: 'hatahira', w: 35 }, { id: 'monomi', w: 20 }],
+  zoneC:   [{ id: 'sabiyari', w: 40 }, { id: 'chagama', w: 40 }, { id: 'hagure', w: 20, mate: 'monomi' }],
+  zoneD:   [{ id: 'hatahira', w: 45 }, { id: 'chagama', w: 30 }, { id: 'monomi', w: 25 }],
+  zoneF:   [{ id: 'sabiyari', w: 45 }, { id: 'tagakashi', w: 30 }, { id: 'onibi', w: 25 }],
+  zoneG:   [{ id: 'tagakashi', w: 50 }, { id: 'chigaeru', w: 25 }, { id: 'mizuchi', w: 25 }],
+  iwasaki: [{ id: 'iw_ochi', w: 55, mate: 'iw_monomi', mateW: 0.6 }, { id: 'tagakashi', w: 25 }, { id: 'sabiyari', w: 20 }],
+};
+
+// ===================== モブNPC（街の人・ストーリー連動） =====================
+// spots のキーはフェーズ: quest=取材クエスト中(街解放〜), night=ラスボス前夜(stageP3=9),
+// post=クリア後。フェーズにエントリが無いモブはその時期は登場しない（人数・位置が変わる）。
+// 会話キーは dialogue.js の mob_<id>_<フェーズ>（無ければ _quest にフォールバック）。
+const MOB_DEFS = [
+  // --- ゾーンA: 古戦場公園周辺 ---
+  { id: 'mob_sanpo', kind: 'civ3', map: 'zoneA',
+    spots: { quest: { col: 23, row: 15 }, post: { col: 26, row: 18 } } },
+  { id: 'mob_jog', kind: 'civ5', map: 'zoneA',
+    spots: { quest: { col: 10, row: 20 }, night: { col: 10, row: 20 }, post: { col: 10, row: 20 } } },
+  { id: 'mob_kanko', kind: 'civ2', map: 'zoneA',
+    spots: { quest: { col: 30, row: 20 }, post: { col: 25, row: 15 } } },
+  { id: 'mob_guide', kind: 'civ6', map: 'zoneA',
+    spots: { quest: { col: 27, row: 8 }, post: { col: 27, row: 8 } } },
+  { id: 'mob_keibi', kind: 'civ6', map: 'zoneA',
+    spots: { night: { col: 28, row: 20 } } },
+  { id: 'mob_yatai', kind: 'civ8', map: 'zoneA',
+    spots: { post: { col: 22, row: 17 } } },
+  // --- ゾーンB: 杁ヶ池・御旗山・住宅地 ---
+  { id: 'mob_inu', kind: 'civ1', map: 'zoneB',
+    spots: { quest: { col: 7, row: 12 }, post: { col: 7, row: 12 } } },
+  { id: 'mob_hiker', kind: 'civ5', map: 'zoneB',
+    spots: { quest: { col: 30, row: 9 }, post: { col: 30, row: 9 } } },
+  { id: 'mob_shufu', kind: 'civ3', map: 'zoneB',
+    spots: { quest: { col: 8, row: 23 }, post: { col: 8, row: 23 } } },
+  // --- ゾーンC: 岩作 ---
+  { id: 'mob_nofu', kind: 'civ3', map: 'zoneC',
+    spots: { quest: { col: 8, row: 20 }, post: { col: 8, row: 20 } } },
+  { id: 'mob_shokuin', kind: 'civ6', map: 'zoneC',
+    spots: { quest: { col: 33, row: 14 }, night: { col: 33, row: 14 }, post: { col: 33, row: 14 } } },
+  { id: 'mob_gyoretsu', kind: 'civ7', map: 'zoneC',
+    spots: { quest: { col: 21, row: 21 }, night: { col: 21, row: 21 }, post: { col: 21, row: 21 } } },
+  // --- ゾーンD: 文化の家・図書館 ---
+  { id: 'mob_gakki', kind: 'civ7', map: 'zoneD',
+    spots: { quest: { col: 22, row: 14 }, post: { col: 22, row: 14 } } },
+  { id: 'mob_ehon', kind: 'civ4', map: 'zoneD',
+    spots: { quest: { col: 33, row: 22 }, post: { col: 33, row: 22 } } },
+  // --- ゾーンF: 芸大通 ---
+  { id: 'mob_geidaisei', kind: 'civ7', map: 'zoneF',
+    spots: { quest: { col: 29, row: 12 }, post: { col: 29, row: 12 } } },
+  { id: 'mob_kuruma', kind: 'civ1', map: 'zoneF',
+    spots: { quest: { col: 12, row: 19 }, post: { col: 12, row: 19 } } },
+  // --- ゾーンG: 公園西 ---
+  { id: 'mob_kaimono', kind: 'civ2', map: 'zoneG',
+    spots: { quest: { col: 12, row: 20 }, post: { col: 12, row: 20 } } },
+  { id: 'mob_yamakid', kind: 'civ4', map: 'zoneG',
+    spots: { quest: { col: 29, row: 10 }, post: { col: 29, row: 10 } } },
+];
