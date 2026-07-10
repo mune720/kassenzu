@@ -962,6 +962,23 @@
         c.drawImage(img, bx, bottom - bh, bw, bh);
       } });
     });
+    // リニモ高架の支柱（グリーンロード中央分離帯・奥行きソートに参加）
+    var lin = (typeof LINIMO_TRACK !== 'undefined') ? LINIMO_TRACK[map.key] : null;
+    var linDeckY = 0;
+    if (lin) {
+      linDeckY = (lin.row - 1.35) * TILE;
+      for (var pc = lin.c0 + 2; pc <= lin.c1 - 1; pc += 6) {
+        (function (col) {
+          var px = col * TILE + TILE / 2, baseY = (lin.row + 0.5) * TILE;
+          painter.push({ y: baseY, draw: function () {
+            c.fillStyle = 'rgba(0,0,0,0.18)';
+            c.beginPath(); c.ellipse(px, baseY, 9, 4, 0, 0, Math.PI * 2); c.fill();
+            c.fillStyle = '#99a0ae'; c.fillRect(px - 5, linDeckY, 10, baseY - linDeckY);
+            c.fillStyle = '#7c8290'; c.fillRect(px - 5, linDeckY, 3, baseY - linDeckY);
+          } });
+        })(pc);
+      }
+    }
     // Actors（player=null ならプレイヤー非表示: カットシーン用）
     map.npcs.forEach(function (n) {
       var ax = n.col * TILE + TILE / 2, ay = n.row * TILE + TILE / 2;
@@ -970,6 +987,17 @@
     if (player) painter.push({ y: player.y, draw: function () { drawActor(c, player.x, player.y, player.kind, player.facing, 1, player.moving); } });
     painter.sort(function (a, b) { return a.y - b.y; });
     painter.forEach(function (p) { p.draw(); });
+    // リニモ高架の軌道桁（上空・最前面。プレイヤーは下をくぐる）
+    if (lin) {
+      var lx0 = lin.c0 * TILE, lx1 = (lin.c1 + 1) * TILE;
+      c.fillStyle = 'rgba(10,14,30,0.10)';
+      c.fillRect(lx0, (lin.row - 0.5) * TILE + 6, lx1 - lx0, TILE * 0.9);
+      c.fillStyle = '#aeb4c2'; c.fillRect(lx0, linDeckY - 14, lx1 - lx0, 14);
+      c.fillStyle = '#c9cedb'; c.fillRect(lx0, linDeckY - 14, lx1 - lx0, 4);
+      c.fillStyle = '#868c9a'; c.fillRect(lx0, linDeckY - 3, lx1 - lx0, 3);
+      c.strokeStyle = '#5d6470'; c.lineWidth = 1;
+      c.beginPath(); c.moveTo(lx0, linDeckY - 9); c.lineTo(lx1, linDeckY - 9); c.stroke();
+    }
   }
   // ワールドパス後半: ワールド座標の光だまり（カメラ translate の内側）
   function drawFieldAtmoWorld(c, map) {
@@ -1073,7 +1101,7 @@
   }
   ['grass', 'road', 'dirt', 'water'].forEach(function (k) { loadHDImg(HD_TEX, k, 'assets/tiles/' + k + '.png'); });
   ['tree', 'bush', 'rock', 'mound', 'mound_s'].forEach(function (k) { loadHDImg(HD_DECO, k, 'assets/deco/' + k + '.png'); });
-  ['museum', 'aeon', 'station', 'ramen', 'tearoom', 'cityhall', 'kodomo', 'temple', 'bunka', 'library', 'ferris', 'iwasaki_tenshu', 'iwasaki_kinenkan'].forEach(function (k) { loadHDImg(HD_BLD, k, 'assets/buildings/' + k + '.png'); });
+  ['museum', 'aeon', 'station', 'ramen', 'tearoom', 'cityhall', 'kodomo', 'temple', 'bunka', 'library', 'ferris', 'iwasaki_tenshu', 'iwasaki_kinenkan', 'toyota', 'ikea', 'geidai', 'aidai'].forEach(function (k) { loadHDImg(HD_BLD, k, 'assets/buildings/' + k + '.png'); });
   // 歩行スプライトシート（assets/sprites/<kind>_walk.png）: 3列×4行。
   // 行=正面/左/右/後ろ、列=立ち/歩き1/歩き2。あれば drawActor が自動で使う。
   // 生成画像はセル内の余白が大きいため、全セル共通の実描画域（不透明ピクセルの外接矩形）を
@@ -1640,12 +1668,21 @@
         });
       }
       else if (id === 'station') {
-        var stLines = stationUsed ? DIALOGUE.station_ride : DIALOGUE.station_first;
-        stationUsed = true;
-        Dialog.start(stLines, function () {
-          startTransition(function () {
-            if (mapKey === 'zoneE') setScene(makeField('zoneA', { col: 34, row: 2 }, null));
-            else setScene(makeField('zoneE', { col: 6, row: 20 }, null));
+        // リニモ路線図: 現在駅以外から行き先を選ぶ。街解放前は古戦場↔モリコロのみ（従来挙動）
+        var here = null, destNames = [], dests = [];
+        for (var si = 0; si < LINIMO_STATIONS.length; si++) {
+          var stn = LINIMO_STATIONS[si];
+          if (stn.map === mapKey) { here = stn; continue; }
+          if (!omakeUnlocked() && stn.map !== 'zoneA' && stn.map !== 'zoneE') continue;
+          destNames.push(stn.name); dests.push(stn);
+        }
+        Choice.start('リニモ ' + (here ? here.name + '駅' : '') + '　どこへ 行く？', destNames.concat(['やめる']), function (pick) {
+          if (pick >= dests.length) return;
+          var dest = dests[pick];
+          var stLines = stationUsed ? DIALOGUE.station_ride : DIALOGUE.station_first;
+          stationUsed = true;
+          Dialog.start(stLines, function () {
+            gotoField(dest.map, { col: dest.col, row: dest.row });
           });
         });
       }
@@ -1715,6 +1752,7 @@
           setScene(makeSiteVisit(site, function () { gotoField(mapKey, { x: backX, y: backY }); }));
         }
       }
+      else if (id && id.indexOf('flavor_') === 0 && DIALOGUE[id]) Dialog.start(DIALOGUE[id]);
       else if (id === 'bunka_in') { unlockZukan('bunka'); gotoField('bunka1'); }
       else if (id === 'bunka_exit') gotoField('zoneD', { col: 19, row: 13 });
       else if (id === 'bunka_up') gotoField('bunka2', { col: 2, row: 2 });
@@ -2227,7 +2265,7 @@
         }
         // ハードの稼ぎ場: ラスボス前の見回り（stageP3=9）とクリア後は、街の各ゾーンでも夜行のもののけが出る
         const patrolEnc = !map.def.encounter && difficulty === 'hard'
-          && (mapKey === 'zoneA' || mapKey === 'zoneB' || mapKey === 'zoneC' || mapKey === 'zoneD')
+          && (mapKey === 'zoneA' || mapKey === 'zoneB' || mapKey === 'zoneC' || mapKey === 'zoneD' || mapKey === 'zoneF' || mapKey === 'zoneG')
           && ((chapter === 'main2' && stageP3 === 9) || chapter === 'post') ? { rate: 0.05 } : null;
         const encDef = map.def.encounter || patrolEnc;
         if ((dx !== 0 || dy !== 0) && tutorialDone && encDef && encCooldown <= 0) {
