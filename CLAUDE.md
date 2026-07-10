@@ -49,6 +49,10 @@ Vanilla JS + HTML5 Canvas、ビルド不要、`file://` でも動作。
 - みやぶる: もののけ系（MONSTER_KINDS）は見破るまでオダの攻撃が通らない。必要Lvは `ENEMY_DEFS.miyaLv`（ハードのみ判定・イージーはLv1で全敵OK）。みやぶるLvはオダLv連動（10でLv2・18でLv3）。格上のいる戦闘と通常エンカウント（canFlee）は「にげる」必成功。四章開始時にチュートリアルバトルあり。図書館謎解き初回クリアで「もののけ図録」（mgDone.zuroku・みやぶるに由来解説が付く）
 - クイズは全系統（検定・史跡・合いの手・岩崎ゲート）で `shuffleQuiz()` により選択肢シャッフル。長久手検定は20問データ（`mania: true` はハード限定）から イージー5問3択／ハード10問4択（6問未満でGO）
 - 色金山は2フロアダンジョン `irogane1`（登山道・エンカウントあり）→`irogane2`（山頂: 床机石=site_irogane・展望台・篝火）。zoneC の R が登山口。展望台の写真は `assets/view/irogane_view.png` を置くと自動で実写表示（それまではテキストの眺望）
+- 文化の家は全館内マップ: 廊下 `bunka1`（1階・20×14）/`bunka2`（2階・24×14・アーツライブラリー併設）/`bunka3`（3階）＋個別部屋 `bk_*` 14室（公式サイト bunkanoie.jp/rental の設備準拠）。部屋の出口座標は game.js の `BK_RETURN`、初入場ナレは `BUNKA_ENTER`（enteredFlavor で1回）
+- 光のホール（bk_hikari）の黒野に話しかけると本編（YouTube）を `showVideoOverlay()` で #stage 上に16:9オーバーレイ再生（✕で閉じる・再生中は videoOverlay フラグで scene.update 停止）。黒野は実在職員の想定——セリフ・扱いは本人了承前提
+- 効果音は Web Audio の合成音（`playTone`/`playPianoArp`・音声ファイル不要）。ドラムサークルはリズム復唱式（listen→play・タイミング±35%判定・ハードは矢印太鼓＋ミス3回でGO）
+- アーツライブラリーの本は dialogue.js の `arts_book1〜4`（1行目=タイトル・以降1行=1ページ。エディターで編集可）
 - Bash ヒアドキュメント内の `!` は破損するため、`!` を含むスクリプトはファイルに書いてから実行する
 
 ## 公開先
