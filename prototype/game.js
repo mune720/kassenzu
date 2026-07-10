@@ -493,22 +493,40 @@
     }
     c.globalAlpha = 1;
   }
-  function drawActor(c, cx, cy, kind, facing, scale, moving, alpha) {
+  function spriteRowForFacing(facing) {
+    var f = facing || 'down';
+    if (f.indexOf('up') >= 0) return 3;
+    if (f.indexOf('down') >= 0) return 0;
+    if (f.indexOf('left') >= 0) return 1;
+    if (f.indexOf('right') >= 0) return 2;
+    return 0;
+  }
+  function drawActor(c, cx, cy, kind, facing, scale, moving, alpha, motionPhase) {
     scale = scale || 1;
     if (alpha != null && alpha < 1) { c.save(); c.globalAlpha = Math.max(0, alpha); }
     var sheet = HD_SPRITE[kind];
     if (sheet) {
-      // スプライトシート描画（3列×4行）。実描画域を高さ基準で拡縮し、足元を cy+TILE/2 に接地
+      // スプライトシート描画（3列×4行）。各コマを個別に切り出し、
+      // 同じピクセル倍率・水平中心・足元アンカーで描くことで、歩行中の横跳びを防ぐ。
       var cw = Math.floor(sheet.width / 3), chh = Math.floor(sheet.height / 4);
-      var box = HD_SPRITE_BOX[kind] || { x: 0, y: 0, w: cw, h: chh };
-      var row = { down: 0, left: 1, right: 2, up: 3 }[facing || 'down'] || 0;
+      var meta = HD_SPRITE_BOX[kind];
+      var row = spriteRowForFacing(facing);
       var seq = [0, 1, 0, 2];
-      var col = moving ? seq[(tick / 7 | 0) % 4] : 0;
-      var dh = TILE * 1.35 * scale, dw = dh * (box.w / box.h);
+      var phase = motionPhase != null ? motionPhase : animClock * 8;
+      var phaseStep = Math.floor(phase);
+      var col = moving ? seq[((phaseStep % 4) + 4) % 4] : 0;
+      var box = meta && meta.frames && meta.frames[row] && meta.frames[row][col]
+        ? meta.frames[row][col] : { x: 0, y: 0, w: cw, h: chh };
+      var refH = meta && meta.maxH ? meta.maxH : box.h;
+      var pxScale = TILE * 1.35 * scale / refH;
+      var dh = box.h * pxScale, dw = box.w * pxScale;
       var footY = cy + (TILE / 2) * scale;
+      // フレームの切替だけで上下しないよう、距離位相から小さな連続ボブを加える。
+      var bob = moving ? -Math.abs(Math.sin(phase * Math.PI / 2)) * 0.65 * scale : 0;
       c.fillStyle = 'rgba(0,0,0,0.22)';
-      c.beginPath(); c.ellipse(cx, footY - 2, dw * 0.34, dw * 0.12, 0, 0, Math.PI * 2); c.fill();
-      c.drawImage(sheet, col * cw + box.x, row * chh + box.y, box.w, box.h, cx - dw / 2, footY - dh, dw, dh);
+      var shadowPulse = moving ? 1 - Math.abs(bob) * 0.05 : 1;
+      c.beginPath(); c.ellipse(cx, footY - 2, dw * 0.34 * shadowPulse, Math.max(1.4, dw * 0.12 * shadowPulse), 0, 0, Math.PI * 2); c.fill();
+      c.drawImage(sheet, col * cw + box.x, row * chh + box.y, box.w, box.h, cx - dw / 2, footY - dh + bob, dw, dh);
     }
     else if (kind === 'enemy' || (typeof MONSTER_KINDS !== 'undefined' && MONSTER_KINDS[kind])) { drawGhost(c, cx, cy, scale); }
     else { drawHumanoid(c, cx, cy, scale, PAL[kind] || PAL.oda, facing || 'down', moving); }
@@ -1246,7 +1264,7 @@
       var ax = n.col * TILE + TILE / 2, ay = n.row * TILE + TILE / 2;
       painter.push({ y: ay, draw: function () { drawActor(c, ax, ay, n.kind, 'down', 1); } });
     });
-    if (player) painter.push({ y: player.y, draw: function () { drawActor(c, player.x, player.y, player.kind, player.facing, 1, player.moving); } });
+    if (player) painter.push({ y: player.y, draw: function () { drawActor(c, player.x, player.y, player.kind, player.facing, 1, player.moving, null, player.walkPhase); } });
     painter.sort(function (a, b) { return a.y - b.y; });
     painter.forEach(function (p) { p.draw(); });
     // リニモ高架の軌道桁（上空・最前面。プレイヤーは下をくぐる）
@@ -1329,15 +1347,34 @@
     if (name === '黒野') return 'kurono';
     return null;
   }
-  // 立ち絵画像の差し替え用キャッシュ（assets/face/<kind>.png があれば自動で使う）
+  // 立ち絵画像の差し替え用キャッシュ。オダは表情別画像を優先し、無ければ oda.png へ戻す。
   const FACE_IMG = {};
-  function getFaceImg(kind) {
-    if (FACE_IMG[kind] !== undefined) return FACE_IMG[kind];
+  function getFaceImg(kind, face) {
+    var cacheKey = kind + (face ? ':' + face : '');
+    if (FACE_IMG[cacheKey] !== undefined) return FACE_IMG[cacheKey];
     const img = new Image();
-    img.onerror = function () { FACE_IMG[kind] = null; };
-    img.src = 'assets/face/' + kind + '.png';
-    FACE_IMG[kind] = img;
+    img.onerror = function () {
+      if (kind === 'oda' && face) {
+        var fallback = new Image();
+        fallback.onerror = function () { FACE_IMG[cacheKey] = null; };
+        fallback.src = 'assets/face/oda.png';
+        FACE_IMG[cacheKey] = fallback;
+      } else FACE_IMG[cacheKey] = null;
+    };
+    img.src = kind === 'oda' && face
+      ? 'assets/face/oda_' + face + '.png'
+      : 'assets/face/' + kind + '.png';
+    FACE_IMG[cacheKey] = img;
     return img;
+  }
+  function dialogueFace(name, text, explicitFace) {
+    if (explicitFace) return explicitFace;
+    if (name !== 'オダ') return null;
+    var t = text || '';
+    if (/ありがとう|言えた|やった|よし|うれし|嬉し|きれい|よかった|おつかれ|楽し|すごい|助か/.test(t)) return 'happy';
+    if (/ふざけ|うるさ|失礼|何やらせ|違います|やめて|待てー|なんで|何で|もういい|ちょ、ちょ/.test(t)) return 'angry';
+    if (/（|…|？|だいじょうぶ|大丈夫|心配|覚悟|本当|使命|守る|生き|天下|戦|歴史|史実/.test(t)) return 'serious';
+    return 'neutral';
   }
   // 一枚絵ローダー（読み込み成功時だけコールバックに渡す。失敗時は null のまま＝フォールバック描画）
   function loadImg(src, cb) {
@@ -1345,6 +1382,23 @@
     img.onload = function () { cb(img); };
     img.onerror = function () {};
     img.src = src;
+  }
+  function imageContentBox(img) {
+    try {
+      var oc = document.createElement('canvas');
+      oc.width = img.width; oc.height = img.height;
+      var octx = oc.getContext('2d'); octx.drawImage(img, 0, 0);
+      var data = octx.getImageData(0, 0, img.width, img.height).data;
+      var minX = img.width, minY = img.height, maxX = -1, maxY = -1;
+      for (var y = 0; y < img.height; y++) for (var x = 0; x < img.width; x++) {
+        if (data[(y * img.width + x) * 4 + 3] > 10) {
+          if (x < minX) minX = x; if (x > maxX) maxX = x;
+          if (y < minY) minY = y; if (y > maxY) maxY = y;
+        }
+      }
+      if (maxX >= minX && maxY >= minY) return { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
+    } catch (e) { /* file:// で解析できない場合は画像全体を使う */ }
+    return { x: 0, y: 0, w: img.width, h: img.height };
   }
   var ENEMY_BATTLE_IMG = null;
   loadImg('assets/enemy/ochimusha_mononoke_battle_512.png', function (i) { ENEMY_BATTLE_IMG = i; });
@@ -1451,6 +1505,8 @@
   loadImg('assets/logo/bunkalogo.png', function (i) { LOGO_IMG = i; });
   var TITLE_LOGO_IMG = null;
   loadImg('assets/logo/title_logo.png', function (i) { TITLE_LOGO_IMG = i; });
+  var ODA_FULL_IMG = null, ODA_FULL_BOX = null;
+  loadImg('assets/chara/oda_full.png', function (i) { ODA_FULL_IMG = i; ODA_FULL_BOX = imageContentBox(i); });
   // ===================== HD-2D フィールド画像（第1弾: 地面・装飾・建物）=====================
   // assets/tiles|deco|buildings/ に画像を置くと自動で差し替わる（無ければ従来のプロシージャル描画）。
   // 生成プロンプトは docs/asset_prompts.md を参照。
@@ -1468,10 +1524,10 @@
   ['museum', 'aeon', 'station', 'ramen', 'tearoom', 'cityhall', 'kodomo', 'temple', 'bunka', 'library', 'ferris', 'iwasaki_tenshu', 'iwasaki_kinenkan', 'toyota', 'ikea', 'geidai', 'aidai'].forEach(function (k) { loadHDImg(HD_BLD, k, 'assets/buildings/' + k + '.png'); });
   // 歩行スプライトシート（assets/sprites/<kind>_walk.png）: 3列×4行。
   // 行=正面/左/右/後ろ、列=立ち/歩き1/歩き2。あれば drawActor が自動で使う。
-  // 生成画像はセル内の余白が大きいため、全セル共通の実描画域（不透明ピクセルの外接矩形）を
-  // 一度だけ解析して切り出す。解析できない環境（file:// 等）は全セル描画にフォールバック
+  // 生成画像はセル内の余白が大きいため、12セルそれぞれの実描画域を一度だけ解析する。
+  // 描画時は各コマを同じ縮尺・中心・足元に固定し、生成時の微妙な位置差によるガタつきを防ぐ。
   const HD_SPRITE = {};
-  const HD_SPRITE_BOX = {};
+  const HD_SPRITE_BOX = {}; // { kind: { frames[4][3], maxW, maxH } }
   function sheetContentBox(kind, img) {
     try {
       var oc = document.createElement('canvas');
@@ -1479,10 +1535,12 @@
       var octx = oc.getContext('2d');
       octx.drawImage(img, 0, 0);
       var cw = Math.floor(img.width / 3), chh = Math.floor(img.height / 4);
-      var minX = cw, minY = chh, maxX = 0, maxY = 0;
+      var frames = [], globalMaxW = 0, globalMaxH = 0;
       for (var row = 0; row < 4; row++) {
+        frames[row] = [];
         for (var col = 0; col < 3; col++) {
           var d = octx.getImageData(col * cw, row * chh, cw, chh).data;
+          var minX = cw, minY = chh, maxX = -1, maxY = -1;
           for (var y = 0; y < chh; y++) {
             for (var x = 0; x < cw; x++) {
               if (d[(y * cw + x) * 4 + 3] > 10) {
@@ -1491,9 +1549,15 @@
               }
             }
           }
+          var box = maxX >= minX && maxY >= minY
+            ? { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 }
+            : { x: 0, y: 0, w: cw, h: chh };
+          frames[row][col] = box;
+          if (box.w > globalMaxW) globalMaxW = box.w;
+          if (box.h > globalMaxH) globalMaxH = box.h;
         }
       }
-      if (maxX > minX && maxY > minY) HD_SPRITE_BOX[kind] = { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
+      HD_SPRITE_BOX[kind] = { frames: frames, maxW: globalMaxW, maxH: globalMaxH };
     } catch (e) { /* 解析不可なら全セル描画のまま */ }
   }
   ['oda', 'ike', 'michi', 'kancho', 'odoriko', 'sakamoto', 'naiki', 'civ1', 'civ2', 'civ3', 'civ4', 'civ5', 'civ6', 'civ7', 'civ8', 'kurono'].forEach(function (k) {
@@ -1519,13 +1583,13 @@
     return pat;
   }
   // HD_DECO_DEF / HD_BLD_DEF（装飾・建物の配置データ）は maps.js に分離した
-  // 顔ウィンドウ（仮：図形ポートレート。画像があればそれを描く）
-  function drawPortrait(c, kind, x, y, s) {
+  // 顔ウィンドウ（画像があれば表情別に描画。無ければ図形ポートレート）
+  function drawPortrait(c, kind, face, x, y, s) {
     c.fillStyle = 'rgba(0,0,0,0.35)'; roundRect(c, x + 3, y + 3, s, s, 8); c.fill();
     c.fillStyle = '#0a1430'; roundRect(c, x, y, s, s, 8); c.fill();
     c.save();
     roundRect(c, x + 3, y + 3, s - 6, s - 6, 6); c.clip();
-    const img = getFaceImg(kind);
+    const img = getFaceImg(kind, face);
     if (img && img.complete && img.naturalWidth > 0) {
       c.drawImage(img, x + 3, y + 3, s - 6, s - 6);
     } else {
@@ -1553,11 +1617,11 @@
     c.strokeStyle = 'rgba(100,130,200,0.4)'; c.lineWidth = 1; roundRect(c, x + 1, y + 1, s - 2, s - 2, 7); c.stroke();
     c.strokeStyle = '#cdd9ff'; c.lineWidth = 1.5; roundRect(c, x + 3, y + 3, s - 6, s - 6, 6); c.stroke(); c.lineWidth = 1;
   }
-  function drawTextbox(c, name, text, arrow, compact) {
+  function drawTextbox(c, name, text, arrow, compact, explicitFace) {
     const h = compact ? 111 : 138;
     const x = 12, y = H - h - 12, w = W - 24;
     const kind = speakerKind(name);
-    if (kind) drawPortrait(c, kind, x + 8, y - 86, 90);
+    if (kind) drawPortrait(c, kind, dialogueFace(name, text, explicitFace), x + 8, y - 86, 90);
     // Outer shadow
     c.fillStyle = 'rgba(0,0,0,0.3)'; roundRect(c, x + 3, y + 3, w, h, 10); c.fill();
     // Main background
@@ -1623,7 +1687,7 @@
       for (var j = 0; j < lines.length; j++) {
         var line = lines[j], wrapped = wrapText(ctx, line.text, maxw);
         if (wrapped.length <= DIALOG_MAX_LINES) { processed.push(line); }
-        else { for (var k = 0; k < wrapped.length; k += DIALOG_MAX_LINES) { processed.push({ name: line.name, text: wrapped.slice(k, k + DIALOG_MAX_LINES).join('\n') }); } }
+        else { for (var k = 0; k < wrapped.length; k += DIALOG_MAX_LINES) { processed.push(Object.assign({}, line, { text: wrapped.slice(k, k + DIALOG_MAX_LINES).join('\n') })); } }
       }
       this.active = true; this.lines = processed; this.i = 0; this.t = 0; this.holdTimer = 0; this.onDone = onDone || null;
     },
@@ -1653,7 +1717,8 @@
       if (!this.active) return;
       var line = this.lines[this.i], full = line.text;
       var shown = Math.min(Math.floor(this.t), full.length);
-      drawTextbox(c, line.name || '', full.slice(0, shown), shown >= full.length);
+      var face = dialogueFace(line.name || '', full, line.face || null);
+      drawTextbox(c, line.name || '', full.slice(0, shown), shown >= full.length, false, face);
     },
   };
 
@@ -1957,7 +2022,7 @@
     const sp = spawnOverride || map.spawn;
     const px = (sp.x != null) ? sp.x : sp.col * TILE + TILE / 2;
     const py = (sp.y != null) ? sp.y : sp.row * TILE + TILE / 2;
-    const player = { x: px, y: py, facing: 'down', kind: 'oda' };
+    const player = { x: px, y: py, facing: 'down', kind: 'oda', moving: false, walkPhase: 0 };
     // カメラ: プレイヤー中心・マップ端でクランプ。画面より小さいマップでは常に0（固定画面）
     // camFocus 設定時はそちらを中心にする（カットシーン用）
     function camPos() {
@@ -1966,7 +2031,8 @@
       var cx = 0, cy = 0;
       if (map.pxW > W) cx = Math.max(0, Math.min(map.pxW - W, fx2 - W / 2));
       if (map.pxH > H) cy = Math.max(0, Math.min(map.pxH - H, fy2 - H / 2));
-      return { x: Math.round(cx), y: Math.round(cy) };
+      // 内部2倍解像度の実ピクセル境界（0.5論理px）に合わせ、1px単位のカメラ跳ねを抑える。
+      return { x: Math.round(cx * RES) / RES, y: Math.round(cy * RES) / RES };
     }
     let intro = introLines;
     const SPEED = 132, HALF = 11;
@@ -1981,11 +2047,14 @@
         if (Math.abs(dx) > Math.abs(dy)) actor.facing = dx < 0 ? 'left' : 'right';
         else actor.facing = dy < 0 ? 'up' : 'down';
         if (dist <= speed * dt) {
+          actor.walkPhase = (actor.walkPhase || 0) + dist / 12;
           actor.x = tx; actor.y = ty; actor.moving = false; anim = null;
           if (onDone) onDone();
         } else {
-          actor.x += (dx / dist) * speed * dt;
-          actor.y += (dy / dist) * speed * dt;
+          var travel = speed * dt;
+          actor.x += (dx / dist) * travel;
+          actor.y += (dy / dist) * travel;
+          actor.walkPhase = (actor.walkPhase || 0) + travel / 12;
         }
       };
     }
@@ -2743,13 +2812,20 @@
         if (Input.down('up')) dy -= 1;
         if (Input.down('down')) dy += 1;
         if (dx !== 0 && dy !== 0) {
-          player.facing = (dy < 0 ? 'up' : 'down') + '-' + (dx < 0 ? 'left' : 'right');
+          // 4方向シートでは、斜め入力を始める直前の向きを保つと方向転換がちらつかない。
+          var hf = dx < 0 ? 'left' : 'right', vf = dy < 0 ? 'up' : 'down';
+          if (player.facing !== hf && player.facing !== vf) player.facing = vf;
         } else if (dx < 0) player.facing = 'left'; else if (dx > 0) player.facing = 'right';
         else if (dy < 0) player.facing = 'up'; else if (dy > 0) player.facing = 'down';
-        player.moving = dx !== 0 || dy !== 0;
+        var inputLen = Math.sqrt(dx * dx + dy * dy);
+        if (inputLen > 0) { dx /= inputLen; dy /= inputLen; }
+        var oldX = player.x, oldY = player.y;
         const sp = SPEED * dt;
         if (dx !== 0) { const nx = player.x + dx * sp; if (canWalk(nx, player.y)) player.x = nx; }
         if (dy !== 0) { const ny = player.y + dy * sp; if (canWalk(player.x, ny)) player.y = ny; }
+        var movedDist = Math.sqrt((player.x - oldX) * (player.x - oldX) + (player.y - oldY) * (player.y - oldY));
+        player.moving = movedDist > 0.01;
+        if (player.moving) player.walkPhase += movedDist / 12;
         // ゾーン端のシームレス移動（おまけフィールド。エピローグの見回り以降に解放）
         if (map.def.edges) {
           if (edgeHintT > 0) edgeHintT -= dt;
@@ -2783,8 +2859,8 @@
         var encDef = map.def.encounter || null;
         if (encDef && encDef.afterUnlock && !omakeUnlocked()) encDef = null;
         if (nightWatch && ENCOUNTER_TABLES[mapKey]) encDef = { rate: Math.max(encDef ? encDef.rate : 0, 0.05) };
-        if ((dx !== 0 || dy !== 0) && tutorialDone && encDef && encCooldown <= 0) {
-          stepAcc += sp;
+        if (movedDist > 0 && tutorialDone && encDef && encCooldown <= 0) {
+          stepAcc += movedDist;
           if (stepAcc > 40) {
             stepAcc = 0;
             const tc = Math.floor(player.x / TILE), tr = Math.floor(player.y / TILE);
@@ -2919,7 +2995,7 @@
             }
             c.restore();
           } else {
-            drawActor(c, a.x, a.y, a.kind, a.facing, 1, a.moving, a.alpha);
+            drawActor(c, a.x, a.y, a.kind, a.facing, 1, a.moving, a.alpha, a.walkPhase);
           }
         }
         drawFieldAtmoWorld(c, map);
@@ -2931,7 +3007,7 @@
           c.fillStyle = 'rgba(2,2,8,0.85)'; c.fillRect(0, 0, W, H);
           c.save(); c.translate(-cam.x, -cam.y);
           drawLightPool(c, player.x, player.y - 8, 70, 'rgba(255,240,200,1)', 0.5);
-          drawActor(c, player.x, player.y, player.kind, player.facing, 1, player.moving);
+          drawActor(c, player.x, player.y, player.kind, player.facing, 1, player.moving, null, player.walkPhase);
           c.restore();
         }
         // 操作ヒント（誰でもメニューにたどり着けるように常時表示）
@@ -4747,15 +4823,35 @@
         gl.addColorStop(0, 'rgba(255,180,80,0.04)'); gl.addColorStop(1, 'rgba(0,0,0,0)');
         c.fillStyle = gl; c.beginPath(); c.arc(W / 2, 285, 100, 0, Math.PI * 2); c.fill();
         c.restore();
+        // 主人公キービジュアル。全身絵の上半身を右側に大きく置き、タイトルとメニューの余白を残す。
+        if (ODA_FULL_IMG) {
+          var ob = ODA_FULL_BOX || { x: 0, y: 0, w: ODA_FULL_IMG.width, h: ODA_FULL_IMG.height };
+          var upperH = Math.max(1, Math.floor(ob.h * 0.69));
+          var odaH = 304, odaW = odaH * (ob.w / upperH);
+          var odaX = W - odaW - 18, odaY = 138;
+          c.save();
+          c.globalCompositeOperation = 'lighter';
+          var og = c.createRadialGradient(odaX + odaW * 0.52, odaY + 112, 0, odaX + odaW * 0.52, odaY + 112, 118);
+          og.addColorStop(0, 'rgba(255,214,145,0.13)'); og.addColorStop(1, 'rgba(0,0,0,0)');
+          c.fillStyle = og; c.beginPath(); c.arc(odaX + odaW * 0.52, odaY + 112, 118, 0, Math.PI * 2); c.fill();
+          c.restore();
+          c.save(); c.globalAlpha = 0.92;
+          c.drawImage(ODA_FULL_IMG, ob.x, ob.y, ob.w, upperH, odaX, odaY, odaW, odaH);
+          c.restore();
+          // 中央のメニュー文字が人物に埋もれない程度の薄いグラデーション。
+          var titleShade = c.createLinearGradient(W * 0.28, 0, W, 0);
+          titleShade.addColorStop(0, 'rgba(7,12,28,0)'); titleShade.addColorStop(0.62, 'rgba(7,12,28,0.10)'); titleShade.addColorStop(1, 'rgba(7,12,28,0.34)');
+          c.fillStyle = titleShade; c.fillRect(0, 120, W, H - 120);
+        }
         // Particles (behind text)
         drawParts(c);
         // Title logo
         c.textAlign = 'center';
         if (TITLE_LOGO_IMG) {
-          var lh = 260, lw = lh * (TITLE_LOGO_IMG.width / TITLE_LOGO_IMG.height);
-          c.drawImage(TITLE_LOGO_IMG, W / 2 - lw / 2, -10, lw, lh);
+          var lh = ODA_FULL_IMG ? 168 : 260, lw = lh * (TITLE_LOGO_IMG.width / TITLE_LOGO_IMG.height);
+          c.drawImage(TITLE_LOGO_IMG, W / 2 - lw / 2, ODA_FULL_IMG ? -6 : -10, lw, lh);
           c.fillStyle = '#8a9ab0'; c.font = '12px "Hiragino Sans",sans-serif';
-          c.fillText('長久手市文化の家『合戦ズ』(作: 麻原奈未) より', W / 2, 250);
+          c.fillText('長久手市文化の家『合戦ズ』(作: 麻原奈未) より', W / 2, ODA_FULL_IMG ? 158 : 250);
         } else {
           c.fillStyle = 'rgba(0,0,0,0.3)'; c.font = 'bold 14px "Hiragino Mincho ProN","Yu Mincho",serif';
           c.fillText('歴史空想RPG', W / 2 + 1, 73);
@@ -4780,10 +4876,12 @@
           c.fillStyle = '#8a9ab0'; c.font = '12px "Hiragino Sans",sans-serif';
           c.fillText('長久手市文化の家『合戦ズ』(作: 麻原奈未) より', W / 2, 182);
         }
-        // Characters
-        drawActor(c, W / 2 - 72, 280, 'ike', 'right', 1.5);
-        drawActor(c, W / 2, 290, 'oda', 'down', 1.5);
-        drawActor(c, W / 2 + 72, 280, 'michi', 'left', 1.5);
+        // 全身絵が読み込めない環境では、従来の3人表示へフォールバック。
+        if (!ODA_FULL_IMG) {
+          drawActor(c, W / 2 - 72, 280, 'ike', 'right', 1.5);
+          drawActor(c, W / 2, 290, 'oda', 'down', 1.5);
+          drawActor(c, W / 2 + 72, 280, 'michi', 'left', 1.5);
+        }
         // Ground fog
         drawFogBand(c, H - 100, 80, 'rgba(140,160,180,0.03)');
         // Menu items
@@ -5692,9 +5790,10 @@
   }
 
   // ===================== Main loop =====================
-  let tick = 0, last = performance.now();
+  let tick = 0, animClock = 0, last = performance.now();
   function frame(now) {
     const dt = Math.min(0.05, (now - last) / 1000); last = now; tick++;
+    animClock += dt;
     if (!trans.active && !videoOverlay && scene && scene.update) scene.update(dt); // 上映中は停止
     updateTransition(dt);
     ctx.setTransform(RES, 0, 0, RES, 0, 0); // HD解像度スケール（論理座標にリセット）

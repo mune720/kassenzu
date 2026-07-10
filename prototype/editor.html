@@ -33,8 +33,9 @@ main{max-width:900px;margin:0 auto;padding:20px}
 .line:hover{background:#282940}
 .line .num{color:#555;font-size:12px;min-width:20px;text-align:right;padding-top:6px}
 .line .name-input{width:100px;min-width:80px;padding:4px 6px;border:1px solid #444;border-radius:4px;background:#181928;color:#ffd43b;font-size:13px;font-family:inherit;appearance:none;-webkit-appearance:none}
+.line .face-input{width:82px;min-width:72px;padding:4px 5px;border:1px solid #444;border-radius:4px;background:#181928;color:#74c0fc;font-size:12px;font-family:inherit}
 .line .text-input{flex:1;padding:4px 8px;border:1px solid #444;border-radius:4px;background:#181928;color:#e0e0e0;font-size:13px;font-family:inherit;min-height:32px;resize:vertical}
-.line .text-input:focus,.line .name-input:focus{outline:none;border-color:#4dabf7}
+.line .text-input:focus,.line .name-input:focus,.line .face-input:focus{outline:none;border-color:#4dabf7}
 .line-actions{display:flex;flex-direction:column;gap:2px}
 .line-actions button{width:22px;height:22px;border:none;border-radius:3px;cursor:pointer;font-size:11px;background:#333;color:#adb5bd;display:flex;align-items:center;justify-content:center}
 .line-actions button:hover{background:#555;color:#fff}
@@ -73,7 +74,7 @@ main{max-width:900px;margin:0 auto;padding:20px}
 <main id="main"></main>
 <div class="toast" id="toast"></div>
 
-<script src="dialogue.js?v=20260710p21"></script>
+<script src="dialogue.js?v=20260711p22"></script>
 <script>
 (function () {
   'use strict';
@@ -250,6 +251,26 @@ main{max-width:900px;margin:0 auto;padding:20px}
     return sel;
   }
 
+  function makeFaceSelect(line) {
+    var sel = document.createElement('select');
+    sel.className = 'face-input';
+    [
+      ['', '表情:自動'],
+      ['neutral', '通常'],
+      ['serious', '真剣'],
+      ['angry', '怒り'],
+      ['happy', '笑顔']
+    ].forEach(function (item) {
+      var opt = document.createElement('option'); opt.value = item[0]; opt.textContent = item[1]; sel.appendChild(opt);
+    });
+    sel.value = line.face || '';
+    sel.onchange = function () {
+      if (sel.value) line.face = sel.value;
+      else delete line.face;
+    };
+    return sel;
+  }
+
   function makeLineRow(arr, i, key, container) {
     var line = arr[i];
     var row = mkEl('div', 'line');
@@ -259,6 +280,7 @@ main{max-width:900px;margin:0 auto;padding:20px}
     row.appendChild(num);
 
     row.appendChild(makeSpeakerSelect(line, arr, key, container));
+    row.appendChild(makeFaceSelect(line));
 
     var textIn = document.createElement('textarea');
     textIn.className = 'text-input';
