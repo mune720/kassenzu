@@ -14,7 +14,7 @@ Vanilla JS + HTML5 Canvas、ビルド不要、`file://` でも動作。
    - `assets/tiles/` — 地面のシームレステクスチャ（grass / road / dirt / water）
    - `assets/deco/` — 木・茂み・岩・塚などの装飾スプライト（透過）
    - `assets/buildings/` — 建物の一枚絵（透過・下寄せ）
-   - `assets/sprites/` — 歩行スプライトシート（`<kind>_walk.png`・3列×4行）
+   - `assets/sprites/` — 歩行・走行スプライトシート（`<kind>_walk.png` / `<kind>_run.png`・各3列×4行）
    - `assets/face/` — 顔ウィンドウ用の立ち絵・バスト画像（`<kind>.png`）
    - `assets/enemy/` — 敵キャラのバトル画像・スプライト
    - `assets/logo/` — ロゴ、タイトル画像
@@ -38,6 +38,7 @@ Vanilla JS + HTML5 Canvas、ビルド不要、`file://` でも動作。
 
 ## 実装メモ
 
+- フィールドの走行は**方向入力中にB**（通常速度の1.6倍・スタミナ消費なし）。停止中のB短押しとXはメニュー。イベント・カットシーン中は走行入力を受け付けない
 - セーブは2ファイル制（`kassenzu_save_v2_f1` / `_f2`）。セーブポイントと「つづきから」でファイルを選ぶ。旧単一セーブは初回起動時にファイル1へ自動移行
 - 戦闘は複数敵対応（`startBattle({ enemies: [...] })`）。従来の `enemy:` 指定も1体として動く
 - マップ行は全行同じ幅であること（検証スクリプトの前例: `/tmp/claude/checkmaps.py` 方式で幅チェック）

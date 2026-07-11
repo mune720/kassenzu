@@ -72,15 +72,17 @@
 |---|---|---|
 | `irogane_view.png` | 色金山・展望台から見た長久手の風景（置くと展望台で全画面表示。無い間はテキストの眺望） | ⬜ ユーザー撮影素材の受け渡し待ち |
 
-## 4. 歩行スプライトシート　`assets/sprites/`（3列×4行）
+## 4. 歩行・走行スプライトシート　`assets/sprites/`（各3列×4行）
 
-置くとフィールドの歩行キャラが自動でこの画像に切り替わる（無ければコード描画のちびキャラ）。
+`<kind>_walk.png` は通常移動、`<kind>_run.png` はB＋方向入力の走行と追跡演出に使う（無ければ既存描画へフォールバック）。
 
 | ファイル | キャラ | 状態 |
 |---|---|---|
 | `oda_walk.png` | オダ | ✅ 舞台衣装版（12コマの中心・足元を補正済み） |
+| `oda_run.png` | オダ（走行） | ✅ 専用4方向走行・12コマ |
 | `kurono_walk.png` | 黒野（文化の家職員・光のホール） | ⬜ 写真ベース生成待ち（第3弾テンプレ・本人了承前提） |
-| `ike_walk.png` | いけ（池田輝政） | ⬜ 写真ベース生成待ち |
+| `ike_walk.png` | いけ（池田輝政） | ✅ 舞台衣装版・12コマ |
+| `ike_run.png` | いけ（走行） | ✅ 専用4方向走行・12コマ |
 | `michi_walk.png` | みち（森長可） | ⬜ 写真ベース生成待ち |
 | `kancho_walk.png` | 館長 | ⬜ 写真ベース生成待ち |
 | `odoriko_walk.png` | 踊り子（舞の演出以外はこれでちび表示） | ⬜ 写真ベース生成待ち |
@@ -90,7 +92,7 @@
 ## 5. 顔ウィンドウ（会話の立ち絵）　`assets/face/`（透過バストアップ）
 
 置くだけで会話画面の顔が自動で切り替わる。
-主要人物は `<kind>_neutral / serious / angry / happy.png` の4表情にも対応し、無い表情は `<kind>.png` へ戻る。
+主要人物は `<kind>_neutral / serious / angry / happy / surprised.png` の表情にも対応し、無い表情は `<kind>.png` へ戻る。
 
 | ファイル | キャラ | 状態 |
 |---|---|---|
@@ -101,7 +103,12 @@
 | `oda_serious.png` | オダ（少し困りつつ真剣） | ✅ |
 | `oda_angry.png` | オダ（怒り・ツッコミ） | ✅ |
 | `oda_happy.png` | オダ（笑顔） | ✅ |
-| `ike.png` | いけ | ⬜ 写真ベース生成待ち |
+| `ike.png` | いけ（通常表情・互換用） | ✅ |
+| `ike_neutral.png` | いけ（ニュートラル） | ✅ |
+| `ike_serious.png` | いけ（真剣） | ✅ |
+| `ike_angry.png` | いけ（怒り） | ✅ |
+| `ike_happy.png` | いけ（大きな笑顔） | ✅ |
+| `ike_surprised.png` | いけ（驚き） | ✅ |
 | `michi.png` | みち | ⬜ 写真ベース生成待ち |
 | `kancho.png` | 館長 | ⬜ 写真ベース生成待ち |
 | `sakamoto.png` | 坂元さん | ⬜ 写真ベース生成待ち |
@@ -112,6 +119,7 @@
 | ファイル | 用途 | 状態 |
 |---|---|---|
 | `odoriko_battle.png` | 踊り子（戦闘＋舞の演出） | ✅ |
+| `ike_battle.png` | いけ（舞台衣装・刀なし） | ✅ |
 | `ochimusha_mononoke_battle_*.png` | もののけ戦闘絵（各解像度） | ✅ |
 | `odoriko_bust_transparent.png` / `odoriko_fullbody_transparent.png` | 踊り子 派生 | ✅ |
 
@@ -129,7 +137,8 @@
 | ファイル | キャラ | 状態 |
 |---|---|---|
 | `oda_full.png` | オダ | ✅ タイトル画面に接続済み |
-| `ike_full.png` 〜 `naiki_full.png` | いけ・みち・館長・坂元・内貴 | ⬜ 未導入（踊り子は `enemy/odoriko_fullbody_transparent.png` を流用予定） |
+| `ike_full.png` | いけ | ✅ 舞台写真の役者・具足準拠（ヘッドセット／刀なし） |
+| `michi_full.png` 〜 `naiki_full.png` | みち・館長・坂元・内貴 | ⬜ 未導入（踊り子は `enemy/odoriko_fullbody_transparent.png` を流用予定） |
 
 ## 9. 音（BGM・効果音）🔊
 
@@ -149,5 +158,5 @@
 ## 残タスク（素材まわり）
 
 - **すぐできる（写真不要）**: 岩崎城の建物2点（`iwasaki_tenshu` / `iwasaki_kinenkan`）
-- **写真＋本人了承が必要**: 残る主要キャラの face / walk / full（いけ・みち・館長・踊り子・坂元・内貴。オダは導入済み）
+- **写真＋本人了承が必要**: 残る主要キャラの face / walk / run / full / battle（みち・館長・踊り子・坂元・内貴。必要な種類は役割ごとに決める。オダ・いけは今回分を導入済み）
 - **提供待ち**: BGM・効果音一式

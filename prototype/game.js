@@ -37,16 +37,21 @@
   // ===================== Input =====================
   const held = new Set();
   const edges = new Set();
+  const releases = new Set();
+  const B_CODES = ['KeyB', 'BTN_B'];
+  let bRunGestureUsed = false;
+  let bCancelPressConsumed = false;
   const ACTIONS = {
     up:      ['ArrowUp', 'KeyW', 'UP'],
     down:    ['ArrowDown', 'KeyS', 'DOWN'],
     left:    ['ArrowLeft', 'KeyA', 'LEFT'],
     right:   ['ArrowRight', 'KeyD', 'RIGHT'],
     confirm: ['Enter', 'Space', 'KeyZ', 'BTN_Z', 'BTN_A'],
-    cancel:  ['Escape', 'KeyX', 'BTN_X', 'BTN_B'],
+    cancel:  ['Escape', 'KeyX', 'KeyB', 'BTN_X', 'BTN_B'],
+    run:     ['KeyB', 'BTN_B'],
   };
   function pressCode(code) { if (!held.has(code)) edges.add(code); held.add(code); }
-  function releaseCode(code) { held.delete(code); }
+  function releaseCode(code) { if (held.has(code)) releases.add(code); held.delete(code); }
   window.addEventListener('keydown', function (e) {
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].indexOf(e.code) >= 0) e.preventDefault();
     pressCode(e.code);
@@ -54,9 +59,40 @@
   window.addEventListener('keyup', function (e) { releaseCode(e.code); });
   const Input = {
     down: function (a) { return ACTIONS[a].some(function (c) { return held.has(c); }); },
-    pressed: function (a) { return ACTIONS[a].some(function (c) { return edges.has(c); }); },
-    clearEdges: function () { edges.clear(); },
+    pressed: function (a) {
+      var hit = ACTIONS[a].some(function (c) { return edges.has(c); });
+      // Bで会話送り・メニュー戻りを行った後のリリースで、
+      // フィールドメニューが再度開かないよう消費状態を覚えておく。
+      if (a === 'cancel' && hit && B_CODES.some(function (c) { return edges.has(c); })) bCancelPressConsumed = true;
+      return hit;
+    },
+    pressedCode: function (code) { return edges.has(code); },
+    released: function (a) { return ACTIONS[a].some(function (c) { return releases.has(c); }); },
+    markRunGesture: function () { bRunGestureUsed = true; },
+    // B単押しは「離した時」にメニューとする。これによりBを先に押し、
+    // そのまま方向入力を追加しても誤ってメニューが開かない。
+    bMenuReleased: function () {
+      var released = B_CODES.some(function (c) { return releases.has(c); });
+      if (!released) return false;
+      var shouldOpen = !bRunGestureUsed && !bCancelPressConsumed;
+      bRunGestureUsed = false;
+      bCancelPressConsumed = false;
+      return shouldOpen;
+    },
+    clearEdges: function () {
+      // 会話やカットシーン中にBを離した場合も、次の操作へ状態を持ち越さない。
+      if (B_CODES.some(function (c) { return releases.has(c); })) {
+        bRunGestureUsed = false;
+        bCancelPressConsumed = false;
+      }
+      edges.clear(); releases.clear();
+    },
+    reset: function () {
+      held.clear(); edges.clear(); releases.clear();
+      bRunGestureUsed = false; bCancelPressConsumed = false;
+    },
   };
+  window.addEventListener('blur', function () { Input.reset(); });
   function bindBtn(id, code) {
     const el = document.getElementById(id);
     if (!el) return;
@@ -514,18 +550,20 @@
     if (f.indexOf('right') >= 0) return 2;
     return 0;
   }
-  function drawActor(c, cx, cy, kind, facing, scale, moving, alpha, motionPhase) {
+  function drawActor(c, cx, cy, kind, facing, scale, moving, alpha, motionPhase, running) {
     scale = scale || 1;
     if (alpha != null && alpha < 1) { c.save(); c.globalAlpha = Math.max(0, alpha); }
-    var sheet = HD_SPRITE[kind];
+    // 走行シートが未導入でも、従来の歩行シートに安全にフォールバックする。
+    var useRunSheet = !!(running && HD_RUN_SPRITE[kind]);
+    var sheet = useRunSheet ? HD_RUN_SPRITE[kind] : HD_SPRITE[kind];
     if (sheet) {
       // スプライトシート描画（3列×4行）。各コマを個別に切り出し、
       // 同じピクセル倍率・水平中心・足元アンカーで描くことで、歩行中の横跳びを防ぐ。
       var cw = Math.floor(sheet.width / 3), chh = Math.floor(sheet.height / 4);
-      var meta = HD_SPRITE_BOX[kind];
+      var meta = useRunSheet ? HD_RUN_SPRITE_BOX[kind] : HD_SPRITE_BOX[kind];
       var row = spriteRowForFacing(facing);
       var seq = [0, 1, 0, 2];
-      var phase = motionPhase != null ? motionPhase : animClock * 8;
+      var phase = motionPhase != null ? motionPhase : animClock * (useRunSheet ? 12 : 8);
       var phaseStep = Math.floor(phase);
       var col = moving ? seq[((phaseStep % 4) + 4) % 4] : 0;
       var box = meta && meta.frames && meta.frames[row] && meta.frames[row][col]
@@ -535,7 +573,8 @@
       var dh = box.h * pxScale, dw = box.w * pxScale;
       var footY = cy + (TILE / 2) * scale;
       // フレームの切替だけで上下しないよう、距離位相から小さな連続ボブを加える。
-      var bob = moving ? -Math.abs(Math.sin(phase * Math.PI / 2)) * 0.65 * scale : 0;
+      var bobAmp = useRunSheet ? 0.45 : 0.65;
+      var bob = moving ? -Math.abs(Math.sin(phase * Math.PI / 2)) * bobAmp * scale : 0;
       c.fillStyle = 'rgba(0,0,0,0.22)';
       var shadowPulse = moving ? 1 - Math.abs(bob) * 0.05 : 1;
       c.beginPath(); c.ellipse(cx, footY - 2, dw * 0.34 * shadowPulse, Math.max(1.4, dw * 0.12 * shadowPulse), 0, 0, Math.PI * 2); c.fill();
@@ -1293,7 +1332,7 @@
       var ax = n.col * TILE + TILE / 2, ay = n.row * TILE + TILE / 2;
       painter.push({ y: ay, draw: function () { drawActor(c, ax, ay, n.kind, 'down', 1); } });
     });
-    if (player) painter.push({ y: player.y, draw: function () { drawActor(c, player.x, player.y, player.kind, player.facing, 1, player.moving, null, player.walkPhase); } });
+    if (player) painter.push({ y: player.y, draw: function () { drawActor(c, player.x, player.y, player.kind, player.facing, 1, player.moving, null, player.walkPhase, player.running); } });
     painter.sort(function (a, b) { return a.y - b.y; });
     painter.forEach(function (p) { p.draw(); });
     // リニモ高架の軌道桁（上空・最前面。プレイヤーは下をくぐる）
@@ -1413,16 +1452,26 @@
   }
   // 未導入キャラも先に404を確定させ、最初の会話時に待ち時間なく図形へ戻せるようにする。
   Object.keys(GENERATED_FACE_KINDS).forEach(function (kind) { getFaceImg(kind, null); });
-  // 最初の会話で旧図形ポートレートが一瞬見えないよう、オダの4表情を起動時に先読みする。
+  // 最初の会話で旧図形ポートレートが一瞬見えないよう、表情差分を起動時に先読みする。
   ['neutral', 'serious', 'angry', 'happy'].forEach(function (face) { getFaceImg('oda', face); });
+  ['neutral', 'serious', 'angry', 'happy', 'surprised'].forEach(function (face) { getFaceImg('ike', face); });
   function dialogueFace(name, text, explicitFace) {
     if (explicitFace) return explicitFace;
-    if (name !== 'オダ') return null;
     var t = text || '';
-    if (/ありがとう|言えた|やった|よし|うれし|嬉し|きれい|よかった|おつかれ|楽し|すごい|助か/.test(t)) return 'happy';
-    if (/ふざけ|うるさ|失礼|何やらせ|違います|やめて|待てー|なんで|何で|もういい|ちょ、ちょ/.test(t)) return 'angry';
-    if (/（|…|？|だいじょうぶ|大丈夫|心配|覚悟|本当|使命|守る|生き|天下|戦|歴史|史実/.test(t)) return 'serious';
-    return 'neutral';
+    if (name === 'オダ') {
+      if (/ありがとう|言えた|やった|よし|うれし|嬉し|きれい|よかった|おつかれ|楽し|すごい|助か/.test(t)) return 'happy';
+      if (/ふざけ|うるさ|失礼|何やらせ|違います|やめて|待てー|なんで|何で|もういい|ちょ、ちょ/.test(t)) return 'angry';
+      if (/（|…|？|だいじょうぶ|大丈夫|心配|覚悟|本当|使命|守る|生き|天下|戦|歴史|史実/.test(t)) return 'serious';
+      return 'neutral';
+    }
+    if (name === 'いけ') {
+      if (/！？|？！|えっ|ええっ|なに|何だと|まさか|本当か|うそ|驚|来るな|く、|ひっ|うわ|わっ/.test(t)) return 'surprised';
+      if (/はは|よし|ありがとう|楽し|面白|悪くない|やった|見事/.test(t)) return 'happy';
+      if (/逃げるな|待て|だまれ|許さ|いい加減|怒|貴様|お前/.test(t)) return 'angry';
+      if (/…|覚悟|天下|戦|使命|守る|生き|歴史|武将|記憶/.test(t)) return 'serious';
+      return 'neutral';
+    }
+    return null;
   }
   // 一枚絵ローダー（読み込み成功時だけコールバックに渡す。失敗時は null のまま＝フォールバック描画）
   function loadImg(src, cb) {
@@ -1542,6 +1591,8 @@
   };
   // 敵バトル絵（assets/enemy/<kind>_battle.png を置くと自動で差し替わる。無い間はもののけ描画）
   const ENEMY_IMG = {};
+  // いけの腕試しは ENEMY_DEFS 外のイベント戦なので明示的に読み込む。
+  loadImg('assets/enemy/ike_battle.png', function (i) { ENEMY_IMG.ike = i; });
   const MONSTER_KINDS = {};
   Object.keys(ENEMY_DEFS).forEach(function (id) {
     var kind = ENEMY_DEFS[id].kind;
@@ -1579,7 +1630,10 @@
   // 描画時は各コマを同じ縮尺・中心・足元に固定し、生成時の微妙な位置差によるガタつきを防ぐ。
   const HD_SPRITE = {};
   const HD_SPRITE_BOX = {}; // { kind: { frames[4][3], maxW, maxH } }
-  function sheetContentBox(kind, img) {
+  const HD_RUN_SPRITE = {};
+  const HD_RUN_SPRITE_BOX = {};
+  function sheetContentBox(kind, img, boxStore) {
+    boxStore = boxStore || HD_SPRITE_BOX;
     try {
       var oc = document.createElement('canvas');
       oc.width = img.width; oc.height = img.height;
@@ -1608,7 +1662,7 @@
           if (box.h > globalMaxH) globalMaxH = box.h;
         }
       }
-      HD_SPRITE_BOX[kind] = { frames: frames, maxW: globalMaxW, maxH: globalMaxH };
+      boxStore[kind] = { frames: frames, maxW: globalMaxW, maxH: globalMaxH };
     } catch (e) { /* 解析不可なら全セル描画のまま */ }
   }
   ['oda', 'ike', 'michi', 'kancho', 'odoriko', 'sakamoto', 'naiki', 'civ1', 'civ2', 'civ3', 'civ4', 'civ5', 'civ6', 'civ7', 'civ8', 'kurono'].forEach(function (k) {
@@ -1616,6 +1670,13 @@
     img.onload = function () { HD_SPRITE[k] = img; sheetContentBox(k, img); };
     img.onerror = function () {};
     img.src = 'assets/sprites/' + k + '_walk.png';
+  });
+  // オダといけは専用の4方向走行シートを使用。未読込なら drawActor が歩行シートへ戻る。
+  ['oda', 'ike'].forEach(function (k) {
+    var img = new Image();
+    img.onload = function () { HD_RUN_SPRITE[k] = img; sheetContentBox(k, img, HD_RUN_SPRITE_BOX); };
+    img.onerror = function () {};
+    img.src = 'assets/sprites/' + k + '_run.png';
   });
   // 地面テクスチャ → 敷き詰めパターン（元画像を 8×8 タイル分に縮小してリピート。元ファイルは縮小保存しない）
   const HD_PAT = {};
@@ -2130,7 +2191,7 @@
     const sp = spawnOverride || map.spawn;
     const px = (sp.x != null) ? sp.x : sp.col * TILE + TILE / 2;
     const py = (sp.y != null) ? sp.y : sp.row * TILE + TILE / 2;
-    const player = { x: px, y: py, facing: 'down', kind: 'oda', moving: false, walkPhase: 0 };
+    const player = { x: px, y: py, facing: 'down', kind: 'oda', moving: false, running: false, walkPhase: 0 };
     // カメラ: プレイヤー中心・マップ端でクランプ。画面より小さいマップでは常に0（固定画面）
     // camFocus 設定時はそちらを中心にする（カットシーン用）
     function camPos() {
@@ -2147,22 +2208,23 @@
     let sceneActors = [], anim = null;
     let hidePlayer = false, camFocus = null, darkFx = false;
     // 任意の点へ歩かせる汎用アニメ（カットシーン用）
-    function walkTo(actor, tx, ty, speed, onDone) {
+    function walkTo(actor, tx, ty, speed, onDone, running) {
       actor.moving = true;
+      actor.running = !!running;
       anim = function (dt) {
         var dx = tx - actor.x, dy = ty - actor.y;
         var dist = Math.sqrt(dx * dx + dy * dy);
         if (Math.abs(dx) > Math.abs(dy)) actor.facing = dx < 0 ? 'left' : 'right';
         else actor.facing = dy < 0 ? 'up' : 'down';
         if (dist <= speed * dt) {
-          actor.walkPhase = (actor.walkPhase || 0) + dist / 12;
-          actor.x = tx; actor.y = ty; actor.moving = false; anim = null;
+          actor.walkPhase = (actor.walkPhase || 0) + dist / (actor.running ? 18 : 12);
+          actor.x = tx; actor.y = ty; actor.moving = false; actor.running = false; anim = null;
           if (onDone) onDone();
         } else {
           var travel = speed * dt;
           actor.x += (dx / dist) * travel;
           actor.y += (dy / dist) * travel;
-          actor.walkPhase = (actor.walkPhase || 0) + travel / 12;
+          actor.walkPhase = (actor.walkPhase || 0) + travel / (actor.running ? 18 : 12);
         }
       };
     }
@@ -2653,7 +2715,7 @@
                     ch2step = 4; saveGame();
                     gotoField('zoneA', { col: 24, row: 22 });
                   }));
-                });
+                }, true);
               });
             });
           });
@@ -2917,7 +2979,10 @@
         var camU = camPos();
         spawnFieldParts(map.tileset, camU.x, camU.y);
         if (anim) { anim(dt); return; }
-        if (Choice.active) { Choice.update(dt); return; }
+        if (Choice.active) {
+          player.moving = false; player.running = false;
+          Choice.update(dt); return;
+        }
         // 一章冒頭: 踊り子が資料を渡し、オダのセリフに入ったらすっと消えていく
         if (mapKey === 'zoneA' && chapter === 'ch1' && Dialog.active && Dialog.lines[Dialog.i] && Dialog.lines[Dialog.i].name === 'オダ') {
           for (var fk = 0; fk < sceneActors.length; fk++) { if (sceneActors[fk].kind === 'odoriko' && !sceneActors[fk].fading) sceneActors[fk].fading = true; }
@@ -2927,12 +2992,28 @@
           if (fa.fading) { fa.alpha = Math.max(0, (fa.alpha || 1) - dt * 0.7); if (fa.alpha <= 0) sceneActors.splice(fi, 1); }
         }
         if (encCooldown > 0) encCooldown -= dt;
-        if (Dialog.active) { Dialog.update(dt); return; }
+        if (Dialog.active) {
+          player.moving = false; player.running = false;
+          Dialog.update(dt); return;
+        }
         let dx = 0, dy = 0;
         if (Input.down('left')) dx -= 1;
         if (Input.down('right')) dx += 1;
         if (Input.down('up')) dy -= 1;
         if (Input.down('down')) dy += 1;
+        var hasDirection = dx !== 0 || dy !== 0;
+        var wantsRun = hasDirection && Input.down('run');
+        if (wantsRun) Input.markRunGesture();
+        // X / Escape は従来どおり押した瞬間にメニュー。
+        if (Input.pressedCode('Escape') || Input.pressedCode('KeyX') || Input.pressedCode('BTN_X')) {
+          player.moving = false; player.running = false;
+          setScene(makeMenu(activeField)); return;
+        }
+        // Bは単押しのリリースでメニュー。Bを先に押してから移動した場合は走行として消費する。
+        if (Input.bMenuReleased()) {
+          player.moving = false; player.running = false;
+          setScene(makeMenu(activeField)); return;
+        }
         if (dx !== 0 && dy !== 0) {
           // 4方向シートでは、斜め入力を始める直前の向きを保つと方向転換がちらつかない。
           var hf = dx < 0 ? 'left' : 'right', vf = dy < 0 ? 'up' : 'down';
@@ -2942,12 +3023,13 @@
         var inputLen = Math.sqrt(dx * dx + dy * dy);
         if (inputLen > 0) { dx /= inputLen; dy /= inputLen; }
         var oldX = player.x, oldY = player.y;
-        const sp = SPEED * dt;
+        const sp = SPEED * (wantsRun ? 1.6 : 1) * dt;
         if (dx !== 0) { const nx = player.x + dx * sp; if (canWalk(nx, player.y)) player.x = nx; }
         if (dy !== 0) { const ny = player.y + dy * sp; if (canWalk(player.x, ny)) player.y = ny; }
         var movedDist = Math.sqrt((player.x - oldX) * (player.x - oldX) + (player.y - oldY) * (player.y - oldY));
         player.moving = movedDist > 0.01;
-        if (player.moving) player.walkPhase += movedDist / 12;
+        player.running = player.moving && wantsRun;
+        if (player.moving) player.walkPhase += movedDist / (player.running ? 18 : 12);
         // ゾーン端のシームレス移動（おまけフィールド。エピローグの見回り以降に解放）
         if (map.def.edges) {
           if (edgeHintT > 0) edgeHintT -= dt;
@@ -3102,7 +3184,6 @@
           }
         }
         if (Input.pressed('confirm')) interact();
-        if (Input.pressed('cancel')) setScene(makeMenu(activeField));
       },
       render: function (c) {
         var cam = camPos();
@@ -3123,7 +3204,7 @@
             }
             c.restore();
           } else {
-            drawActor(c, a.x, a.y, a.kind, a.facing, 1, a.moving, a.alpha, a.walkPhase);
+            drawActor(c, a.x, a.y, a.kind, a.facing, 1, a.moving, a.alpha, a.walkPhase, a.running);
           }
         }
         drawFieldAtmoWorld(c, map);
@@ -3135,14 +3216,14 @@
           c.fillStyle = 'rgba(2,2,8,0.85)'; c.fillRect(0, 0, W, H);
           c.save(); c.translate(-cam.x, -cam.y);
           drawLightPool(c, player.x, player.y - 8, 70, 'rgba(255,240,200,1)', 0.5);
-          drawActor(c, player.x, player.y, player.kind, player.facing, 1, player.moving, null, player.walkPhase);
+          drawActor(c, player.x, player.y, player.kind, player.facing, 1, player.moving, null, player.walkPhase, false);
           c.restore();
         }
         // 操作ヒント（誰でもメニューにたどり着けるように常時表示）
         if (!Dialog.active && !Choice.active && !darkFx) {
-          c.fillStyle = 'rgba(6,10,24,0.6)'; roundRect(c, W - 216, 8, 208, 24, 8); c.fill();
-          c.fillStyle = '#cdd9ff'; c.font = '11px "Hiragino Sans",sans-serif'; c.textAlign = 'left';
-          c.fillText('Ｚ／Ａ：しらべる　Ｘ／Ｂ：メニュー', W - 206, 24);
+          c.fillStyle = 'rgba(6,10,24,0.6)'; roundRect(c, W - 344, 8, 336, 24, 8); c.fill();
+          c.fillStyle = '#cdd9ff'; c.font = '10px "Hiragino Sans",sans-serif'; c.textAlign = 'left';
+          c.fillText('Ｚ／Ａ：しらべる　Ｂ＋移動：走る　Ｘ／Ｂ単押し：メニュー', W - 334, 24);
         }
         drawVignette(c); if (Dialog.active) Dialog.render(c);
         if (Choice.active) Choice.render(c);
@@ -4044,8 +4125,8 @@
           c.fillText('【ハード】逃げられたら ゲームオーバー！', W / 2, 118);
         }
         // 二人（横向き走り）
-        drawActor(c, ikeX, 300, 'ike', 'right', 1.3, true);
-        drawActor(c, odaX, 302, 'oda', 'right', 1.3, true);
+        drawActor(c, ikeX, 300, 'ike', 'right', 1.3, true, null, null, true);
+        drawActor(c, odaX, 302, 'oda', 'right', 1.3, true, null, null, true);
         drawParts(c);
         if (failMsgT > 0) {
           c.fillStyle = 'rgba(255,140,140,' + Math.min(1, failMsgT) + ')'; c.font = 'bold 16px "Hiragino Sans",sans-serif';
