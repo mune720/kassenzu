@@ -5,11 +5,9 @@
  * dialogue.js と同じく、index.html で game.js より先に読み込む。
  * 行はすべて同じ幅（屋外40 / 屋内16）であること。
  *
- * 街の配置は実際の長久手市に準拠（方角込み）:
- *   [zoneD 文化の家] [zoneC 岩作(市役所・色金山)]
- *   [zoneB 杁ヶ池 ]  [zoneA 古戦場駅周辺] [zoneF 芸大通] [zoneG 公園西] [zoneE モリコロ]
- * グリーンロード（県道6号）が B→A→F→G→E を東西に貫き、リニモが上空を走る。
- * 県道57号が zoneA の東側を南北に走り、北の岩作（市役所）へ続く。
+ * 街の配置は実際の長久手市に準拠（方角込み）。zoneA は現地案内図に合わせ、
+ * 画面上=芸大通、下=杁ヶ池公園、左=市役所方面として描く。古戦場駅付近では
+ * リニモが画面を縦に走り、イオン（上）と記念館（下）の間を東西道路が通る。
  * ========================================================== */
 
 const MUSEUM = [
@@ -44,38 +42,42 @@ const FIELD = [
   'T.....M........T',
   'TTTTTTTTTTTTTTTT',
 ];
-// ゾーンA: 長久手古戦場駅周辺（実地理: 公園=GR北・イオン=GR南・県道57=公園の東・駅=横道交差点）
+// ゾーンA: 長久手古戦場駅周辺（画面上=芸大通・下=杁ヶ池公園・左=市役所方面）
 // W/^=記念館, D=記念館入口, M=勝入塚, N=庄九郎塚, R=岩, b=茂み, P=セーブ篝火,
-// I/4=イオン, a=血の池公園, e=リニモ長久手古戦場駅, r=グリーンロード(横21-22)・県道57号(縦36-38)
+// I/4=イオン, a=血の池公園, e=リニモ長久手古戦場駅, r=道路（横9-10・縦35-37）
 const ZONEA = [
-  'TTTTTTTTTTTTT...TTTTTTTTTTTTTTTTTTTTrrrT',
-  'T...................................rrrT',
-  'T...................^^^^^^^^^^^^^...rrrT',
-  'T..T................^^^^^^^^^^^^^..TrrrT',
-  'T......T............WWWWWWWWWWWWW...rrrT',
-  'T...................WWWWWWWWWWWWW...rrrT',
-  'T...................WWWWWDDWWWWWW...rrrT',
-  'T........................,,.........rrrT',
-  'T...T....................,,.........rrrT',
-  'T........bbb.............,,.........rrrT',
-  'T........bbb.............,,.......M.rrrT',
-  'T........bbb.R...........,,.........rrrT',
-  'T........................,,.....N...rrrT',
-  'T.T.................................rrrT',
-  'T...................................rrrT',
-  'T..~~~..............................rrrT',
-  'T..~~~.............................TrrrT',
-  'T..~~~..............................rrrT',
-  'T...............................eee.rrrT',
-  'T..................@........P...eee.rrrT',
-  '....................................rrr.',
-  'rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr',
-  'rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr',
-  '....................................rrr.',
-  'T...bb.bb......I44I..........T......rrrT',
-  'T...b.a.b..T...IIII....T............rrrT',
-  'T...bb.bb......IIII............T....rrrT',
-  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTrrrTT',
+  'T..................................rrr.T',
+  'T...IIIIIII........................rrr.T',
+  'T.T.IIIIIII....T...................rrr.T',
+  'T...IIIIIII................T.......rrr.T',
+  'T...IIIIIII........................rrr.T',
+  'T...II444II.....................eeerrr.T',
+  'T...............................eeerrr.T',
+  'T...............................eeerrr.T',
+  'rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrT',
+  'rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrT',
+  'T................,,,...............rrr.T',
+  'T................,,,...............rrr.T',
+  'T................,,,...............rrr.T',
+  'T.~~~.......^^^^^^^^^^^^^..........rrr.T',
+  'T.~~~.......WWWWWWWWWWWWW..........rrr.T',
+  'T.~~~.......WWWWWWWWWWWWW..........rrr.T',
+  'T...........WWWWWWWWWWWWW..........rrr.T',
+  'T...........WWWWWWWWWWWWW..........rrr.T',
+  'T.T.........WWDDDDDDDDDWW..........rrr.T',
+  'T....bbb....................M......rrr.T',
+  'T....bbb...........................rrr.T',
+  'T....bbbR.....................N....rrr.T',
+  'T..bbb.............................rrr.T',
+  'T..bab..........................T..rrr.T',
+  'T..bbb.............@.......P.......rrr.T',
+  'T..................................rrr.T',
+  'T..................................rrr.T',
+  'T..................................rrr.T',
+  'T..................................rrr.T',
+  'T..................................rrr.T',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTrrrTT',
 ];
 // ゾーンB: 西エリア（杁ヶ池公園・杁ヶ池公園駅・御旗山・はなみずき通の住宅地）
 // ~=杁ヶ池, a=公園の看板, N=御旗山, e=杁ヶ池公園駅, W/^=住宅
@@ -855,7 +857,11 @@ const MAP_DEFS = {
     solid: ['T', '~', 'M', 'N', 'R', 'b', 'W', '^', 'D', 'P', 'I', '4', 'e'],
     npcs: {},
     acts: { M: 'mound', N: 'shokuro', R: 'rock', D: 'museum_enter', P: 'save', 4: 'aeon', e: 'station', a: 'site_chinoike' },
-    edges: { west: 'zoneB', north: 'zoneC', east: 'zoneF' },
+    edges: {
+      west: { map: 'zoneC', spawn: { col: 35, row: 14 } },
+      north: { map: 'zoneF', spawn: { col: 22, row: 20 } },
+      south: { map: 'zoneB', spawn: { col: 13, row: 20 } },
+    },
     encounter: { rate: 0.03, afterUnlock: true },
   },
   zoneB: {
@@ -863,7 +869,7 @@ const MAP_DEFS = {
     solid: ['T', 'b', '~', 'N', 'W', '^', 'e'],
     npcs: {},
     acts: { N: 'site_mihata', a: 'flavor_iriga', e: 'station' },
-    edges: { east: 'zoneA', north: 'zoneD' },
+    edges: { east: { map: 'zoneA', spawn: { col: 36, row: 25 } }, north: 'zoneD' },
     encounter: { rate: 0.04, afterUnlock: true },
   },
   zoneC: {
@@ -871,7 +877,7 @@ const MAP_DEFS = {
     solid: ['T', 'M', 'R', 'J', 'W', '^', '1', '2', 'x', 'Y', '4', 'h'],
     npcs: {},
     acts: { R: 'irogane_in', 1: 'tearoom', 2: 'cityhall', 4: 'ramen', o: 'site_ansho', M: 'site_musashi', x: 'shateki', h: 'flavor_aidai' },
-    edges: { south: 'zoneA', west: 'zoneD' },
+    edges: { south: { map: 'zoneA', spawn: { col: 1, row: 9 } }, west: 'zoneD' },
     encounter: { rate: 0.045, afterUnlock: true },
   },
   zoneD: {
@@ -899,7 +905,7 @@ const MAP_DEFS = {
     solid: ['T', 'W', '^', 't', 'g', 'e'],
     npcs: {},
     acts: { t: 'flavor_toyota', g: 'flavor_geidai', e: 'station' },
-    edges: { west: 'zoneA', east: 'zoneG' },
+    edges: { west: { map: 'zoneA', spawn: { col: 36, row: 2 } }, east: 'zoneG' },
     encounter: { rate: 0.05, afterUnlock: true },
   },
   zoneG: {
@@ -1140,9 +1146,9 @@ const HD_DECO_DEF = {
 // 画像が未導入の建物（toyota / ikea / geidai / aidai）は W/^ タイルのプロシージャル描画で代替される
 const HD_BLD_DEF = {
   zoneA: [
-    { key: 'museum', c0: 20, r0: 2, w: 13, h: 5 },
-    { key: 'aeon', c0: 15, r0: 24, w: 4, h: 3 },
-    { key: 'station', c0: 32, r0: 18, w: 3, h: 2 },
+    { key: 'aeon', c0: 4, r0: 2, w: 7, h: 5 },
+    { key: 'station', c0: 32, r0: 6, w: 3, h: 3 },
+    { key: 'museum', c0: 12, r0: 14, w: 13, h: 6 },
   ],
   zoneB: [{ key: 'station', c0: 10, r0: 18, w: 3, h: 2 }],
   zoneC: [
@@ -1181,15 +1187,15 @@ const HD_BLD_DEF = {
 // 駅で Z → 路線図から行き先を選んで移動する（game.js の station アクション）
 const LINIMO_STATIONS = [
   { id: 'iriga', name: '杁ヶ池公園', map: 'zoneB', col: 11, row: 20 },
-  { id: 'kosenjo', name: '長久手古戦場', map: 'zoneA', col: 33, row: 20 },
+  { id: 'kosenjo', name: '長久手古戦場', map: 'zoneA', col: 33, row: 9 },
   { id: 'geidai', name: '芸大通', map: 'zoneF', col: 20, row: 20 },
   { id: 'koennishi', name: '公園西', map: 'zoneG', col: 19, row: 20 },
   { id: 'expo', name: '愛・地球博記念公園', map: 'zoneE', col: 6, row: 20 },
 ];
-// 高架軌道: グリーンロード（rows21-22）の上空を走る。row は軌道中心のタイル行
+// 高架軌道: 通常は横方向。zoneA だけ現地配置に合わせて縦方向（col は軌道中心列）
 const LINIMO_TRACK = {
   zoneB: { c0: 0, c1: 39, row: 21.5 },
-  zoneA: { c0: 0, c1: 39, row: 21.5 },
+  zoneA: { orientation: 'vertical', col: 36, r0: 0, r1: 31 },
   zoneF: { c0: 0, c1: 39, row: 21.5 },
   zoneG: { c0: 0, c1: 39, row: 21.5 },
   zoneE: { c0: 0, c1: 9, row: 21.5 },
@@ -1259,17 +1265,17 @@ const ENCOUNTER_TABLES = {
 const MOB_DEFS = [
   // --- ゾーンA: 古戦場公園周辺 ---
   { id: 'mob_sanpo', kind: 'civ3', map: 'zoneA',
-    spots: { quest: { col: 23, row: 15 }, post: { col: 26, row: 18 } } },
+    spots: { quest: { col: 26, row: 21 }, post: { col: 26, row: 21 } } },
   { id: 'mob_jog', kind: 'civ5', map: 'zoneA',
-    spots: { quest: { col: 10, row: 20 }, night: { col: 10, row: 20 }, post: { col: 10, row: 20 } } },
+    spots: { quest: { col: 10, row: 18 }, night: { col: 10, row: 18 }, post: { col: 10, row: 18 } } },
   { id: 'mob_kanko', kind: 'civ2', map: 'zoneA',
-    spots: { quest: { col: 30, row: 20 }, post: { col: 25, row: 15 } } },
+    spots: { quest: { col: 31, row: 19 }, post: { col: 26, row: 19 } } },
   { id: 'mob_guide', kind: 'civ6', map: 'zoneA',
-    spots: { quest: { col: 27, row: 8 }, post: { col: 27, row: 8 } } },
+    spots: { quest: { col: 24, row: 20 }, post: { col: 24, row: 20 } } },
   { id: 'mob_keibi', kind: 'civ6', map: 'zoneA',
-    spots: { night: { col: 28, row: 20 } } },
+    spots: { night: { col: 31, row: 11 } } },
   { id: 'mob_yatai', kind: 'civ8', map: 'zoneA',
-    spots: { post: { col: 22, row: 17 } } },
+    spots: { post: { col: 23, row: 20 } } },
   // --- ゾーンB: 杁ヶ池・御旗山・住宅地 ---
   { id: 'mob_inu', kind: 'civ1', map: 'zoneB',
     spots: { quest: { col: 7, row: 12 }, post: { col: 7, row: 12 } } },

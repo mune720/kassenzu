@@ -1242,21 +1242,37 @@
         c.drawImage(img, bx, bottom - bh, bw, bh);
       } });
     });
-    // リニモ高架の支柱（グリーンロード中央分離帯・奥行きソートに参加）
+    // リニモ高架の支柱（奥行きソートに参加）。zoneA は現地配置どおり縦方向。
     var lin = (typeof LINIMO_TRACK !== 'undefined') ? LINIMO_TRACK[map.key] : null;
-    var linDeckY = 0;
+    var linDeckY = 0, linDeckX = 0;
     if (lin) {
-      linDeckY = (lin.row - 1.35) * TILE;
-      for (var pc = lin.c0 + 2; pc <= lin.c1 - 1; pc += 6) {
-        (function (col) {
-          var px = col * TILE + TILE / 2, baseY = (lin.row + 0.5) * TILE;
-          painter.push({ y: baseY, draw: function () {
-            c.fillStyle = 'rgba(0,0,0,0.18)';
-            c.beginPath(); c.ellipse(px, baseY, 9, 4, 0, 0, Math.PI * 2); c.fill();
-            c.fillStyle = '#99a0ae'; c.fillRect(px - 5, linDeckY, 10, baseY - linDeckY);
-            c.fillStyle = '#7c8290'; c.fillRect(px - 5, linDeckY, 3, baseY - linDeckY);
-          } });
-        })(pc);
+      if (lin.orientation === 'vertical') {
+        linDeckX = (lin.col + 0.5) * TILE;
+        for (var pr = lin.r0 + 2; pr <= lin.r1 - 1; pr += 5) {
+          (function (row) {
+            var baseY = (row + 0.72) * TILE;
+            painter.push({ y: baseY, draw: function () {
+              c.fillStyle = 'rgba(0,0,0,0.18)';
+              c.beginPath(); c.ellipse(linDeckX + 7, baseY + 2, 16, 5, 0, 0, Math.PI * 2); c.fill();
+              c.fillStyle = '#7c8290'; c.fillRect(linDeckX - 18, baseY - 5, 36, 10);
+              c.fillStyle = '#aab0bd'; c.fillRect(linDeckX - 5, baseY - 19, 10, 25);
+              c.fillStyle = '#d0d4dd'; c.fillRect(linDeckX - 3, baseY - 18, 3, 23);
+            } });
+          })(pr);
+        }
+      } else {
+        linDeckY = (lin.row - 1.35) * TILE;
+        for (var pc = lin.c0 + 2; pc <= lin.c1 - 1; pc += 6) {
+          (function (col) {
+            var px = col * TILE + TILE / 2, baseY = (lin.row + 0.5) * TILE;
+            painter.push({ y: baseY, draw: function () {
+              c.fillStyle = 'rgba(0,0,0,0.18)';
+              c.beginPath(); c.ellipse(px, baseY, 9, 4, 0, 0, Math.PI * 2); c.fill();
+              c.fillStyle = '#99a0ae'; c.fillRect(px - 5, linDeckY, 10, baseY - linDeckY);
+              c.fillStyle = '#7c8290'; c.fillRect(px - 5, linDeckY, 3, baseY - linDeckY);
+            } });
+          })(pc);
+        }
       }
     }
     // Actors（player=null ならプレイヤー非表示: カットシーン用）
@@ -1269,14 +1285,29 @@
     painter.forEach(function (p) { p.draw(); });
     // リニモ高架の軌道桁（上空・最前面。プレイヤーは下をくぐる）
     if (lin) {
-      var lx0 = lin.c0 * TILE, lx1 = (lin.c1 + 1) * TILE;
-      c.fillStyle = 'rgba(10,14,30,0.10)';
-      c.fillRect(lx0, (lin.row - 0.5) * TILE + 6, lx1 - lx0, TILE * 0.9);
-      c.fillStyle = '#aeb4c2'; c.fillRect(lx0, linDeckY - 14, lx1 - lx0, 14);
-      c.fillStyle = '#c9cedb'; c.fillRect(lx0, linDeckY - 14, lx1 - lx0, 4);
-      c.fillStyle = '#868c9a'; c.fillRect(lx0, linDeckY - 3, lx1 - lx0, 3);
-      c.strokeStyle = '#5d6470'; c.lineWidth = 1;
-      c.beginPath(); c.moveTo(lx0, linDeckY - 9); c.lineTo(lx1, linDeckY - 9); c.stroke();
+      if (lin.orientation === 'vertical') {
+        var ly0 = lin.r0 * TILE, ly1 = (lin.r1 + 1) * TILE;
+        c.fillStyle = 'rgba(10,14,30,0.15)'; c.fillRect(linDeckX - 3, ly0, 29, ly1 - ly0);
+        c.fillStyle = '#aeb4c2'; c.fillRect(linDeckX - 13, ly0, 26, ly1 - ly0);
+        c.fillStyle = '#d3d7df'; c.fillRect(linDeckX - 13, ly0, 4, ly1 - ly0);
+        c.fillStyle = '#858c99'; c.fillRect(linDeckX + 9, ly0, 4, ly1 - ly0);
+        c.strokeStyle = '#5d6470'; c.lineWidth = 1;
+        c.beginPath(); c.moveTo(linDeckX - 5, ly0); c.lineTo(linDeckX - 5, ly1); c.stroke();
+        c.beginPath(); c.moveTo(linDeckX + 5, ly0); c.lineTo(linDeckX + 5, ly1); c.stroke();
+        c.strokeStyle = 'rgba(82,88,99,0.55)';
+        for (var tieY = ly0 + 8; tieY < ly1; tieY += 18) {
+          c.beginPath(); c.moveTo(linDeckX - 9, tieY); c.lineTo(linDeckX + 9, tieY); c.stroke();
+        }
+      } else {
+        var lx0 = lin.c0 * TILE, lx1 = (lin.c1 + 1) * TILE;
+        c.fillStyle = 'rgba(10,14,30,0.10)';
+        c.fillRect(lx0, (lin.row - 0.5) * TILE + 6, lx1 - lx0, TILE * 0.9);
+        c.fillStyle = '#aeb4c2'; c.fillRect(lx0, linDeckY - 14, lx1 - lx0, 14);
+        c.fillStyle = '#c9cedb'; c.fillRect(lx0, linDeckY - 14, lx1 - lx0, 4);
+        c.fillStyle = '#868c9a'; c.fillRect(lx0, linDeckY - 3, lx1 - lx0, 3);
+        c.strokeStyle = '#5d6470'; c.lineWidth = 1;
+        c.beginPath(); c.moveTo(lx0, linDeckY - 9); c.lineTo(lx1, linDeckY - 9); c.stroke();
+      }
     }
   }
   // ワールドパス後半: ワールド座標の光だまり（カメラ translate の内側）
@@ -1286,7 +1317,7 @@
       drawLightPool(c, 8 * TILE, 1.5 * TILE, 55, 'rgba(255,220,150,1)', 0.07);
       drawLightPool(c, 12 * TILE, 1.5 * TILE, 55, 'rgba(255,220,150,1)', 0.07);
     } else if (map.key === 'zoneA' && chapter === 'pro') {
-      drawLightPool(c, 19.5 * TILE, 15 * TILE, 95, 'rgba(180,170,220,1)', 0.06);
+      drawLightPool(c, 19.5 * TILE, 23.5 * TILE, 95, 'rgba(180,170,220,1)', 0.06);
     }
     // 雲影: 屋外をゆっくり流れる大きな影（HD-2Dの空気感）
     if (map.tileset === 'outdoor') {
@@ -2024,6 +2055,22 @@
   const PROLOGUE_OPEN = DIALOGUE.prologue_open;
   const PROLOGUE_MEET = DIALOGUE.prologue_meet;
 
+  // ZoneA の物語演出座標。施設配置の変更時に追従箇所が散らばらないよう、広場上の基準点を集約する。
+  const ZA_POS = {
+    dancer: { x: 19.5 * TILE, y: 23.5 * TILE },
+    plaza: { x: 20 * TILE, y: 22.5 * TILE },
+    playerMeet: { x: 14 * TILE, y: 22.5 * TILE },
+    ikeBush: { x: 8.5 * TILE, y: 20.5 * TILE },
+    ikeMeet: { x: 11 * TILE, y: 22 * TILE },
+    ikeEast: { x: 27 * TILE, y: 22.5 * TILE },
+    michiWest: { x: 10.5 * TILE, y: 21.5 * TILE },
+    michiCenter: { x: 24 * TILE, y: 22.5 * TILE },
+    p3Michi: { x: 18 * TILE, y: 22.5 * TILE },
+    p3Ike: { x: 22 * TILE, y: 22.5 * TILE },
+    dancerEarly: { x: 21 * TILE, y: 20.5 * TILE },
+    kancho: { x: 25.5 * TILE, y: 20.5 * TILE },
+  };
+
   // ===================== Field scene =====================
   function makeField(mapKey, spawnOverride, introLines) {
     const map = parseMap(mapKey);
@@ -2137,7 +2184,7 @@
         gotoField('museum', { col: 7, row: 12 });
       }
       else if (id === 'museum_exit') {
-        gotoField('zoneA', { col: 25, row: 7 });
+        gotoField('zoneA', { col: 18, row: 20 });
       }
       // ===== 施設: 外の入口 → 店内マップへ。買い物・ミニゲームは店内の店員に話しかけて発動 =====
       else if (id === 'aeon') {
@@ -2148,7 +2195,7 @@
       else if (id === 'aeon_clerk') {
         Dialog.start(DIALOGUE.aeon_clerk_talk, function () { setScene(makeShop(backHere())); });
       }
-      else if (id === 'aeon_exit') gotoField('zoneA', { col: 16, row: 23 });
+      else if (id === 'aeon_exit') gotoField('zoneA', { col: 7, row: 7 });
       else if (id === 'aeon_info') Dialog.start(DIALOGUE.aeon_info);
       else if (id === 'station') {
         // 駅の外の入口 → ホーム階へ上がる（乗車はホームのホームドア前で）
@@ -2434,9 +2481,9 @@
                       partyMembers.length = 0;
                       gold += 5000; saveGame();
                       Dialog.start(DIALOGUE.post_win);
-                      gotoField('zoneA', { col: 33, row: 12 });
+                      gotoField('zoneA', { col: 28, row: 21 });
                     },
-                    onLose: function () { partyMembers.length = 0; gotoField('zoneA', { col: 33, row: 12 }); },
+                    onLose: function () { partyMembers.length = 0; gotoField('zoneA', { col: 28, row: 21 }); },
                   });
                 });
               }
@@ -2506,11 +2553,11 @@
       if (mapKey !== 'zoneA') return;
       if (ch2step === 0) {
         // いけ、茂みから登場（オダも広場西側へ歩み寄る）
-        var ike = ikeActor(10 * TILE + TILE / 2, 10 * TILE + TILE / 2, 'right');
+        var ike = ikeActor(ZA_POS.ikeBush.x, ZA_POS.ikeBush.y, 'right');
         sceneActors.push(ike);
-        walkTo(player, 14 * TILE, 12 * TILE + TILE / 2, 132, function () {
+        walkTo(player, ZA_POS.playerMeet.x, ZA_POS.playerMeet.y, 132, function () {
         player.facing = 'left';
-        walkTo(ike, 11 * TILE, 12 * TILE, 60, function () {
+        walkTo(ike, ZA_POS.ikeMeet.x, ZA_POS.ikeMeet.y, 60, function () {
           Dialog.start(DIALOGUE.ch2_appear, function () {
             Dialog.start(DIALOGUE.ch2_kakugo, function () {
               Dialog.start(DIALOGUE.ch2_mai, function () {
@@ -2519,7 +2566,7 @@
                   Dialog.start(DIALOGUE.ch2_hayakuchi_intro, function () {
                     setScene(makeHayakuchiGame(function () {
                       ch2step = 2; saveGame();
-                      gotoField('zoneA', { x: 13 * TILE, y: 12 * TILE + TILE / 2 });
+                      gotoField('zoneA', { x: 13 * TILE, y: ZA_POS.playerMeet.y });
                     }));
                   });
                 });
@@ -2533,12 +2580,12 @@
         Dialog.start(DIALOGUE.ch2_hayakuchi_intro, function () {
           setScene(makeHayakuchiGame(function () {
             ch2step = 2; saveGame();
-            gotoField('zoneA', { x: 13 * TILE, y: 12 * TILE + TILE / 2 });
+            gotoField('zoneA', { x: 13 * TILE, y: ZA_POS.playerMeet.y });
           }));
         });
       } else if (ch2step === 2) {
         // 早口言葉クリア後 → めがね → イオン → 走り出し → 追いかけっこ
-        if (!findActor('ike')) sceneActors.push(ikeActor(11 * TILE, 12 * TILE, 'right'));
+        if (!findActor('ike')) sceneActors.push(ikeActor(ZA_POS.ikeMeet.x, ZA_POS.ikeMeet.y, 'right'));
         player.facing = 'left';
         Dialog.start(DIALOGUE.ch2_hayakuchi_clear, function () {
           Dialog.start(DIALOGUE.ch2_megane, function () {
@@ -2546,11 +2593,11 @@
               ch2step = 3; saveGame();
               Dialog.start(DIALOGUE.ch2_run1, function () {
                 var ike3 = findActor('ike');
-                if (!ike3) { sceneActors.push(ikeActor(11 * TILE, 12 * TILE, 'right')); ike3 = findActor('ike'); }
-                walkTo(ike3, 30 * TILE, 14 * TILE, 260, function () {
+                if (!ike3) { sceneActors.push(ikeActor(ZA_POS.ikeMeet.x, ZA_POS.ikeMeet.y, 'right')); ike3 = findActor('ike'); }
+                walkTo(ike3, 30 * TILE, 19 * TILE, 260, function () {
                   setScene(makeChaseGame(function () {
                     ch2step = 4; saveGame();
-                    gotoField('zoneA', { col: 24, row: 14 });
+                    gotoField('zoneA', { col: 24, row: 22 });
                   }));
                 });
               });
@@ -2561,11 +2608,11 @@
         // 走り出し直前でセーブ復帰 → 追いかけっこから
         setScene(makeChaseGame(function () {
           ch2step = 4; saveGame();
-          gotoField('zoneA', { col: 24, row: 14 });
+          gotoField('zoneA', { col: 24, row: 22 });
         }));
       } else if (ch2step === 4) {
         // 待てー！ → 長久手市の使い宣言 → 腕試し（素手の型稽古）
-        sceneActors.push(ikeActor(27 * TILE, 14 * TILE + TILE / 2, 'left'));
+        sceneActors.push(ikeActor(ZA_POS.ikeEast.x, ZA_POS.ikeEast.y, 'left'));
         player.facing = 'right';
         Dialog.start(DIALOGUE.ch2_mate, function () {
           Dialog.start(DIALOGUE.ch2_spar_intro, function () {
@@ -2574,14 +2621,14 @@
             startBattle({
               gated: false, spar: true,
               enemy: { name: '池田輝政', hp: 24, kind: 'ike', atkLabel: DIALOGUE.battle.ike_spar.atkLabel, winMsg: DIALOGUE.battle.ike_spar.winMsg, forcelose: true },
-              onWin: function () { gotoField('zoneA', { col: 24, row: 14 }); },
-              onLose: function () { gotoField('zoneA', { col: 24, row: 14 }); },
+              onWin: function () { gotoField('zoneA', { col: 24, row: 22 }); },
+              onLose: function () { gotoField('zoneA', { col: 24, row: 22 }); },
             });
           });
         });
       } else if (ch2step === 5) {
         // 腕試し後 → 110番 → 三章へ（オダは記念館へ向かう）
-        sceneActors.push(ikeActor(27 * TILE, 14 * TILE + TILE / 2, 'down'));
+        sceneActors.push(ikeActor(ZA_POS.ikeEast.x, ZA_POS.ikeEast.y, 'down'));
         Dialog.start(DIALOGUE.ch2_after, function () {
           chapter = 'ch3'; saveGame();
         });
@@ -2590,16 +2637,16 @@
     // 三章: オダ不在の間の、いけとみちの再会 → ターミネーターオダ
     function startCh3Michi() {
       hidePlayer = true;
-      camFocus = { x: 20 * TILE, y: 13 * TILE };
-      var michi = { x: 10 * TILE + TILE / 2, y: 11 * TILE + TILE / 2, kind: 'michi', facing: 'right', id: 'michi' };
+      camFocus = { x: ZA_POS.plaza.x, y: ZA_POS.plaza.y };
+      var michi = { x: ZA_POS.michiWest.x, y: ZA_POS.michiWest.y, kind: 'michi', facing: 'right', id: 'michi' };
       sceneActors.push(michi);
-      walkTo(michi, 24 * TILE, 14 * TILE + TILE / 2, 70, function () {
+      walkTo(michi, ZA_POS.michiCenter.x, ZA_POS.michiCenter.y, 70, function () {
         Dialog.start(DIALOGUE.ch3_michi, function () {
           darkFx = true;
           hidePlayer = false;
           camFocus = null;
-          player.x = 25 * TILE + TILE / 2; player.y = 8 * TILE; player.facing = 'down';
-          walkTo(player, 25 * TILE + TILE / 2, 12 * TILE, 90, function () {
+          player.x = ZA_POS.kancho.x; player.y = ZA_POS.kancho.y; player.facing = 'down';
+          walkTo(player, 25.5 * TILE, 22 * TILE, 90, function () {
             Dialog.start(DIALOGUE.ch3_terminator, function () {
               darkFx = false;
               unlockMeikan('michi');
@@ -2618,13 +2665,13 @@
     // ---------- P3: 四章〜エピローグ（zoneA・直列進行） ----------
     // 進行段階に応じて必要なアクターを補充（既にいれば何もしない）
     function p3Actors(stage) {
-      if (stage <= 5 && !findActor('michi')) sceneActors.push({ x: 18 * TILE, y: 14 * TILE + TILE / 2, kind: 'michi', facing: 'right', id: 'michi' });
+      if (stage <= 5 && !findActor('michi')) sceneActors.push({ x: ZA_POS.p3Michi.x, y: ZA_POS.p3Michi.y, kind: 'michi', facing: 'right', id: 'michi' });
       if (stage <= 7 && !findActor('ike')) {
-        var ix = stage === 7 ? 7 * TILE : 22 * TILE, iy = stage === 7 ? 12.5 * TILE : 14 * TILE + TILE / 2;
+        var ix = stage === 7 ? 9 * TILE : ZA_POS.p3Ike.x, iy = stage === 7 ? 22.5 * TILE : ZA_POS.p3Ike.y;
         sceneActors.push(ikeActor(ix, iy, 'left'));
       }
       if (stage >= 6 && !findActor('dancer2')) {
-        var dx3 = stage >= 9 ? 19.5 * TILE : 21 * TILE, dy3 = stage >= 9 ? 15 * TILE + TILE / 2 : 12.5 * TILE;
+        var dx3 = stage >= 9 ? ZA_POS.dancer.x : ZA_POS.dancerEarly.x, dy3 = stage >= 9 ? ZA_POS.dancer.y : ZA_POS.dancerEarly.y;
         sceneActors.push({ x: dx3, y: dy3, kind: 'odoriko', facing: 'down', alpha: 1, dancing: stage >= 9, id: 'dancer2' });
       }
     }
@@ -2663,7 +2710,7 @@
       } else if (stageP3 === 1) {
         // 現地取材クエスト中。5史跡踏破後、みちに近づくと update() が進行させる
       } else if (stageP3 === 2) {
-        setScene(makeSenTalk(function () { stageP3 = 3; saveGame(); backToZoneA(20, 13)(); }));
+        setScene(makeSenTalk(function () { stageP3 = 3; saveGame(); backToZoneA(20, 22)(); }));
       } else if (stageP3 === 3) {
         Dialog.start(DIALOGUE.ch4_mononoke, function () {
           partyMembers.length = 0;
@@ -2672,8 +2719,8 @@
           startBattle({
             gated: false,
             enemy: { name: 'はぐれ もののけ', hp: 34, kind: 'enemy', atkLabel: DIALOGUE.battle_mononoke_party.atkLabel, appearMsg: DIALOGUE.battle_mononoke_party.appearMsg, winMsg: DIALOGUE.battle_mononoke_party.winMsg },
-            onWin: function () { partyMembers.length = 0; stageP3 = 4; saveGame(); backToZoneA(20, 13)(); },
-            onLose: function () { partyMembers.length = 0; backToZoneA(20, 13)(); },
+            onWin: function () { partyMembers.length = 0; stageP3 = 4; saveGame(); backToZoneA(20, 22)(); },
+            onLose: function () { partyMembers.length = 0; backToZoneA(20, 22)(); },
           });
         });
       } else if (stageP3 === 4) {
@@ -2688,20 +2735,20 @@
                 endMsg: DIALOGUE.battle_michi_taiji.endMsg, fleeMsg: DIALOGUE.battle_michi_taiji.fleeMsg,
                 atkLo: 8, atkHi: 12,
               },
-              onWin: function () { stageP3 = 5; saveGame(); backToZoneA(20, 13)(); },
-              onLose: function () { stageP3 = 5; saveGame(); backToZoneA(20, 13)(); },
+              onWin: function () { stageP3 = 5; saveGame(); backToZoneA(20, 22)(); },
+              onLose: function () { stageP3 = 5; saveGame(); backToZoneA(20, 22)(); },
             });
           });
         });
       } else if (stageP3 === 5) {
         Dialog.start(DIALOGUE.ch5_tenka_full, function () {
           unlockMeikan('nobunaga');
-          if (!findActor('dancer2')) sceneActors.push({ x: 21 * TILE, y: 12.5 * TILE, kind: 'odoriko', facing: 'down', alpha: 1, id: 'dancer2' });
+          if (!findActor('dancer2')) sceneActors.push({ x: ZA_POS.dancerEarly.x, y: ZA_POS.dancerEarly.y, kind: 'odoriko', facing: 'down', alpha: 1, id: 'dancer2' });
           Dialog.start(DIALOGUE.ch6_ikitai, function () {
             Dialog.start(DIALOGUE.ch6_mirai, function () {
               var mi = findActor('michi');
               if (mi) {
-                walkTo(mi, 10 * TILE, 11 * TILE, 150, function () {
+                walkTo(mi, 10 * TILE, 19 * TILE, 150, function () {
                   var mi2 = findActor('michi'); if (mi2) mi2.fading = true;
                   stageP3 = 6; saveGame(); runP3();
                 });
@@ -2713,18 +2760,18 @@
         Dialog.start(DIALOGUE.ch6_stealth_intro, function () {
           setScene(makeStealthGame(function () {
             stageP3 = 7; saveGame();
-            gotoField('zoneA', { col: 8, row: 12 });
+            gotoField('zoneA', { col: 9, row: 22 });
           }));
         });
       } else if (stageP3 === 7) {
         Dialog.start(DIALOGUE.ch6_ochimusha, function () {
           var ik = findActor('ike');
           function proceed() { stageP3 = 8; saveGame(); runP3(); }
-          if (ik) walkTo(ik, 10 * TILE, 10 * TILE, 90, function () { var ik2 = findActor('ike'); if (ik2) ik2.fading = true; proceed(); });
+          if (ik) walkTo(ik, 10 * TILE, 19 * TILE, 90, function () { var ik2 = findActor('ike'); if (ik2) ik2.fading = true; proceed(); });
           else proceed();
         });
       } else if (stageP3 === 8) {
-        var kan = { x: 25.5 * TILE, y: 8 * TILE, kind: 'kancho', facing: 'down', id: 'kancho' };
+        var kan = { x: ZA_POS.kancho.x, y: ZA_POS.kancho.y, kind: 'kancho', facing: 'down', id: 'kancho' };
         sceneActors.push(kan);
         walkTo(kan, player.x + TILE, player.y - TILE, 100, function () {
           Dialog.start(DIALOGUE.epi_kancho, function () {
@@ -2738,11 +2785,11 @@
             afterBond();
             function proceedEpi() {
             var k2 = findActor('kancho');
-            if (k2) walkTo(k2, 25.5 * TILE, 8 * TILE, 110, function () { var k3 = findActor('kancho'); if (k3) k3.fading = true; });
+            if (k2) walkTo(k2, ZA_POS.kancho.x, ZA_POS.kancho.y, 110, function () { var k3 = findActor('kancho'); if (k3) k3.fading = true; });
             stageP3 = 9; saveGame();
             var dc = findActor('dancer2');
-            if (dc) { dc.x = 19.5 * TILE; dc.y = 15 * TILE + TILE / 2; dc.dancing = true; }
-            else sceneActors.push({ x: 19.5 * TILE, y: 15 * TILE + TILE / 2, kind: 'odoriko', facing: 'down', alpha: 1, dancing: true, id: 'dancer2' });
+            if (dc) { dc.x = ZA_POS.dancer.x; dc.y = ZA_POS.dancer.y; dc.dancing = true; }
+            else sceneActors.push({ x: ZA_POS.dancer.x, y: ZA_POS.dancer.y, kind: 'odoriko', facing: 'down', alpha: 1, dancing: true, id: 'dancer2' });
             }
           });
         });
@@ -2777,14 +2824,14 @@
         }
         if (mapKey === 'zoneA') {
           if (chapter === 'pro') {
-            sceneActors.push({ x: 19.5 * TILE, y: 15 * TILE + TILE / 2, kind: 'odoriko', facing: 'down', alpha: 1, dancing: true, id: 'dancer' });
+            sceneActors.push({ x: ZA_POS.dancer.x, y: ZA_POS.dancer.y, kind: 'odoriko', facing: 'down', alpha: 1, dancing: true, id: 'dancer' });
             Dialog.start(PROLOGUE_OPEN);
           } else if (chapter === 'ch1') {
             checkCh1Done();
           } else if (chapter === 'ch2') {
             runCh2();
           } else if (chapter === 'ch3') {
-            sceneActors.push(ikeActor(27 * TILE, 14 * TILE + TILE / 2, 'down'));
+            sceneActors.push(ikeActor(ZA_POS.ikeEast.x, ZA_POS.ikeEast.y, 'down'));
             if (ch3rusu) startCh3Michi();
           } else if (chapter === 'main2') {
             runP3();
@@ -2856,13 +2903,19 @@
           else if (player.y > map.pxH - HALF - 2 && map.def.edges.south) edgeDir = 'south';
           if (edgeDir) {
             if (omakeUnlocked()) {
-              var toKey = map.def.edges[edgeDir];
+              var edgeDef = map.def.edges[edgeDir];
+              var toKey = typeof edgeDef === 'string' ? edgeDef : edgeDef.map;
               var tw2 = MAP_DEFS[toKey].rows[0].length * TILE, th2 = MAP_DEFS[toKey].rows.length * TILE;
-              var sx2 = player.x, sy2 = player.y;
-              if (edgeDir === 'west') sx2 = tw2 - TILE * 0.8;
-              if (edgeDir === 'east') sx2 = TILE * 0.8;
-              if (edgeDir === 'north') sy2 = th2 - TILE * 0.8;
-              if (edgeDir === 'south') sy2 = TILE * 0.8;
+              var sx2 = player.x, sy2 = player.y, edgeSpawn = edgeDef && edgeDef.spawn;
+              if (edgeSpawn) {
+                sx2 = edgeSpawn.col * TILE + TILE / 2;
+                sy2 = edgeSpawn.row * TILE + TILE / 2;
+              } else {
+                if (edgeDir === 'west') sx2 = tw2 - TILE * 0.8;
+                if (edgeDir === 'east') sx2 = TILE * 0.8;
+                if (edgeDir === 'north') sy2 = th2 - TILE * 0.8;
+                if (edgeDir === 'south') sy2 = TILE * 0.8;
+              }
               sx2 = Math.max(TILE * 0.6, Math.min(tw2 - TILE * 0.6, sx2));
               sy2 = Math.max(TILE * 0.6, Math.min(th2 - TILE * 0.6, sy2));
               setScene(makeField(toKey, { x: sx2, y: sy2 }, null));
@@ -2923,7 +2976,7 @@
               proTriggered = true;
               Dialog.start(DIALOGUE.ch4_junbi_done, function () {
                 stageP3 = 2; saveGame();
-                setScene(makeSenTalk(function () { stageP3 = 3; saveGame(); backToZoneA(20, 13)(); }));
+                setScene(makeSenTalk(function () { stageP3 = 3; saveGame(); backToZoneA(20, 22)(); }));
               });
               return;
             }
