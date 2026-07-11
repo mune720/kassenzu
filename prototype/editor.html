@@ -74,7 +74,7 @@ main{max-width:900px;margin:0 auto;padding:20px}
 <main id="main"></main>
 <div class="toast" id="toast"></div>
 
-<script src="dialogue.js?v=20260711p22"></script>
+<script src="dialogue.js?v=20260711p28"></script>
 <script>
 (function () {
   'use strict';
@@ -96,7 +96,7 @@ main{max-width:900px;margin:0 auto;padding:20px}
     { title: 'エンディング', keys: ['ending'] },
     { title: '戦闘メッセージ', keys: ['battle'] },
     { title: '史跡めぐり・茶室', keys: ['tour_complete', 'sites', 'tea_intro', 'tea_rank_c', 'tea_rank_b', 'tea_rank_a', 'tour_battle_intro'] },
-    { title: '長久手の街（おまけ）', keys: ['omake_locked', 'omake_unlock', 'station_first', 'station_ride', 'aeon_welcome', 'aeon_first', 'ramen_event', 'cityhall_talk', 'kodomo_talk', 'library_talk', 'higane_event', 'higane_done', 'expo1_talk', 'expo2_talk', 'expo3_talk', 'wheel_talk', 'sakamoto_talk', 'bunka_galleria', 'bunka_2f', 'bunka_mori', 'kentei_intro', 'kentei_quiz', 'hyorogan_intro', 'lib_intro', 'drum_intro', 'epi_bond', 'post_pray', 'post_kanehira', 'post_kancho_join', 'post_boss_intro', 'post_win', 'hard_patrol_hint', 'flavor_iriga', 'flavor_toyota', 'flavor_geidai', 'flavor_ikea', 'flavor_aidai'] },
+    { title: '長久手の街（おまけ）', keys: ['omake_locked', 'omake_unlock', 'station_locked', 'station_first', 'station_ride', 'station_terminal_exit', 'station_no_trains', 'aeon_welcome', 'aeon_first', 'ramen_event', 'cityhall_talk', 'kodomo_talk', 'library_talk', 'higane_event', 'higane_done', 'expo1_talk', 'expo2_talk', 'expo3_talk', 'wheel_talk', 'sakamoto_talk', 'bunka_galleria', 'bunka_2f', 'bunka_mori', 'kentei_intro', 'kentei_quiz', 'hyorogan_intro', 'lib_intro', 'drum_intro', 'epi_bond', 'post_pray', 'post_kanehira', 'post_kancho_join', 'post_boss_intro', 'post_win', 'hard_patrol_hint', 'flavor_iriga', 'flavor_toyota', 'flavor_geidai', 'flavor_ikea', 'flavor_aidai'] },
     { title: '岩崎城（裏イベント）', keys: ['iwasaki_invite', 'iwasaki_arrive', 'iwasaki_arrive_again', 'naiki_intro', 'iwasaki_quiz', 'iwasaki_win', 'naiki_after', 'iwasaki_sakamoto_after', 'iwasaki_saka_field', 'iwasaki_saka_field_after', 'tenshu_view', 'iwasaki_kinenkan_talk'] },
     { title: '施設の中', keys: ['aeon_clerk_talk', 'aeon_info', 'enter_ramen', 'ramen_ticket', 'ramen_board', 'enter_cityhall', 'cityhall_info_talk', 'cityhall_ticket', 'cityhall_post', 'enter_library', 'library_kid_talk', 'lib_zuroku', 'enter_tearoom', 'tearoom_toko', 'tearoom_ro', 'tearoom_mizuya', 'enter_kodomo', 'kodomo_kamado', 'enter_iwkin', 'iwkin_clerk_talk', 'iwkin_case', 'iwkin_diorama', 'iwkin_dressup', 'iwkin_panel', 'enter_tenshu', 'tenshu_scope', 'tenshu_map', 'station_sign', 'irogane_gate', 'irogane_view_text'] },
     { title: '文化の家（館内・部屋・上映・本）', keys: ['bunka_3f', 'bunka_map1', 'bunka_map2', 'bunka_map3', 'kurono_talk', 'kurono_start', 'enter_bk_kaze', 'enter_bk_hikari', 'enter_bk_tenji', 'enter_bk_shoon', 'enter_bk_tamoku', 'enter_bk_kougi', 'enter_bk_shoku', 'enter_bk_bijutsu', 'enter_bk_studio', 'enter_bk_anshitsu', 'enter_bk_ongaku', 'enter_bk_buyou', 'enter_bk_kaigi', 'enter_bk_washitsu', 'bk_seats', 'bk_kaze_piano', 'bk_kaze_stage', 'bk_kaze_light', 'bk_hikari_screen', 'bk_hikari_proj', 'bk_tenji_works', 'bk_tenji_table', 'bk_easel', 'bk_stand', 'bk_upright', 'bk_grand_piano', 'bk_tamoku_desk', 'bk_whiteboard', 'bk_kougi_screen', 'bk_kougi_desk', 'bk_shoku_daidokoro', 'bk_shoku_table', 'bk_shoku_counter', 'bk_bijutsu_desk', 'bk_bijutsu_sink', 'bk_studio_drum', 'bk_studio_amp', 'bk_studio_piano', 'bk_studio_mixer', 'bk_anshitsu_enlarger', 'bk_anshitsu_bat', 'bk_anshitsu_dryer', 'bk_buyou_mirror', 'bk_buyou_speaker', 'bk_buyou_locker', 'bk_kaigi_desk', 'bk_washitsu_toko', 'bk_washitsu_ro', 'bk_washitsu_mizuya', 'bk_washitsu_zataku', 'bk_washitsu_fusuma', 'bk_mob_kougi', 'bk_mob_bijutsu', 'bk_mob_ongaku', 'bk_mob_buyou', 'bk_mob_washitsu', 'arts_book1', 'arts_book2', 'arts_book3', 'arts_book4'] },
@@ -131,7 +131,8 @@ main{max-width:900px;margin:0 auto;padding:20px}
     tea_intro: '茶室：はじまり', tea_rank_c: '茶室：ふつう', tea_rank_b: '茶室：きれい', tea_rank_a: '茶室：クリーミー',
     tour_battle_intro: '史跡：もののけ出現',
     omake_locked: '街：まだ行けない', omake_unlock: '街：解放アナウンス',
-    station_first: 'リニモ：初回', station_ride: 'リニモ：乗車',
+    station_locked: 'リニモ：取材開始前', station_first: 'リニモ：初回', station_ride: 'リニモ：乗車',
+    station_terminal_exit: 'リニモ：終点の改札', station_no_trains: 'リニモ：この方向は終点',
     aeon_welcome: 'イオン：入店', aeon_first: 'イオン：入店（いけと出会う前）', ramen_event: '一蘭：下見',
     cityhall_talk: '市役所', kodomo_talk: '平成こども塾', library_talk: '中央図書館',
     higane_event: '桧ヶ根公園：赤備え入手', higane_done: '桧ヶ根公園：再訪',

@@ -41,14 +41,15 @@ Vanilla JS + HTML5 Canvas、ビルド不要、`file://` でも動作。
 - セーブは2ファイル制（`kassenzu_save_v2_f1` / `_f2`）。セーブポイントと「つづきから」でファイルを選ぶ。旧単一セーブは初回起動時にファイル1へ自動移行
 - 戦闘は複数敵対応（`startBattle({ enemies: [...] })`）。従来の `enemy:` 指定も1体として動く
 - マップ行は全行同じ幅であること（検証スクリプトの前例: `/tmp/claude/checkmaps.py` 方式で幅チェック）
-- 街の配置は実際の長久手市に準拠（方角込み）。zoneA は現地案内図に合わせて画面上=芸大通、下=杁ヶ池公園、左=市役所方面。イオンは記念館の上側で、間に東西道路、右側に縦方向のリニモと長久手古戦場駅を置く。他ゾーンではリニモは従来どおり横方向（駅で路線図移動）
+- 街の配置は実際の長久手市に準拠（方角込み）。ゾーン接続は `H—F / H—C / F—A / C—A / C—D / A—B / D—B / E—G—F / I—G`（すべて双方向）。zoneI（平成こども塾）はzoneGの西にある行き止まり。zoneA は画面上=芸大通、下=杁ヶ池公園、左=市役所方面とし、イオンは記念館の上側、間に東西道路、右側に縦方向のリニモと長久手古戦場駅を置く
 - ストーリーイベントは zoneA の記念館前広場に依存する。基準座標は `game.js` の `ZA_POS` に集約し、会話中の人物が下部ウィンドウと重ならないよう広場南側に十分なカメラ余白を残す。**zoneA のレイアウト変更時は ZA_POS / walkTo / 施設出口 / テスター開始座標との整合を必ず確認**
 - 敵は maps.js の `ENEMY_DEFS`（10種＋レア2種）と `ENCOUNTER_TABLES`（ゾーン別・重み付き）がデータ源。街ゾーンのエンカウントは `afterUnlock: true`（街解放後のみ）。バトル絵は `assets/enemy/<kind>_battle.png` 自動読込
 - モブNPCは maps.js の `MOB_DEFS`。フェーズ（quest=取材中 / night=決戦前夜 / post=クリア後）ごとに位置・人数が変わり、セリフは dialogue.js の `mob_<id>_<フェーズ>`（無ければ _quest にフォールバック）
 - 施設内部マップは `<施設>_in`（イオン・一蘭・市役所・図書館・胡牀庵・丸太の家・岩崎城記念館・天守展望室）＋駅ホーム `station_home`（全駅共通・現在駅は game.js の stationAt）。買い物・ミニゲームは店内の店員に話しかけて発動
+- リニモの駅順は `fujigaoka → hanamizuki → iriga → kosenjo → geidai → koennishi → expo → yakusa`。藤が丘と八草はホームのみで外へ出られない。現地取材開始前は駅構内にも入れず、上下ホームは「藤が丘方面」と「八草方面」に分ける
 - みやぶる: もののけ系（MONSTER_KINDS）は見破るまでオダの攻撃が通らない。必要Lvは `ENEMY_DEFS.miyaLv`（ハードのみ判定・イージーはLv1で全敵OK）。みやぶるLvはオダLv連動（10でLv2・18でLv3）。格上のいる戦闘と通常エンカウント（canFlee）は「にげる」必成功。四章開始時にチュートリアルバトルあり。図書館謎解き初回クリアで「もののけ図録」（mgDone.zuroku・みやぶるに由来解説が付く）
 - クイズは全系統（検定・史跡・合いの手・岩崎ゲート）で `shuffleQuiz()` により選択肢シャッフル。長久手検定は20問データ（`mania: true` はハード限定）から イージー5問3択／ハード10問4択（6問未満でGO）
-- 色金山は2フロアダンジョン `irogane1`（登山道・エンカウントあり）→`irogane2`（山頂: 床机石=site_irogane・展望台・篝火）。zoneC の R が登山口。展望台の写真は `assets/view/irogane_view.png` を置くと自動で実写表示（それまではテキストの眺望）
+- 色金山は2フロアダンジョン `irogane1`（登山道・エンカウントあり）→`irogane2`（山頂: 床机石=site_irogane・展望台・篝火）。zoneH の R が登山口。展望台の写真は `assets/view/irogane_view.png` を置くと自動で実写表示（それまではテキストの眺望）
 - 文化の家は全館内マップ: 廊下 `bunka1`（1階・20×14）/`bunka2`（2階・24×14・アーツライブラリー併設）/`bunka3`（3階）＋個別部屋 `bk_*` 14室（公式サイト bunkanoie.jp/rental の設備準拠）。部屋の出口座標は game.js の `BK_RETURN`、初入場ナレは `BUNKA_ENTER`（enteredFlavor で1回）
 - 光のホール（bk_hikari）の黒野に話しかけると本編（YouTube）を `showVideoOverlay()` で #stage 上に16:9オーバーレイ再生（✕で閉じる・再生中は videoOverlay フラグで scene.update 停止）。黒野は実在職員の想定——セリフ・扱いは本人了承前提
 - 効果音は Web Audio の合成音（`playTone`/`playPianoArp`・音声ファイル不要）。ドラムサークルはリズム復唱式（listen→play・タイミング±35%判定・ハードは矢印太鼓＋ミス3回でGO）

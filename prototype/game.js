@@ -42,8 +42,8 @@
     down:    ['ArrowDown', 'KeyS', 'DOWN'],
     left:    ['ArrowLeft', 'KeyA', 'LEFT'],
     right:   ['ArrowRight', 'KeyD', 'RIGHT'],
-    confirm: ['Enter', 'Space', 'KeyZ', 'BTN_A'],
-    cancel:  ['Escape', 'KeyX', 'BTN_B'],
+    confirm: ['Enter', 'Space', 'KeyZ', 'BTN_Z', 'BTN_A'],
+    cancel:  ['Escape', 'KeyX', 'BTN_X', 'BTN_B'],
   };
   function pressCode(code) { if (!held.has(code)) edges.add(code); held.add(code); }
   function releaseCode(code) { held.delete(code); }
@@ -62,16 +62,29 @@
     if (!el) return;
     const on = function (e) { e.preventDefault(); pressCode(code); };
     const off = function (e) { e.preventDefault(); releaseCode(code); };
+    // フォーカス中のボタンを Enter / Space で操作した時も、そのボタン本来の役割にする。
+    // window 側の Enter / Space（決定）へ伝播させると、X/Bでも決定が同時入力されてしまう。
+    const keyOn = function (e) {
+      if (e.code !== 'Enter' && e.code !== 'Space') return;
+      e.preventDefault(); e.stopPropagation(); pressCode(code);
+    };
+    const keyOff = function (e) {
+      if (e.code !== 'Enter' && e.code !== 'Space') return;
+      e.preventDefault(); e.stopPropagation(); releaseCode(code);
+    };
     el.addEventListener('touchstart', on, { passive: false });
     el.addEventListener('touchend', off, { passive: false });
     el.addEventListener('touchcancel', off, { passive: false });
     el.addEventListener('mousedown', on);
     el.addEventListener('mouseup', off);
     el.addEventListener('mouseleave', off);
+    el.addEventListener('keydown', keyOn);
+    el.addEventListener('keyup', keyOff);
   }
   bindBtn('btnUP', 'UP'); bindBtn('btnDOWN', 'DOWN');
   bindBtn('btnLEFT', 'LEFT'); bindBtn('btnRIGHT', 'RIGHT');
   bindBtn('btnA', 'BTN_A'); bindBtn('btnB', 'BTN_B');
+  bindBtn('btnZ', 'BTN_Z'); bindBtn('btnX', 'BTN_X');
   canvas.addEventListener('pointerdown', function (e) { e.preventDefault(); pressCode('BTN_A'); });
   canvas.addEventListener('pointerup', function () { releaseCode('BTN_A'); });
   canvas.addEventListener('pointerleave', function () { releaseCode('BTN_A'); });
@@ -865,10 +878,10 @@
           c.beginPath(); c.moveTo(x + fg, y); c.lineTo(x + fg, y + T); c.stroke();
           c.beginPath(); c.moveTo(x, y + fg); c.lineTo(x + T, y + fg); c.stroke();
         }
-      } else if (ch === 'e') {
-        // 可動式ホーム柵（ハーフハイト）
+      } else if (ch === 'e' || ch === 'G') {
+        // 可動式ホーム柵（G=藤が丘方面、e=八草方面）
         c.fillStyle = '#dfe3e8'; c.fillRect(x, y + 8, T, T - 14);
-        c.fillStyle = '#4dabf7'; c.fillRect(x, y + 10, T, 3);
+        c.fillStyle = ch === 'G' ? '#f59f00' : '#4dabf7'; c.fillRect(x, y + 10, T, 3);
         c.fillStyle = '#adb5bd'; c.fillRect(x, y + 8, 2, T - 14); c.fillRect(x + T - 2, y + 8, 2, T - 14);
       } else if (ch === 'r') {
         // リニモの軌道（ホーム階から見た線路）
@@ -1242,7 +1255,7 @@
         c.drawImage(img, bx, bottom - bh, bw, bh);
       } });
     });
-    // リニモ高架の支柱（奥行きソートに参加）。zoneA は現地配置どおり縦方向。
+    // リニモ高架の支柱（奥行きソートに参加）。駅ごとの orientation で縦横を切り替える。
     var lin = (typeof LINIMO_TRACK !== 'undefined') ? LINIMO_TRACK[map.key] : null;
     var linDeckY = 0, linDeckX = 0;
     if (lin) {
@@ -1854,6 +1867,7 @@
     cha:     { name: '長久手茶', heal: 40, price: 300, desc: '戦闘中に HPを 40 回復する。香りがいい。' },
     hyorogan: { name: '兵糧丸', heal: 25, price: 0, desc: '戦国の 携帯食。戦闘中に HPを 25 回復する。（こども塾で 作れる）' },
   };
+  const BATTLE_ITEM_KEYS = ['onigiri', 'cha', 'hyorogan'];
   let gold = 1000; // 所持金（円）
   const bag = { onigiri: 0, cha: 0, hyorogan: 0 };
   function bagCount() { return (bag.onigiri || 0) + (bag.cha || 0) + (bag.hyorogan || 0); }
@@ -1942,6 +1956,10 @@
   let stationUsed = false;            // リニモ初回ネタ用（セッション内）
   let iroganeGateSeen = false;        // 色金山登山口の看板ナレーション（セッション内・初回のみ）
   let stationAt = null;               // いまいる駅（station_home 用。直接起動時は古戦場扱い）
+  function stationById(id) {
+    for (var i = 0; i < LINIMO_STATIONS.length; i++) if (LINIMO_STATIONS[i].id === id) return LINIMO_STATIONS[i];
+    return null;
+  }
   const enteredFlavor = new Set();    // 施設の入場ナレーションを一度だけ出す用
   // main2（四章〜エピローグ）の直列進行。各値は「これから行うこと」:
   // 0=四章導入＋現地取材の決意 1=現地取材クエスト（5史跡を踏破・街解放） 2=戦トーク
@@ -1986,6 +2004,24 @@
     saveSlot = n === 2 ? 2 : 1;
     try { localStorage.setItem(SLOT_LAST, String(saveSlot)); } catch (e) {}
   }
+  // 新規開始時は、タイトルに戻る前のプレイ状態を残さない。
+  // 保存対象だけでなく、セッション内の一度限りフラグも初期化する。
+  function resetNewGameState() {
+    Hero.lv = 1; Hero.exp = 0; Hero.maxhp = 30; Hero.atkBonus = 0;
+    Hero.weapon = 'bokuto'; Hero.armor = 'nuno'; Hero.items = ['replica', 'do'];
+    gold = 1000;
+    bag.onigiri = 0; bag.cha = 0; bag.hyorogan = 0;
+    zukanSet.clear(); zukanSet.add('kinenkan');
+    meikanSet.clear(); meikanSet.add('oda');
+    tourCleared.clear(); tourReward = false;
+    tutorialDone = false; storyStage = 0; activeField = null;
+    partyMembers.length = 0;
+    chapter = 'pro'; ch1Seen = { mound: false, shokuro: false, museum: false };
+    ch2step = 0; ch3rusu = false; zoneAMood = 'dusk'; teaBest = '';
+    mgDone = {}; kanchoLove = 0; kanchoBond = false; iwasakiCleared = false; kanchoEv = {};
+    visitedSites.clear(); stageP3 = 0;
+    stationUsed = false; iroganeGateSeen = false; stationAt = null; enteredFlavor.clear();
+  }
   function saveGame() {
     try {
       localStorage.setItem(slotKey(saveSlot), JSON.stringify({
@@ -2013,6 +2049,11 @@
         if (d) setSaveSlot(other);
       }
       if (!d) return false;
+      // セーブ対象外のセッション状態は、ファイルを切り替えるたびに初期化する。
+      // 別ファイルの同行者や「初回」表示が残ることを防ぐ。
+      partyMembers.length = 0;
+      stationUsed = false; stationAt = null; iroganeGateSeen = false;
+      enteredFlavor.clear(); activeField = null;
       if (!d.v) { d.difficulty = d.difficulty || 'easy'; } // v1 相当の変換
       if (d.hero) { Hero.lv = d.hero.lv; Hero.exp = d.hero.exp; Hero.maxhp = d.hero.maxhp; Hero.atkBonus = d.hero.atkBonus; Hero.weapon = d.hero.weapon; Hero.armor = d.hero.armor; Hero.items = d.hero.items || []; }
       difficulty = (d.difficulty === 'hard') ? 'hard' : 'easy';
@@ -2198,34 +2239,47 @@
       else if (id === 'aeon_exit') gotoField('zoneA', { col: 7, row: 7 });
       else if (id === 'aeon_info') Dialog.start(DIALOGUE.aeon_info);
       else if (id === 'station') {
-        // 駅の外の入口 → ホーム階へ上がる（乗車はホームのホームドア前で）
+        // 現地取材が始まるまでは駅構内にも入れない。
+        if (!omakeUnlocked()) { Dialog.start(DIALOGUE.station_locked); return; }
+        // 駅の外の入口 → ホーム階へ上がる（乗車はホーム柵の前で）
         for (var si = 0; si < LINIMO_STATIONS.length; si++) {
           if (LINIMO_STATIONS[si].map === mapKey) { stationAt = LINIMO_STATIONS[si]; break; }
         }
-        var goHome = function () { gotoField('station_home'); };
-        if (stationUsed) goHome();
-        else { stationUsed = true; Dialog.start(DIALOGUE.station_first, goHome); }
+        gotoField('station_home');
       }
-      else if (id === 'station_board') {
-        // ホームで乗車: 路線図から行き先を選ぶ。街解放前は古戦場↔モリコロのみ（従来挙動）
+      else if (id === 'station_board_fujigaoka' || id === 'station_board_yakusa') {
+        if (!omakeUnlocked()) { Dialog.start(DIALOGUE.station_locked); return; }
+        if (!stationAt) stationAt = stationById('kosenjo');
+        // 2つのホームを藤が丘方面・八草方面に分け、進行方向の駅だけを表示する。
+        var currentIndex = LINIMO_STATIONS.indexOf(stationAt);
+        if (currentIndex < 0) { stationAt = stationById('kosenjo'); currentIndex = LINIMO_STATIONS.indexOf(stationAt); }
+        var towardFujigaoka = id === 'station_board_fujigaoka';
         var destNames = [], dests = [];
-        for (var sj = 0; sj < LINIMO_STATIONS.length; sj++) {
-          var stn = LINIMO_STATIONS[sj];
-          if (stationAt && stn.id === stationAt.id) continue;
-          if (!omakeUnlocked() && stn.map !== 'zoneA' && stn.map !== 'zoneE') continue;
-          destNames.push(stn.name); dests.push(stn);
+        if (towardFujigaoka) {
+          for (var sj = currentIndex - 1; sj >= 0; sj--) {
+            destNames.push(LINIMO_STATIONS[sj].name); dests.push(LINIMO_STATIONS[sj]);
+          }
+        } else {
+          for (var sk = currentIndex + 1; sk < LINIMO_STATIONS.length; sk++) {
+            destNames.push(LINIMO_STATIONS[sk].name); dests.push(LINIMO_STATIONS[sk]);
+          }
         }
-        Choice.start('リニモ ' + (stationAt ? stationAt.name + '駅' : '') + '　どこへ 行く？', destNames.concat(['やめる']), function (pick) {
+        if (!dests.length) { Dialog.start(DIALOGUE.station_no_trains); return; }
+        var directionName = towardFujigaoka ? '藤が丘方面' : '八草方面';
+        Choice.start('リニモ ' + stationAt.name + '駅　' + directionName + '　どこへ 行く？', destNames.concat(['やめる']), function (pick) {
           if (pick >= dests.length) return;
           var dest = dests[pick];
-          Dialog.start(DIALOGUE.station_ride, function () {
+          var rideLines = stationUsed ? DIALOGUE.station_ride : DIALOGUE.station_first;
+          stationUsed = true;
+          Dialog.start(rideLines, function () {
             stationAt = dest;
             gotoField('station_home');
           });
         });
       }
       else if (id === 'station_exit') {
-        if (!stationAt) stationAt = LINIMO_STATIONS[1]; // 直接起動時の保険（長久手古戦場）
+        if (!stationAt) stationAt = stationById('kosenjo');
+        if (stationAt.terminalOnly || !stationAt.map) { Dialog.start(DIALOGUE.station_terminal_exit); return; }
         gotoField(stationAt.map, { col: stationAt.col, row: stationAt.row });
       }
       else if (id === 'station_sign') Dialog.start(DIALOGUE.station_sign);
@@ -2249,7 +2303,7 @@
         }
         else Dialog.start([{ name: 'オダ', text: '（一杯 950円…。いまは 持ち合わせが 足りない。もののけ退治で 稼いでこよう）' }]);
       }
-      else if (id === 'ramen_exit') gotoField('zoneC', { col: 20, row: 21 });
+      else if (id === 'ramen_exit') gotoField('zoneC', { col: 27, row: 21 });
       else if (id === 'ramen_ticket') Dialog.start(DIALOGUE.ramen_ticket);
       else if (id === 'ramen_board') Dialog.start(DIALOGUE.ramen_board);
       else if (id === 'cityhall') {
@@ -2264,7 +2318,7 @@
       else if (id === 'cityhall_info') Dialog.start(DIALOGUE.cityhall_info_talk);
       else if (id === 'cityhall_ticket') Dialog.start(DIALOGUE.cityhall_ticket);
       else if (id === 'cityhall_post') Dialog.start(DIALOGUE.cityhall_post);
-      else if (id === 'cityhall_exit') gotoField('zoneC', { col: 32, row: 13 });
+      else if (id === 'cityhall_exit') gotoField('zoneC', { col: 29, row: 9 });
       else if (id === 'kodomo') {
         Dialog.start(DIALOGUE.enter_kodomo, function () { gotoField('kodomo_in'); });
       }
@@ -2275,7 +2329,7 @@
         });
       }
       else if (id === 'kodomo_kamado') Dialog.start(DIALOGUE.kodomo_kamado);
-      else if (id === 'kodomo_exit') gotoField('zoneG', { col: 30, row: 8 });
+      else if (id === 'kodomo_exit') gotoField('zoneI', { col: 15, row: 9 });
       else if (id === 'library') {
         Dialog.start(DIALOGUE.enter_library, function () { gotoField('library_in'); });
       }
@@ -2286,7 +2340,7 @@
         });
       }
       else if (id === 'library_kid') Dialog.start(DIALOGUE.library_kid_talk);
-      else if (id === 'library_exit') gotoField('zoneD', { col: 34, row: 21 });
+      else if (id === 'library_exit') gotoField('zoneD', { col: 34, row: 20 });
       else if (id === 'shateki') {
         var stBack = backHere();
         setScene(makeShateki(stBack));
@@ -2316,7 +2370,7 @@
       else if (id === 'tearoom_toko') Dialog.start(DIALOGUE.tearoom_toko);
       else if (id === 'tearoom_ro') Dialog.start(DIALOGUE.tearoom_ro);
       else if (id === 'tearoom_mizuya') Dialog.start(DIALOGUE.tearoom_mizuya);
-      else if (id === 'tearoom_exit') gotoField('zoneC', { col: 17, row: 13 });
+      else if (id === 'tearoom_exit') gotoField('zoneH', { col: 27, row: 11 });
       // ===== 色金山ダンジョン（登山道〜山頂） =====
       else if (id === 'irogane_in') {
         if (iroganeGateSeen) gotoField('irogane1');
@@ -2324,7 +2378,7 @@
       }
       else if (id === 'irogane_up') gotoField('irogane2');
       else if (id === 'irogane_down') gotoField('irogane1', { col: 20, row: 3 });
-      else if (id === 'irogane_exit') gotoField('zoneC', { col: 17, row: 5 });
+      else if (id === 'irogane_exit') gotoField('zoneH', { col: 16, row: 6 });
       else if (id === 'irogane_view') {
         // 展望台: 写真素材（assets/view/irogane_view.png）があれば全画面表示、なければテキストの眺望
         if (IROGANE_VIEW_IMG) setScene(makePhotoView(IROGANE_VIEW_IMG, '展望台から 望む 長久手の まち', backHere()));
@@ -2806,7 +2860,8 @@
       enter: function () {
         activeField = this;
         if (mapKey === 'field' || mapKey === 'zoneA') unlockZukan('kosenjo');
-        if (mapKey === 'zoneB' && chapter === 'main2' && stageP3 === 1 && !kanchoEv.b) {
+        // 砂子交差点（一蘭のある市役所エリア）で、館長の後ろ姿を見かける。
+        if (mapKey === 'zoneC' && chapter === 'main2' && stageP3 === 1 && !kanchoEv.b) {
           kanchoEv.b = true; saveGame();
           var kb = { x: 26 * TILE, y: 16 * TILE, kind: 'kancho', facing: 'up', id: 'kancho_b' };
           sceneActors.push(kb);
@@ -2992,7 +3047,7 @@
             }
             if (nearW) {
               var waitLines = (nearW.id === 'ike' ? DIALOGUE.ch4_wait_ike : DIALOGUE.ch4_wait_michi)
-                .concat([{ name: '', text: '（現地取材: ' + junbiCount() + ' / 5 史跡を 踏破。武蔵塚・安昌寺は 北の 岩作エリア、色金山は その 奥の 山の 頂上に。血の池は 公園の 南西、御旗山は 西エリアの 北東に）' }]);
+                .concat([{ name: '', text: '（現地取材: ' + junbiCount() + ' / 5 史跡を 踏破。武蔵塚は 西の 市役所エリア、安昌寺と 色金山は そこから 北へ。血の池は 古戦場公園の 南西、御旗山は 南の 杁ヶ池エリア北側に）' }]);
               Dialog.start(waitLines);
               return;
             }
@@ -3085,9 +3140,9 @@
         }
         // 操作ヒント（誰でもメニューにたどり着けるように常時表示）
         if (!Dialog.active && !Choice.active && !darkFx) {
-          c.fillStyle = 'rgba(6,10,24,0.6)'; roundRect(c, W - 190, 8, 182, 24, 8); c.fill();
+          c.fillStyle = 'rgba(6,10,24,0.6)'; roundRect(c, W - 216, 8, 208, 24, 8); c.fill();
           c.fillStyle = '#cdd9ff'; c.font = '11px "Hiragino Sans",sans-serif'; c.textAlign = 'left';
-          c.fillText('Ｚ：しらべる　Ｘ／Ｂ：メニュー', W - 180, 24);
+          c.fillText('Ｚ／Ａ：しらべる　Ｘ／Ｂ：メニュー', W - 206, 24);
         }
         drawVignette(c); if (Dialog.active) Dialog.render(c);
         if (Choice.active) Choice.render(c);
@@ -3160,6 +3215,8 @@
     const popups = [];
     // 複数敵: 対象選択とクイズゲートの状態
     let targetCursor = 0, pendingCmd = null;
+    // どうぐ: 種類選択 → 生存している味方の対象選択
+    let itemCursor = 0, pendingItem = null, allyTargetCursor = 0;
     let quiz = null, quizSel = 0, quizAnswered = false, quizCorrect = false, lastQuizIdx = -1;
 
     function aliveEnemies() { return enemies.filter(function (e) { return e.hp > 0; }); }
@@ -3191,6 +3248,50 @@
     }
     let rounds = 0; // イベント戦（roundLimit）用
     function aliveAllies() { return allies.filter(function (a) { return a.hp > 0; }); }
+    function isItemChoiceEnabled(idx) {
+      return idx === BATTLE_ITEM_KEYS.length || (idx >= 0 && (bag[BATTLE_ITEM_KEYS[idx]] || 0) > 0);
+    }
+    function moveItemCursor(step) {
+      const count = BATTLE_ITEM_KEYS.length + 1; // 3種＋もどる
+      do { itemCursor = (itemCursor + step + count) % count; }
+      while (!isItemChoiceEnabled(itemCursor)); // 所持数0のどうぐは表示だけして選択不可
+    }
+    function openItemMenu(resetCursor) {
+      mode = 'item'; msg = ''; pendingItem = null;
+      if (resetCursor || !isItemChoiceEnabled(itemCursor)) {
+        itemCursor = 0;
+        while (itemCursor < BATTLE_ITEM_KEYS.length && !isItemChoiceEnabled(itemCursor)) itemCursor++;
+      }
+    }
+    function openAllyTarget(useKey) {
+      pendingItem = useKey;
+      const alive = aliveAllies();
+      allyTargetCursor = Math.max(0, alive.indexOf(allies[turnIdx]));
+      mode = 'allyTarget'; msg = '';
+    }
+    function usePendingItem(tgt) {
+      const actor = allies[turnIdx];
+      const useKey = pendingItem;
+      if (!useKey || !GOODS[useKey] || (bag[useKey] || 0) <= 0) {
+        showMsg('その どうぐは もう 持っていない！', function () { openItemMenu(false); });
+        return;
+      }
+      const deficit = tgt.maxhp - tgt.hp;
+      if (deficit <= 0) {
+        // 全回復の相手には消費せず、手番も進めない
+        showMsg(tgt.name + 'の HPは いっぱいだ！', function () { mode = 'allyTarget'; msg = ''; });
+        return;
+      }
+      const healed = Math.min(GOODS[useKey].heal, deficit);
+      bag[useKey]--;
+      if (bagCount() === 0) cursor = 0; // 次のオダ手番で「どうぐ」の位置が「にげる」に化けないようにする
+      tgt.hp += healed;
+      pendingItem = null;
+      const used = actor === tgt
+        ? actor.name + 'は ' + GOODS[useKey].name + 'を つかった！\nHPが ' + healed + ' 回復した！'
+        : actor.name + 'は ' + tgt.name + 'に ' + GOODS[useKey].name + 'を つかった！\n' + tgt.name + 'の HPが ' + healed + ' 回復した！';
+      showMsg(used, nextTurn);
+    }
     function loseCheck(then) {
       // 全滅条件 = オダのHP0
       if (player.hp <= 0) {
@@ -3403,19 +3504,7 @@
           }
         }
       } else if (cmd === 'どうぐ') {
-        // 回復量が大きく減っているなら長久手茶を優先、そうでなければおにぎり
-        var useKey = null;
-        var deficit = actor.maxhp - actor.hp;
-        if (bag.cha > 0 && deficit >= 35) useKey = 'cha';
-        else if (bag.hyorogan > 0 && deficit >= 20) useKey = 'hyorogan';
-        else if (bag.onigiri > 0) useKey = 'onigiri';
-        else if (bag.hyorogan > 0) useKey = 'hyorogan';
-        else if (bag.cha > 0) useKey = 'cha';
-        if (!useKey) { showMsg('どうぐを 何も 持っていない！', openMenu); return; }
-        bag[useKey]--;
-        var healed = Math.min(GOODS[useKey].heal, deficit);
-        actor.hp += healed;
-        showMsg('オダは ' + GOODS[useKey].name + 'を つかった！\nHPが ' + healed + ' 回復した！', nextTurn);
+        openItemMenu(true);
       } else {
         // にげる: 通常エンカウント（canFlee）は必ず成功。
         // また、ハードで「みやぶれない格上」が いる戦闘は どこでも必ず逃げられる（詰み防止）
@@ -3457,6 +3546,20 @@
             const cmd = pendingCmd; pendingCmd = null;
             execCmd(cmd, tgt);
           }
+        } else if (mode === 'item') {
+          if (Input.pressed('up')) moveItemCursor(-1);
+          if (Input.pressed('down')) moveItemCursor(1);
+          if (Input.pressed('cancel')) openMenu();
+          else if (Input.pressed('confirm')) {
+            if (itemCursor === BATTLE_ITEM_KEYS.length) openMenu();
+            else if (isItemChoiceEnabled(itemCursor)) openAllyTarget(BATTLE_ITEM_KEYS[itemCursor]);
+          }
+        } else if (mode === 'allyTarget') {
+          const alive = aliveAllies();
+          if (Input.pressed('up')) allyTargetCursor = (allyTargetCursor + alive.length - 1) % alive.length;
+          if (Input.pressed('down')) allyTargetCursor = (allyTargetCursor + 1) % alive.length;
+          if (Input.pressed('cancel')) openItemMenu(false);
+          else if (Input.pressed('confirm')) usePendingItem(alive[allyTargetCursor] || alive[0]);
         } else if (mode === 'quiz') {
           // クイズゲート: 正解で行動可能、不正解でこのターンは全員行動不可
           if (!quizAnswered) {
@@ -3475,7 +3578,8 @@
         }
       },
       render: function (c) {
-        drawBattle(c, enemies, allies, turnIdx, commands, cursor, mode, msg, shake, flash, popups, targetCursor, aliveEnemies());
+        drawBattle(c, enemies, allies, turnIdx, commands, cursor, mode, msg, shake, flash, popups,
+          targetCursor, aliveEnemies(), itemCursor, pendingItem, allyTargetCursor);
         drawParts(c);
         if (mode === 'quiz' && quiz) drawBattleQuiz(c, quiz, quizSel, quizAnswered, quizCorrect);
       },
@@ -3520,7 +3624,8 @@
     }
     c.restore();
   }
-  function drawBattle(c, enemies, allies, turnIdx, commands, cursor, mode, msg, shake, flash, popups, targetCursor, aliveList) {
+  function drawBattle(c, enemies, allies, turnIdx, commands, cursor, mode, msg, shake, flash, popups,
+    targetCursor, aliveList, itemCursor, pendingItem, allyTargetCursor) {
     const player = allies[0];
     const enemy = enemies[0]; // 主敵（背景演出・イベント戦フラグは主敵基準）
     const nEn = enemies.length;
@@ -3693,9 +3798,10 @@
       c.fillText('▼攻ダウン あと' + player.atkDownT + 'ターン', W - 22, allies.length === 1 ? 282 : (allies.length >= 4 ? 224 : 236));
       c.textAlign = 'left';
     }
+    const allyItemTargets = mode === 'allyTarget' ? allies.filter(function (a) { return a.hp > 0; }) : [];
     if (allies.length === 1) {
       // 1人（従来レイアウト）
-      c.fillStyle = '#cdd9ff'; c.font = '15px "Hiragino Sans",sans-serif';
+      c.fillStyle = mode === 'allyTarget' ? '#ffd43b' : '#cdd9ff'; c.font = '15px "Hiragino Sans",sans-serif';
       c.fillText('オダ　Lv' + player.lv + '　HP ' + player.hp + '/' + player.maxhp, 22, 296);
       drawHPBar(c, 22, 304, 170, player.hp, player.maxhp, '#37b24d');
     } else {
@@ -3706,10 +3812,12 @@
         const a = allies[ai];
         const ay = slotY0 + ai * slotH;
         const isTurn = (mode === 'menu' && ai === turnIdx);
-        c.fillStyle = a.hp <= 0 ? '#6b7280' : (isTurn ? '#ffd43b' : '#cdd9ff');
-        c.font = (isTurn ? 'bold ' : '') + '13px "Hiragino Sans",sans-serif';
+        const isItemTarget = allyItemTargets[allyTargetCursor] === a;
+        const isSelected = isTurn || isItemTarget;
+        c.fillStyle = a.hp <= 0 ? '#6b7280' : (isSelected ? '#ffd43b' : '#cdd9ff');
+        c.font = (isSelected ? 'bold ' : '') + '13px "Hiragino Sans",sans-serif';
         const lvTxt = a.isOda ? ' Lv' + a.lv : '';
-        c.fillText((isTurn ? '▶' : '　') + a.name + lvTxt + '　' + a.hp + '/' + a.maxhp, 22, ay + 10);
+        c.fillText((isSelected ? '▶' : '　') + a.name + lvTxt + '　' + a.hp + '/' + a.maxhp, 22, ay + 10);
         drawHPBar(c, 22, ay + 13, allies.length >= 4 ? 132 : 150, a.hp, a.maxhp, a.hp <= 0 ? '#495057' : '#37b24d');
       }
     }
@@ -3737,6 +3845,35 @@
       for (let i = 0; i < tl.length; i++) {
         c.fillStyle = i === targetCursor ? '#ffd43b' : '#f1f3f5';
         c.fillText((i === targetCursor ? '▶ ' : '　 ') + tl[i].name, tx + 14, ty + 32 + i * 30);
+      }
+    } else if (mode === 'item') {
+      drawTextbox(c, '', 'どの どうぐを つかう？', false, true);
+      const ix = W - 216, iy = 280, iw = 204, ih = 24 + (BATTLE_ITEM_KEYS.length + 1) * 30;
+      c.fillStyle = 'rgba(8,16,40,0.97)'; roundRect(c, ix, iy, iw, ih, 10); c.fill();
+      c.strokeStyle = '#cdd9ff'; c.lineWidth = 2; roundRect(c, ix + 2, iy + 2, iw - 4, ih - 4, 8); c.stroke(); c.lineWidth = 1;
+      c.font = '17px "Hiragino Sans",sans-serif';
+      for (let ii = 0; ii <= BATTLE_ITEM_KEYS.length; ii++) {
+        const isBack = ii === BATTLE_ITEM_KEYS.length;
+        const key = isBack ? null : BATTLE_ITEM_KEYS[ii];
+        const enabled = isBack || (bag[key] || 0) > 0;
+        const selected = ii === itemCursor;
+        const label = isBack ? 'もどる' : GOODS[key].name + '　×' + (bag[key] || 0);
+        c.fillStyle = !enabled ? '#6b7280' : (selected ? '#ffd43b' : '#f1f3f5');
+        c.fillText((selected ? '▶ ' : '　 ') + label, ix + 14, iy + 32 + ii * 30);
+      }
+    } else if (mode === 'allyTarget') {
+      const item = GOODS[pendingItem];
+      drawTextbox(c, '', (item ? item.name : 'どうぐ') + 'を だれに つかう？', false, true);
+      const al = allyItemTargets;
+      const ax = W - 236, ay0 = 286, aw = 224, ah = 24 + al.length * 30;
+      c.fillStyle = 'rgba(8,16,40,0.97)'; roundRect(c, ax, ay0, aw, ah, 10); c.fill();
+      c.strokeStyle = '#ffd43b'; c.lineWidth = 2; roundRect(c, ax + 2, ay0 + 2, aw - 4, ah - 4, 8); c.stroke(); c.lineWidth = 1;
+      c.font = '16px "Hiragino Sans",sans-serif';
+      for (let ai2 = 0; ai2 < al.length; ai2++) {
+        const selected = ai2 === allyTargetCursor;
+        c.fillStyle = selected ? '#ffd43b' : '#f1f3f5';
+        c.fillText((selected ? '▶ ' : '　 ') + al[ai2].name + '　HP ' + al[ai2].hp + '/' + al[ai2].maxhp,
+          ax + 12, ay0 + 32 + ai2 * 30);
       }
     } else {
       drawTextbox(c, '', msg, mode === 'msg' || mode === 'end', true);
@@ -4819,10 +4956,7 @@
                 // 章進行に応じた復帰先（legacy=旧フローのフィールド、それ以外は古戦場公園）
                 setScene(makeField(chapter === 'legacy' ? 'field' : 'zoneA', null, null));
               });
-            } else {
-              setSaveSlot(n);
-              setScene(makeDifficultySelect());
-            }
+            } else setScene(makeDifficultySelect(n));
           }
           return;
         }
@@ -4997,24 +5131,31 @@
     };
   }
   // ===================== 難易度選択（はじめから → ここ → プロローグ） =====================
-  function makeDifficultySelect() {
+  function makeDifficultySelect(targetSlot) {
+    targetSlot = targetSlot === 2 ? 2 : 1;
     const opts = [
       { id: 'easy', name: 'イージー', desc: 'どなたでも 気軽に 楽しめる。\nクイズには ヒントつき。' },
-      { id: 'hard', name: 'ハード',   desc: '敵は 手ごわく、クイズも 本格派。\n歯ごたえを 求める あなたに。' },
+      { id: 'hard', name: 'ハード',   desc: '敵は 手ごわく、クイズも 本格派。\n歯ごたえを 求める あなたに。\nハードのみの オリジナルストーリーあり。' },
     ];
-    let cur = 0;
+    let cur = 0, saveError = '';
     return {
       enter: function () {},
       update: function (dt) {
         updateParts(dt);
         if (Input.pressed('cancel')) { setScene(makeTitle()); return; }
-        if (Input.pressed('up')) cur = (cur + opts.length - 1) % opts.length;
-        if (Input.pressed('down')) cur = (cur + 1) % opts.length;
+        if (Input.pressed('up')) { cur = (cur + opts.length - 1) % opts.length; saveError = ''; }
+        if (Input.pressed('down')) { cur = (cur + 1) % opts.length; saveError = ''; }
         if (Input.pressed('confirm')) {
+          resetNewGameState();
           difficulty = opts[cur].id;
-          // 新規開始: 章進行をリセット
-          chapter = 'pro'; ch1Seen = { mound: false, shokuro: false, museum: false };
-          ch2step = 0; ch3rusu = false; zoneAMood = 'dusk';
+          // 難易度を確定した時点で初めて記録先を切り替え、選択結果をすぐ保存する。
+          var previousSlot = saveSlot;
+          setSaveSlot(targetSlot);
+          if (!saveGame()) {
+            setSaveSlot(previousSlot);
+            saveError = '保存できませんでした。ブラウザの保存設定・空き容量を確認してください。';
+            return;
+          }
           setScene(makeField('zoneA', null, null));
         }
       },
@@ -5028,18 +5169,22 @@
         c.fillStyle = '#ffd43b'; c.font = 'bold 26px "Hiragino Mincho ProN","Yu Mincho",serif';
         c.fillText('難易度を えらぶ', W / 2, 84);
         for (let i = 0; i < opts.length; i++) {
-          const oy = 140 + i * 116, sel = i === cur;
+          const oy = 124 + i * 128, sel = i === cur;
           c.fillStyle = sel ? 'rgba(255,212,59,0.14)' : 'rgba(255,255,255,0.04)';
-          roundRect(c, 76, oy, W - 152, 96, 12); c.fill();
-          if (sel) { c.strokeStyle = '#ffd43b'; c.lineWidth = 2; roundRect(c, 76, oy, W - 152, 96, 12); c.stroke(); c.lineWidth = 1; }
+          roundRect(c, 76, oy, W - 152, 112, 12); c.fill();
+          if (sel) { c.strokeStyle = '#ffd43b'; c.lineWidth = 2; roundRect(c, 76, oy, W - 152, 112, 12); c.stroke(); c.lineWidth = 1; }
           c.fillStyle = sel ? '#ffd43b' : '#cdd9ff'; c.font = 'bold 22px "Hiragino Sans",sans-serif';
           c.fillText((sel ? '▶ ' : '') + opts[i].name, W / 2, oy + 34);
           c.fillStyle = sel ? '#e8ecf2' : '#8a97b0'; c.font = '14px "Hiragino Sans",sans-serif';
           var dls = opts[i].desc.split('\n');
           for (var d = 0; d < dls.length; d++) c.fillText(dls[d], W / 2, oy + 58 + d * 20);
         }
+        if (saveError) {
+          c.fillStyle = '#ffb3b3'; c.font = 'bold 12px "Hiragino Sans",sans-serif';
+          c.fillText(saveError, W / 2, H - 34);
+        }
         c.fillStyle = '#868e96'; c.font = '12px "Hiragino Sans",sans-serif';
-        c.fillText('↑ ↓ 選択　　Z 決定　　X / B もどる', W / 2, H - 16);
+        c.fillText('↑ ↓ 選択　　Z / A 決定　　X / B もどる', W / 2, H - 16);
         drawVignette(c);
         c.textAlign = 'left';
       },
@@ -5886,6 +6031,8 @@
   } catch (e) { devStart = null; }
   if (devStart && hasSave() && loadGame()) {
     var dvMap = devStart.map || (chapter === 'legacy' ? 'field' : 'zoneA');
+    if (devStart.stationId) stationAt = stationById(devStart.stationId) || stationById('kosenjo');
+    else if (dvMap === 'station_home' && !stationAt) stationAt = stationById('kosenjo');
     var dvSpawn = (devStart.col != null) ? { col: devStart.col, row: devStart.row } : null;
     setScene(makeField(dvMap, dvSpawn, null));
   } else setScene(makeSplash());

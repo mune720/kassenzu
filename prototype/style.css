@@ -30,11 +30,14 @@ button.pad {
   touch-action: none; cursor: pointer;
 }
 button.pad:active { background: #3d4860; }
-#actions { display: flex; gap: 10px; }
+#actions {
+  display: grid; grid-template-columns: repeat(2, 48px); gap: 8px 10px;
+}
 button.act {
   width: 48px; height: 48px; border-radius: 50%; border: none;
   font-size: 16px; font-weight: bold; background: #3b5bdb; color: #fff;
   touch-action: none; cursor: pointer;
 }
-#actions #btnB { background: #495057; }
+#actions #btnB, #actions #btnX { background: #495057; }
 button.act:active { filter: brightness(1.2); }
+button.pad:focus-visible, button.act:focus-visible { outline: 3px solid #ffd43b; outline-offset: 2px; }
