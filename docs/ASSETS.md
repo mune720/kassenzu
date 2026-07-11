@@ -1,6 +1,6 @@
 # アセット差し替え一覧（ASSETS.md）
 
-ゲームが読み込む画像・音の一覧と、現在の状態。**ファイル名さえ合っていれば、`prototype/assets/` に置くだけで自動で反映される**（コード変更不要）。生成プロンプトは [asset_prompts.md](asset_prompts.md) を参照。
+ゲームが読み込む画像・音の一覧と、現在の状態。**ファイル名さえ合っていれば、`prototype/assets/` に置くだけで自動で反映される**（コード変更不要）。生成プロンプトは [asset_prompts.md](asset_prompts.md)、実在建物は [BUILDING_VISUAL_WORKFLOW.md](BUILDING_VISUAL_WORKFLOW.md)、主要人物は [CHARACTER_VISUAL_WORKFLOW.md](CHARACTER_VISUAL_WORKFLOW.md) を参照。
 
 凡例: ✅=導入済み　⬜=未導入（無くてもプロシージャル描画やプレースホルダーで動作）　🔊=音（未実装）
 
@@ -37,7 +37,7 @@
 | `cityhall.png` | 長久手市役所 | ✅ |
 | `kodomo.png` | 平成こども塾 丸太の家 | ✅ |
 | `temple.png` | 安昌寺 | ✅ |
-| `bunka.png` | 文化の家 | ✅ |
+| `bunka.png` | 文化の家 | ✅ 正面写真・公式資料準拠のHD-2D版（入口中央・底辺接地補正済み） |
 | `library.png` | 中央図書館 | ✅ |
 | `ferris.png` | モリコロパーク 観覧車 | ✅ |
 | `iwasaki_tenshu.png` | **岩崎城 模擬天守** | ⬜ 未導入（プロンプト E-1） |
@@ -90,6 +90,7 @@
 ## 5. 顔ウィンドウ（会話の立ち絵）　`assets/face/`（透過バストアップ）
 
 置くだけで会話画面の顔が自動で切り替わる。
+主要人物は `<kind>_neutral / serious / angry / happy.png` の4表情にも対応し、無い表情は `<kind>.png` へ戻る。
 
 | ファイル | キャラ | 状態 |
 |---|---|---|

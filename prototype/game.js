@@ -1349,24 +1349,26 @@
   }
   // 立ち絵画像の差し替え用キャッシュ。オダは表情別画像を優先し、無ければ oda.png へ戻す。
   const FACE_IMG = {};
+  // オダと同じ制作テンプレートを使う主要人物。将来の表情画像も同じ肩上クロップで表示する。
+  const GENERATED_FACE_KINDS = { oda: true, ike: true, michi: true, kancho: true, sakamoto: true, naiki: true, kurono: true };
   function getFaceImg(kind, face) {
     var cacheKey = kind + (face ? ':' + face : '');
     if (FACE_IMG[cacheKey] !== undefined) return FACE_IMG[cacheKey];
     const img = new Image();
     img.onerror = function () {
-      if (kind === 'oda' && face) {
-        var fallback = new Image();
-        fallback.onerror = function () { FACE_IMG[cacheKey] = null; };
-        fallback.src = 'assets/face/oda.png';
-        FACE_IMG[cacheKey] = fallback;
+      if (face) {
+        // 起動時に先読みした通常顔を再利用し、同じ画像を二重に読み込まない。
+        FACE_IMG[cacheKey] = getFaceImg(kind, null);
       } else FACE_IMG[cacheKey] = null;
     };
-    img.src = kind === 'oda' && face
-      ? 'assets/face/oda_' + face + '.png'
+    img.src = face
+      ? 'assets/face/' + kind + '_' + face + '.png'
       : 'assets/face/' + kind + '.png';
     FACE_IMG[cacheKey] = img;
     return img;
   }
+  // 未導入キャラも先に404を確定させ、最初の会話時に待ち時間なく図形へ戻せるようにする。
+  Object.keys(GENERATED_FACE_KINDS).forEach(function (kind) { getFaceImg(kind, null); });
   // 最初の会話で旧図形ポートレートが一瞬見えないよう、オダの4表情を起動時に先読みする。
   ['neutral', 'serious', 'angry', 'happy'].forEach(function (face) { getFaceImg('oda', face); });
   function dialogueFace(name, text, explicitFace) {
@@ -1523,7 +1525,10 @@
   }
   ['grass', 'road', 'dirt', 'water'].forEach(function (k) { loadHDImg(HD_TEX, k, 'assets/tiles/' + k + '.png'); });
   ['tree', 'bush', 'rock', 'mound', 'mound_s'].forEach(function (k) { loadHDImg(HD_DECO, k, 'assets/deco/' + k + '.png'); });
-  ['museum', 'aeon', 'station', 'ramen', 'tearoom', 'cityhall', 'kodomo', 'temple', 'bunka', 'library', 'ferris', 'iwasaki_tenshu', 'iwasaki_kinenkan', 'toyota', 'ikea', 'geidai', 'aidai'].forEach(function (k) { loadHDImg(HD_BLD, k, 'assets/buildings/' + k + '.png'); });
+  ['museum', 'aeon', 'station', 'ramen', 'tearoom', 'cityhall', 'kodomo', 'temple', 'bunka', 'library', 'ferris', 'iwasaki_tenshu', 'iwasaki_kinenkan', 'toyota', 'ikea', 'geidai', 'aidai'].forEach(function (k) {
+    var assetVersion = k === 'bunka' ? '?v=20260711b1' : '';
+    loadHDImg(HD_BLD, k, 'assets/buildings/' + k + '.png' + assetVersion);
+  });
   // 歩行スプライトシート（assets/sprites/<kind>_walk.png）: 3列×4行。
   // 行=正面/左/右/後ろ、列=立ち/歩き1/歩き2。あれば drawActor が自動で使う。
   // 生成画像はセル内の余白が大きいため、12セルそれぞれの実描画域を一度だけ解析する。
@@ -1585,18 +1590,19 @@
     return pat;
   }
   // HD_DECO_DEF / HD_BLD_DEF（装飾・建物の配置データ）は maps.js に分離した
-  // 顔ウィンドウ（画像があれば表情別に描画。オダは読込完了まで枠ごと表示しない）
+  // 顔ウィンドウ（画像があれば表情別に描画。主要人物は読込完了まで枠ごと表示しない）
   function drawPortrait(c, kind, face, x, y, s) {
     const img = getFaceImg(kind, face);
     const imageReady = img && img.complete && img.naturalWidth > 0;
     // 読み込み中に旧ダミーが一瞬表示されるのを防ぐ。枠も画像と同時に出す。
-    if (kind === 'oda' && !imageReady) return false;
+    // 読込失敗後（img=null）は従来の図形へ戻し、素材未導入のキャラも表示を保つ。
+    if (GENERATED_FACE_KINDS[kind] && img && !imageReady) return false;
     c.fillStyle = 'rgba(0,0,0,0.35)'; roundRect(c, x + 3, y + 3, s, s, 8); c.fill();
     c.fillStyle = '#0a1430'; roundRect(c, x, y, s, s, 8); c.fill();
     c.save();
     roundRect(c, x + 3, y + 3, s - 6, s - 6, 6); c.clip();
     if (imageReady) {
-      if (kind === 'oda') {
+      if (GENERATED_FACE_KINDS[kind]) {
         // 元画像の上側56%を正方形に切り出し、頭頂と肩が残る顔アップにする。
         var cropSize = Math.min(img.naturalWidth, img.naturalHeight) * 0.56;
         var cropX = (img.naturalWidth - cropSize) / 2;

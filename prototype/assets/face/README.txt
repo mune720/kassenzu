@@ -7,10 +7,14 @@
   oda_neutral.png / oda_serious.png / oda_angry.png / oda_happy.png
              … オダの会話用4表情（指定がないセリフは内容から自動選択）
   ike.png    … いけ（池田輝政）
-  michi.png  … みち（林通具）
+  michi.png  … みち（森長可）
   kancho.png … 館長
 
-- 形：正方形を推奨（例 256x256〜512x512）。透過PNGも可。
+いけ・みちなどの主要人物も、同じ規則で4表情を置けます。
+  <kind>_neutral.png / <kind>_serious.png / <kind>_angry.png / <kind>_happy.png
+表情画像が無い場合は <kind>.png、さらに無い場合は図形表示へ戻ります。
+
+- 形：正方形を推奨。透過PNGも可。生成時の解像度は下げません。
 - 顔のアップ（バストアップ）が枠に合います。
 - ファイルが無い場合は、図形の「仮ポートレート」が表示されます。
 - dialogue.js のセリフに face: 'neutral' / 'serious' / 'angry' / 'happy' を付けると
