@@ -1434,6 +1434,8 @@
   const FACE_IMG = {};
   // オダと同じ制作テンプレートを使う主要人物。将来の表情画像も同じ肩上クロップで表示する。
   const GENERATED_FACE_KINDS = { oda: true, ike: true, michi: true, kancho: true, sakamoto: true, naiki: true, kurono: true };
+  const IKE_ASSET_VERSION = '?v=20260712i2';
+  function characterAssetVersion(kind) { return kind === 'ike' ? IKE_ASSET_VERSION : ''; }
   function getFaceImg(kind, face) {
     var cacheKey = kind + (face ? ':' + face : '');
     if (FACE_IMG[cacheKey] !== undefined) return FACE_IMG[cacheKey];
@@ -1444,9 +1446,9 @@
         FACE_IMG[cacheKey] = getFaceImg(kind, null);
       } else FACE_IMG[cacheKey] = null;
     };
-    img.src = face
+    img.src = (face
       ? 'assets/face/' + kind + '_' + face + '.png'
-      : 'assets/face/' + kind + '.png';
+      : 'assets/face/' + kind + '.png') + characterAssetVersion(kind);
     FACE_IMG[cacheKey] = img;
     return img;
   }
@@ -1592,7 +1594,7 @@
   // 敵バトル絵（assets/enemy/<kind>_battle.png を置くと自動で差し替わる。無い間はもののけ描画）
   const ENEMY_IMG = {};
   // いけの腕試しは ENEMY_DEFS 外のイベント戦なので明示的に読み込む。
-  loadImg('assets/enemy/ike_battle.png', function (i) { ENEMY_IMG.ike = i; });
+  loadImg('assets/enemy/ike_battle.png' + IKE_ASSET_VERSION, function (i) { ENEMY_IMG.ike = i; });
   const MONSTER_KINDS = {};
   Object.keys(ENEMY_DEFS).forEach(function (id) {
     var kind = ENEMY_DEFS[id].kind;
@@ -1669,14 +1671,14 @@
     var img = new Image();
     img.onload = function () { HD_SPRITE[k] = img; sheetContentBox(k, img); };
     img.onerror = function () {};
-    img.src = 'assets/sprites/' + k + '_walk.png';
+    img.src = 'assets/sprites/' + k + '_walk.png' + characterAssetVersion(k);
   });
   // オダといけは専用の4方向走行シートを使用。未読込なら drawActor が歩行シートへ戻る。
   ['oda', 'ike'].forEach(function (k) {
     var img = new Image();
     img.onload = function () { HD_RUN_SPRITE[k] = img; sheetContentBox(k, img, HD_RUN_SPRITE_BOX); };
     img.onerror = function () {};
-    img.src = 'assets/sprites/' + k + '_run.png';
+    img.src = 'assets/sprites/' + k + '_run.png' + characterAssetVersion(k);
   });
   // 地面テクスチャ → 敷き詰めパターン（元画像を 8×8 タイル分に縮小してリピート。元ファイルは縮小保存しない）
   const HD_PAT = {};
